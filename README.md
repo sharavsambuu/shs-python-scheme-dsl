@@ -24,7 +24,7 @@ all pre-imported by the default profile:
 ## Install
 
 ```sh
-git clone https://github.com/OWNER/shs-python-scheme-dsl
+git clone https://github.com/sharavsambuu/shs-python-scheme-dsl
 cd shs-python-scheme-dsl
 pip install .          # gives you the `shs` command and `import lisp`
 ```
@@ -58,7 +58,7 @@ chmod +x program.scm
 
 Inside the REPL: `,help` shows the commands (`,load PATH`, `,quit`); everything
 else is Lisp. Put extra module directories on the load path with `SHS_PATH`
-(colon-separated, like `PATH`).
+(`os.pathsep`-separated — `:` on Unix, `;` on Windows, like `PATH`).
 
 ## Examples
 

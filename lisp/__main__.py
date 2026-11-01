@@ -23,7 +23,7 @@ This module is composition only. Everything interesting lives in the ``lisp``
 package, and a host project embeds the language directly (``lisp.embed``)
 without ever coming near this file. Additional script directories can be put
 on the load path with the ``SHS_PATH`` environment variable
-(colon-separated, like ``PATH``).
+(``os.pathsep``-separated, like ``PATH``).
 """
 from __future__ import annotations
 
@@ -70,13 +70,16 @@ def _profile_value(name: str) -> Optional[str]:
 
 
 def _search_paths() -> List[Path]:
-    """Extra load path from ``SHS_PATH`` (colon-separated), like ``PATH``.
+    """Extra load path from ``SHS_PATH``, ``os.pathsep``-separated (``:`` on
+    Unix, ``;`` on Windows — the same convention as ``PATH`` itself).
 
     The working directory is added by :func:`lisp.runtime.make_env` itself;
     a user or host adds more directories here without touching any code.
     """
     return [
-        Path(part) for part in os.environ.get("SHS_PATH", "").split(":") if part
+        Path(part)
+        for part in os.environ.get("SHS_PATH", "").split(os.pathsep)
+        if part
     ]
 
 

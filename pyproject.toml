@@ -23,7 +23,7 @@ shs = "lisp.__main__:main"
 lisppy = "lisp.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/OWNER/shs-python-scheme-dsl"
+Homepage = "https://github.com/sharavsambuu/shs-python-scheme-dsl"
 
 [tool.setuptools]
 # Only the language package is published. A host edition (a game, a tool)
