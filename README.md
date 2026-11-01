@@ -24,12 +24,20 @@ all pre-imported by the default profile:
 ## Install
 
 ```sh
+# from a clone (best if you want to hack on the interpreter or the tutorial)
 git clone https://github.com/sharavsambuu/shs-python-scheme-dsl
 cd shs-python-scheme-dsl
-pip install .          # gives you the `shs` command and `import lisp`
+pip install .
+
+# or straight from GitHub — note the mandatory `git+` prefix
+pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git
+
+# pinned to a tag/commit, for a project that depends on it
+pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.1.0
 ```
 
 No runtime dependencies: the interpreter is pure Python standard library.
+Both the `shs` command and the `import lisp` module are installed.
 
 ## The `shs` command
 
