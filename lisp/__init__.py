@@ -1,0 +1,107 @@
+"""``lisp`` — a small Scheme-flavored Lisp you can embed in any Python program.
+
+The language is the first-class thing here; a domain (the Tetris game, or one
+of your own) is a library on top of it. Read the modules in this order:
+
+* :mod:`lisp.reader` — text becomes data (and ``'x`` becomes ``(quote x)``);
+* :mod:`lisp.types` — what the values *are*;
+* :mod:`lisp.evaluator` — data becomes behaviour, via a tail-calling loop;
+* :mod:`lisp.stack` — the host stack that loop's non-tail recursion needs;
+* :mod:`lisp.loader` — ``(load …)``: how a program is split across files;
+* :mod:`lisp.builtins` — the primitives;
+* :mod:`lisp.syntax` — ``define-syntax``/``syntax-rules`` (hygienic macros);
+* :mod:`lisp.prelude` (``prelude.scm``) — the standard library, in Lisp;
+* :mod:`lisp.rope` (``rope.scm``) — Result, Kleisli, and ROP, in Lisp.
+
+To put your own Python functions in front of a program — the whole point of a
+DSL host — read :mod:`lisp.embed`::
+
+    from lisp import install_primitives, make_env, run
+
+    env = make_env()                       # a general Scheme, no game needed
+    install_primitives(env, [("double", lambda n: n * 2)])
+    run("(double 21)", env)                # -> 42
+
+Then ``tetris/`` for the game edition, and ``python -m lisp repl`` to use it.
+"""
+from __future__ import annotations
+
+from .embed import install_extension, install_primitives, load_lisp
+from .env import Environment
+from .errors import (
+    LispArityError,
+    LispError,
+    LispNameError,
+    LispRecursionError,
+    LispSyntaxError,
+    LispTypeError,
+)
+from .evaluator import apply_procedure, equal, evaluate, evaluate_program
+from .loader import Loader
+from .printer import to_string
+from .reader import read_all, read_one
+from .runtime import load_file, make_env, run
+from .stack import STACK_BYTES, on_deep_stack, run_with_deep_stack
+from .types import (
+    NIL,
+    Char,
+    Closure,
+    ErrorObject,
+    HashTable,
+    Macro,
+    Pair,
+    Primitive,
+    Symbol,
+    SyntaxRules,
+    Tagged,
+    Values,
+    Vector,
+    intern,
+    is_tagged,
+    is_true,
+    make_tagged,
+)
+
+__all__ = [
+    "Environment",
+    "Loader",
+    "NIL",
+    "Char",
+    "Closure",
+    "ErrorObject",
+    "HashTable",
+    "Macro",
+    "Pair",
+    "Primitive",
+    "Symbol",
+    "SyntaxRules",
+    "Tagged",
+    "Values",
+    "Vector",
+    "intern",
+    "is_tagged",
+    "is_true",
+    "make_tagged",
+    "apply_procedure",
+    "equal",
+    "evaluate",
+    "evaluate_program",
+    "to_string",
+    "read_all",
+    "read_one",
+    "install_primitives",
+    "install_extension",
+    "load_lisp",
+    "load_file",
+    "make_env",
+    "run",
+    "STACK_BYTES",
+    "on_deep_stack",
+    "run_with_deep_stack",
+    "LispError",
+    "LispSyntaxError",
+    "LispNameError",
+    "LispTypeError",
+    "LispArityError",
+    "LispRecursionError",
+]

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shs"
+version = "0.1.0"
+description = "shs — a small Scheme-flavored DSL over Python, with SRFIs 1/26/88/89/197/241 and a gosh-like CLI."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["scheme", "lisp", "dsl", "r7rs", "srfi", "interpreter"]
+# The language itself is pure standard library: no runtime dependencies. A
+# *host* project brings its own vocabulary (see lisp/embed.py).
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+# The gosh-shaped CLI. `shs` is the name; `lisppy` is kept as an alias.
+shs = "lisp.__main__:main"
+lisppy = "lisp.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/OWNER/shs-python-scheme-dsl"
+
+[tool.setuptools]
+# Only the language package is published. A host edition (a game, a tool)
+# lives in its own project and installs its vocabulary via lisp.embed.
+packages = ["lisp"]
+
+[tool.setuptools.package-data]
+# The standard library and the ROP library are Lisp, and ship as data.
+lisp = ["*.scm"]

@@ -1,11 +1,109 @@
-# About
+# shs — a small Scheme DSL over Python
 
-  This is my custom Scheme DSL over Python as runtime, uses following SRFIs
-  - SRFI   1, List library
-  - SRFI  26, Specializing (cut/cute)
-  - SRFI  88, Keyword objects, similar to Erlang's atom
-  - SRFI  89, Optional positional and named parameters (define* / lambda*)
-  - SRFI 197, Pipeline operators (chain family)
-  - SRFI 241, Pattern matching (match)
+`shs` is a gosh-shaped command line for a small Scheme-flavored Lisp that runs
+on Python. The language is one pure-standard-library package (`lisp`) you can
+install, script with, embed in your own Python projects, and read in an
+afternoon.
 
-  Only intended for my personal use
+This is my custom Scheme DSL over Python as runtime. It uses the following SRFIs,
+all pre-imported by the default profile:
+
+| SRFI | Name | What you get |
+| --- | --- | --- |
+| SRFI 1 | List library | `iota`, the `fold` family, `filter`, association lists, set operations |
+| SRFI 26 | Specializing | `cut` / `cute` — partial application without lambda boilerplate |
+| SRFI 88 | Keyword objects | `host:` — self-evaluating keywords, similar to Erlang's atoms |
+| SRFI 89 | Optional and named parameters | `define*` / `lambda*` with optional positional and keyword parameters |
+| SRFI 197 | Pipeline operators | `chain`, `chain-and`, `chain-when`, `chain-lambda`, `nest` |
+| SRFI 241 | Pattern matching | `match` with quasiquote patterns, guards, ellipsis, catamorphism |
+
+> **Note on SRFI 204.** SRFI 204 (the Wright–Cartwright–Shinn matcher) is
+> *withdrawn* and is deliberately not implemented — `(srfi 204)` fails with a
+> pointer to `(srfi 241)`, which is the final matcher SRFI.
+
+## Install
+
+```sh
+git clone https://github.com/OWNER/shs-python-scheme-dsl
+cd shs-python-scheme-dsl
+pip install .          # gives you the `shs` command and `import lisp`
+```
+
+No runtime dependencies: the interpreter is pure Python standard library.
+
+## The `shs` command
+
+```sh
+shs                              # interactive REPL (the default)
+shs -e '(+ 1 2)'                 # evaluate an expression, print the value
+shs run program.scm              # run a script
+shs program.scm                  # the same, gosh-style: the file is the command
+shs run program.scm arg1 arg2    # args become *command-line-args*
+shs --profile r7rs               # strict R7RS-small: no SRFIs preloaded
+shs --version
+```
+
+Scripts may begin with a shebang and be executable directly:
+
+```scheme
+#!/usr/bin/env shs
+(display (fold + 0 (iota 5 1)))   ; => 15
+(newline)
+```
+
+```sh
+chmod +x program.scm
+./program.scm
+```
+
+Inside the REPL: `,help` shows the commands (`,load PATH`, `,quit`); everything
+else is Lisp. Put extra module directories on the load path with `SHS_PATH`
+(colon-separated, like `PATH`).
+
+## Examples
+
+Runnable scripts live in [`examples/`](examples/):
+
+```sh
+shs run examples/fizzbuzz.scm
+```
+
+## Learn it
+
+- **The tutorial** — [`docs/lisp_tutorial/README.md`](docs/lisp_tutorial/README.md):
+  from "Lisp in ten minutes" to macros, modules, ROP, and the SRFI layer, with
+  every example machine-checked by the test suite.
+- **The language guide** — [`docs/language.md`](docs/language.md): the one-stop
+  reference with verified examples.
+- **The SRFI contract** — [`docs/srfi.md`](docs/srfi.md): exactly what each SRFI
+  provides, the import collisions the profile resolves for you, and the
+  deviations.
+- **The DSL specification** — [`docs/lisp-dsl.md`](docs/lisp-dsl.md): the target
+  language contract (R7RS-small subset + the SRFIs above).
+
+## Embed it in your own Python project
+
+```python
+from lisp import install_primitives, make_env, run
+
+env = make_env()                       # a general Scheme, SRFIs preloaded
+install_primitives(env, [("double", lambda n: n * 2)])
+run("(double 21)", env)                # -> 42
+```
+
+The seam is declared, total, and loud: a host publishes a plain list of
+`name -> callable` pairs; duplicates and non-callables are refused at install
+time. See chapter 21 of the tutorial.
+
+## Development
+
+```sh
+python -m pytest -q
+```
+
+The suite includes the tutorial's own harness: every `Try it` block in every
+chapter is executed and its output compared with what the page shows.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Built for personal use.
