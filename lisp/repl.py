@@ -30,7 +30,7 @@ Everything else is Lisp.  Try:
   (fact 20)
   (fold + 0 '(1 2 3 4))            ; SRFI 1 — the list library
   (map (cut * 2 <>) '(1 2 3))      ; SRFI 26 — specialized calls
-  (chain 5 (_ * 2) (_ + 1))        ; SRFI 197 — threading pipelines
+  (chain 5 (* _ 2) (+ _ 1))        ; SRFI 197 — threading pipelines
 
   (load "my-library")              ; .scm files on the search path
 """
