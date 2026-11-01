@@ -145,7 +145,8 @@ nobody trusts.
 The language installs on its own:
 
 ```sh
-pip install shs        # the `shs` command, and `import lisp`
+pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git
+# (once published, plain `pip install shs` will work too — see docs/INSTALL.md)
 ```
 
 `pyproject.toml` publishes exactly the `lisp` package — pure standard library,

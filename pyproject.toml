@@ -3,7 +3,10 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "shs"
+# The distribution name on PyPI. The command stays `shs`, but the *package*
+# name cannot be `shs`: that name on PyPI belongs to an unrelated project
+# ("Security Hygiene Scanner"). The distribution name matches the repository.
+name = "shs-scheme-dsl"
 version = "0.1.0"
 description = "shs — a small Scheme-flavored DSL over Python, with SRFIs 1/26/88/89/197/241 and a gosh-like CLI."
 readme = "README.md"

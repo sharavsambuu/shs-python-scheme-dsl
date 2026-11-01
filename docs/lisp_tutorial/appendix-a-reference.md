@@ -337,7 +337,8 @@ run("(double 21)", env)                # -> 42
   `name -> callable`, refusing a duplicate or a non-callable *at install time*.
 - An **extension** is any callable `env -> env` or object with `install(env)`;
   pass them to `make_env(extensions=[…])`.
-- The package installs with `pip install shs`; the import name is `lisp`. See
+- The package installs with `pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git`
+  (see `docs/INSTALL.md`); the import name is `lisp`. See
   chapter [21](21-embedding-in-python.md).
 
 ## Budgets and limits

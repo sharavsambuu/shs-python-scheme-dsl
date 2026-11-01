@@ -53,9 +53,12 @@ _FALLBACK_VERSION = "0.1.0"
 def _version() -> str:
     """The installed version, or the fallback for an in-place source tree."""
     try:
-        from importlib.metadata import version
+        from importlib.metadata import version, PackageNotFoundError
 
-        return version(PROGRAM)
+        try:
+            return version("shs-scheme-dsl")
+        except PackageNotFoundError:
+            return version("shs")  # a distribution installed under the old name
     except Exception:  # noqa: BLE001 — any metadata trouble is the same answer
         return _FALLBACK_VERSION
 

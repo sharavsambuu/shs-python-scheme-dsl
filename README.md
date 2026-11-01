@@ -23,6 +23,9 @@ all pre-imported by the default profile:
 
 ## Install
 
+Full details — pinned installs, troubleshooting, the `git+` gotcha — are in
+[`docs/INSTALL.md`](docs/INSTALL.md). The short version:
+
 ```sh
 # from a clone (best if you want to hack on the interpreter or the tutorial)
 git clone https://github.com/sharavsambuu/shs-python-scheme-dsl
@@ -36,8 +39,12 @@ pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git
 pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.1.0
 ```
 
-No runtime dependencies: the interpreter is pure Python standard library.
-Both the `shs` command and the `import lisp` module are installed.
+No runtime dependencies: the interpreter is pure Python standard library
+(Python 3.10+). Both the `shs` command and the `import lisp` module are installed.
+
+> **Do not `pip install shs`** — that PyPI name belongs to an unrelated
+> project ("Security Hygiene Scanner"). Ours is `shs-scheme-dsl`; the command
+> it installs is still called `shs`.
 
 ## The `shs` command
 
