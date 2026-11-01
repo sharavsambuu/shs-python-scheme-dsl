@@ -65,8 +65,13 @@ else is Lisp. Put extra module directories on the load path with `SHS_PATH`
 Runnable scripts live in [`examples/`](examples/):
 
 ```sh
-shs run examples/fizzbuzz.scm
+shs run examples/fizzbuzz.scm          # a first script
+python examples/embed_inventory_host.py  # a generic Python host (no Tetris!)
 ```
+
+The second one is the generality proof in miniature: a stateful Python
+`Inventory` class drives a Lisp policy layer — with the SRFI list library, a
+SRFI 197 pipeline, and Python exceptions caught as Lisp conditions via `guard`.
 
 ## Learn it
 
