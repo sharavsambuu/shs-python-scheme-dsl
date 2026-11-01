@@ -95,7 +95,7 @@ are just lists: `'((id "demo") (mode "marathon"))`. Chapter
 Four constructs carry almost everything: `define` (name a value), `lambda`
 (make a function), `let` (name a local, and loop), and the list (hold many
 values). Add `if`/`cond` to choose and `quote` to write data, and you can read
-every design in `scripts/`. The rest of the language — variants and
+every example in `examples/`. The rest of the language — variants and
 `variant-match`, `Result`, macros, the SRFI layer the REPL pre-imports for you
 — is built from these, in Lisp, in files you can open.
 

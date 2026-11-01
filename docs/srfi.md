@@ -162,7 +162,7 @@ Implemented as a Python pattern compiler in `lisp/evaluator.py` — `match` is a
 global special form (like SRFI 88's core-backed primitives, the `(srfi 241)`
 Library entry only scopes the name for the import/collision rules). The
 project's tag-dispatch matcher is renamed **`variant-match`** and keeps its
-exact old semantics for the Tetris scripts.
+exact semantics for host scripts.
 
 - **Patterns:** `,_` (wildcard), `,x` — a pattern variable, which the reader
   spells `(unquote x)` — pattern symbols and other constants by `equal?`,
@@ -272,29 +272,23 @@ appears here with a reason.
 
 ## How to verify
 
-From `python_tetris_lisp/`:
+From a checkout of this project:
 
 ```bash
 # the full suite (the count below is the recorded run)
-../python_tetris/env/bin/python -m pytest -q
+python -m pytest -q
 
 # the SRFI gate
-../python_tetris/env/bin/python -m pytest tests/test_srfi.py -q
-
-# the architecture fence (the SRFI layer never learns a game word)
-../python_tetris/env/bin/python -m pytest tests/test_architecture.py -q
-
-# the game, headless
-../python_tetris/env/bin/python -m lisp play --validate
+python -m pytest tests/test_srfi.py -q
 ```
 
-Last recorded run: **1057 passed**, plus `play --validate` → `ok`. If the
-count drifts, update this section in the same change.
+Last recorded run: **764 passed**. If the count drifts, update this section in
+the same change.
 
 ## The profiles
 
-- **`profile="dsl"` (the default)** — `make_env()`, the REPL, `run`, the game,
-  and embedded hosts: the SRFI layer is pre-imported with the collision
+- **`profile="dsl"` (the default)** — `make_env()`, the `shs` CLI, and
+  embedded hosts: the SRFI layer is pre-imported with the collision
   resolutions above. The profile is *additive*: it binds no name the core
   already binds, so no existing meaning changes. `(features)` reports
   `dsl-profile` and the `srfi-*` identifiers.
@@ -304,7 +298,7 @@ count drifts, update this section in the same change.
 - **`profile=None`** — no profile at all, for tests that need the bare
   machinery.
 
-`install_tetris` is orthogonal: no profile installs game bindings. The
+Host editions are orthogonal: no profile installs host bindings. The
 profile lint (`lisp/profile.lint`) checks that every shipped `.scm` file
 loads under the default profile; `tests/test_profile.py` runs it and proves
 it goes red on a file that does not load.

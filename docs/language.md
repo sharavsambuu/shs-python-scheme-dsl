@@ -33,23 +33,18 @@ which makes those files the first worked examples.
 
 ## Quick start
 
-From `python_tetris_lisp/` (the project runs in place; `P` is the interpreter):
+After `pip install .` (or `pip install shs`, once published), the `shs` command
+is the front door:
 
 ```sh
-cd python_tetris_lisp
-P=../python_tetris/env/bin/python
-
-$P -m lisp                          # REPL (default), with the game loaded
-$P -m lisp repl --no-tetris         # REPL, language only
-$P -m lisp run FILE                 # run a .scm file
-$P -m lisp run FILE --no-tetris     # run without the game
-$P -m lisp demo                     # guided tour of the domain
-$P -m lisp rope                     # guided tour of Result / ROP
-$P -m lisp play                     # pygame window, default design
-$P -m lisp play --design arcade     # pick a design by name
-$P -m lisp play --list              # the gallery of designs
-$P -m lisp play --validate          # every design, headless
-$P -m lisp play --seed 7            # reproducible
+shs                              # the REPL (default), SRFIs preloaded
+shs repl                         # the same, explicit
+shs -e '(+ 1 2)'                 # evaluate an expression, print the value
+shs run FILE                     # run a .scm file
+shs FILE                         # gosh-style: the file is the command
+shs run FILE arg1 arg2           # script args become *command-line-args*
+shs --profile r7rs               # strict R7RS-small: no SRFIs preloaded
+shs --version
 ```
 
 In Python, the same language is two calls away:
@@ -300,7 +295,7 @@ the REPL — no Python, no hooks. Its vocabulary:
   `call-with-input-file`, `with-input-from-file`
 - misc: `range`, `sort`, `delete-duplicates`
 
-A trailing `!` (`show!`, `set!`) is a convention, not syntax: "this procedure
+A trailing `!` (`set!`, `vector-set!`) is a convention, not syntax: "this procedure
 exists for its effect".
 
 ## The SRFI layer
@@ -411,38 +406,32 @@ run("(double 21)", env)                # -> 42
 - An **extension** is any callable `env -> env` or object with `install(env)`;
   pass them to `make_env(extensions=[…])`.
 - An extension sees the environment **after** the prelude, so it can build on
-  the language's own vocabulary — which is exactly what the Tetris edition
-  does.
-- The package installs with `pip install -e python_tetris_lisp`; the import
-  name is `lisp`.
+  the language's own vocabulary — which is exactly what a host edition does.
+- The package installs with `pip install shs`; the import name is `lisp`.
 
 Environment assembly (`lisp/runtime.py`) is the generality story in miniature:
 
 1. **core** — `lisp/builtins.py`;
 2. **prelude** — `lisp/prelude.scm`, `lisp/rope.scm`;
 3. **profile** — the SRFI layer, pre-imported (`profile="dsl"` by default);
-4. **extensions** — whatever the host passed, then the Tetris edition when it
-   is present (`install_tetris=None` — *auto* — means "include the game only
-   if the `tetris` package is importable", which is why a project that
+4. **extensions** — whatever the host passed, plus a host edition when one is
+   installed (`install_tetris=None` — *auto* — means "include the host only
+   if its package is importable", which is why a project that installs or
    vendor-copies `lisp/` gets the language and nothing else).
 
-## Architecture conventions (the worked example)
+## Architecture conventions for hosts
 
-The Tetris tree is the worked example of the conventions the language
-supports:
+The seam supports a discipline any host can adopt — the Tetris edition (a
+separate project) is the large worked example:
 
-- `scripts/domains/` holds pure, hook-free *rules*: gravity, planning,
-  scoring, feedback, campaign data.
-- `scripts/edges/` holds *adapters* and the designs that wire them: keymaps,
-  status lines, menus, the pygame edge.
-- **The fence: edges may load rules; rules may not load edges** — enforced by
-  `tests/test_architecture.py`.
-- A **design** is one file directly under `scripts/edges/` that defines the
-  five hooks (and, optionally, `design-meta` for the launcher);
-  `play --list` and `play --validate` are the gallery and the headless sweep.
-- The SRFI layer never learns a game word: the architecture tests import the
-  SRFI libraries in a language-only environment, so the layer stays
-  game-agnostic.
+- **Rules vs adapters.** Pure, hook-free *rules* (the domain's calculations)
+  live apart from *adapters* (keymaps, view formatting, platform edges).
+- **The fence: adapters may load rules; rules may not load adapters** — pin it
+  as a test in the host's own suite.
+- A host **program** is one file that owns the entry point and declares what it
+  needs; libraries are plain Lisp, reachable by `(load ...)`.
+- The SRFI layer never learns a host word: the profile lint loads every shipped
+  `.scm` file in a language-only environment, so the layer stays host-agnostic.
 
 The lint in `lisp/profile.py` keeps the "mandatory SRFI layer" rule with
 teeth: every shipped `.scm` file must load under the default profile, and a

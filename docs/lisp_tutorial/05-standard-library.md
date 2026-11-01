@@ -28,7 +28,7 @@
 > change a definition here and it is reloaded with every environment.*
 
 Crucially, it is loaded by `runtime.make_env`, so if you edit this file, every
-REPL, script and game run picks it up. It is the cheapest place to experiment with
+REPL session and every `shs run` picks it up. It is the cheapest place to experiment with
 the language.
 
 ## The tour

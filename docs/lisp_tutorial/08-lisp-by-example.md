@@ -12,7 +12,7 @@
 Start it:
 
 ```sh
-shs repl --no-tetris
+shs
 ```
 
 You get a prompt. Type a form, press enter, see its value. The REPL reads lines
@@ -109,8 +109,8 @@ loop**:
 
 Read it as: call `loop` with `i=0`, `acc=()`. The body either returns or calls
 `loop` again with new values — in tail position, so it costs no host stack
-(chapter [03](03-evaluating.md)). This named-let shape is *the* Lisp loop, and you
-will see it in nearly every file in `scripts/`.
+(chapter [03](03-evaluating.md)). This named-let shape is *the* Lisp loop, and
+you will see it in nearly every Lisp file in the wild.
 
 ```lisp
 > (define (sum-to n) (let loop ((i 0) (s 0)) (if (> i n) s (loop (+ i 1) (+ s i)))))
@@ -206,9 +206,9 @@ An **alist** — a list of `(key value)` pairs — is the language's record shap
 ```
 
 `alist-ref` returns `#f` on a miss, which is false — so "not found" and "false"
-are the same answer, and a lookup can be used directly in a condition. Every
-record in the game (a piece, a fact, a refusal, the design metadata, the view) is
-an alist, and `alist-ref` is how you read a field.
+are the same answer, and a lookup can be used directly in a condition. Any
+record worth naming (a configuration entry, a fact, a refusal, metadata) is
+naturally an alist, and `alist-ref` is how you read a field.
 
 ## Mutation
 
@@ -259,7 +259,7 @@ would expect — speed.
 ```
 
 **A tiny evaluator**, with recursion and `case` (a preview of the pattern the
-game itself is written in — data in, value out):
+interpreter itself is written in — data in, value out):
 
 ```lisp
 (define (calc e)
@@ -355,7 +355,7 @@ record. Those three plus `define`/`lambda` are the whole language you write.
 
 > Learn four things and you can write this language: `define`/`lambda` for
 > functions, the named `let` for loops, `map`/`filter`/`fold` for lists, and the
-> alist for records. Everything else is a variation, and everything the game does
-> is built from these.
+> alist for records. Everything else is a variation, and everything a real
+> program does is built from these.
 
 Next: [09 Typed control flow](09-typed-control-flow.md).

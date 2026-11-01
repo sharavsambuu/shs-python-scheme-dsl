@@ -1,7 +1,7 @@
 # The Lisp DSL — R7RS-small, SRFIs, and the Python seam
 
-This is the umbrella specification for the Lisp that lives in
-`python_tetris_lisp/`. It answers four questions in one place:
+This is the umbrella specification for the Lisp that `shs` runs. It answers
+four questions in one place:
 
 1. **What is this language for?** Domain-driven design (DDD), railway-oriented
    programming (ROP), monadic pipelines, and typed control flow.
@@ -37,12 +37,12 @@ Tetris game is the worked example, not the definition of the language.
 
 The repository separates **rules** from **adapters**:
 
-- `scripts/domains/` holds pure, hook-free rules: gravity, planning, scoring,
-  feedback, campaign data.
-- `scripts/edges/` holds adapters and the designs that wire them: keymaps,
-  status lines, menus, the pygame edge.
-- The rule is **edges may load rules; rules may not load edges**, and
-  `tests/test_architecture.py` enforces it.
+- *rules* are pure, hook-free functions: the domain's calculations, validation,
+  planning, scoring;
+- *adapters* translate between the host's platform and Lisp: input mapping,
+  view formatting, file formats.
+- The rule is **adapters may load rules; rules may not load adapters** — pin
+  it as a test in the host's own suite.
 
 The DSL supports this with ordinary values and functions, plus the SRFI layer:
 SRFI 1 for list-shaped domain data, SRFI 89 for optional/named parameters on
@@ -71,8 +71,7 @@ and builds the functor, monad, and Kleisli composition on one primitive,
 The rest of the library (`result-map-err`, `result-bimap`, `result-fold`,
 `result-unwrap`, `result-unwrap-or`, `result-expect`, `result->list`,
 `sequence-results`, `traverse-results`) is built from the same two ideas. The
-laws are pinned by `tests/test_rop.py`, and the names line up with the
-pure-Python toolkit in `python_tetris/fp/`.
+laws are pinned by `tests/test_rop.py`.
 
 ### 3. Monadic pipelines
 
@@ -125,7 +124,7 @@ not an accident.
 
 | Pillar | Primary SRFIs | Project extensions |
 | --- | --- | --- |
-| DDD | 1 (lists), 88 (keywords), 89 (named parameters), 241 (destructuring) | `scripts/domains/`, `scripts/edges/`, architecture fences |
+| DDD | 1 (lists), 88 (keywords), 89 (named parameters), 241 (destructuring) | host conventions: rules vs adapters, pinned as fences |
 | ROP | 1 (folds), 26 (`cut`), 197 (`chain`) | `Result`, `result-*`, `>=>`, `pipe-results`, `result-do`, `attempt` |
 | Monadic pipeline | 1, 26, 197 | `result-bind`, `sequence-results`, `traverse-results` |
 | Typed control flow | 241 (`match`, guards, catamorphism) | `define-variant`, `variant-match`, exhaustiveness errors |
@@ -208,7 +207,7 @@ distinctions:
 ## The default profile
 
 The DSL does **not** require an `(import ...)` preamble. `make_env()` installs
-the **DSL profile**, so the REPL, `run`, the game, and embedded hosts see the
+the **DSL profile**, so the `shs` CLI and embedded hosts see the
 same language. This is a deliberate extension: it makes the SRFI layer the
 language people actually use, instead of a library they forget to import.
 
@@ -280,23 +279,22 @@ implemented:
 - Python `str` is the Lisp string type until A8b.
 - Python exceptions cross as Lisp conditions through the existing error
   classes.
-- The game is installed only when asked: `make_env(install_tetris=False)` is a
-  plain DSL environment under every profile.
+- A host edition is installed only when present: `make_env()` is *auto* — the
+  host joins the environment only if its package is importable — and
+  `make_env(install_tetris=False)` is a plain DSL environment under every
+  profile.
 
-The seam is tested by `tests/test_embed.py`, and the boundary that keeps
-`lisp/` free of `tetris/` and `edge/` imports is tested by
-`tests/test_architecture.py`. Chapter
-[21](lisp_tutorial/21-embedding-in-python.md) is the long version.
+The seam is tested by `tests/test_embed.py`. The discipline that keeps
+`lisp/` free of host imports is what makes every Python project a valid host.
+Chapter [21](lisp_tutorial/21-embedding-in-python.md) is the long version.
 
 ## Migration policy
 
-The Tetris edition is not a museum piece. **Every shipped `.scm` file must
-load under the default profile and use the SRFI names where they exist.** S8
-did the migration: the shipped code uses `variant-match` (not `match`) for
-tag dispatch, and the profile lint (`tests/test_profile.py`) keeps the rule
-mandatory — every `.scm` file under `scripts/`, `tetris/`, and the tutorial's
-exercises loads under the default profile, and a file that does not turns the
-lint red.
+Legacy Lisp code is not a museum piece. **Every shipped `.scm` file must load
+under the default profile and use the SRFI names where they exist.** The
+profile lint (`tests/test_profile.py`) keeps the rule mandatory: every `.scm`
+file in `examples/` and the tutorial's exercises loads under the default
+profile, and a file that does not turns the lint red.
 
 The migration map:
 
@@ -319,31 +317,27 @@ Extensions that stay:
 - `result-*`, `>=>`, `pipe-results`, `result-do`, `attempt` — ROP.
 - `->`, `->>` — a useful shorthand; not SRFI 197.
 - `partial`, `curry` — procedures; not SRFI 26.
-- `range`, `sort`, `alist-*`, `hash-table-*`, the game vocabulary.
+- `range`, `sort`, `alist-*`, `hash-table-*`.
 
 The migration is complete when:
 
-- every `.scm` file under `scripts/`, `tetris/`, and the tutorial exercises
-  loads under `make_env()`;
+- every `.scm` file in `examples/` and the tutorial exercises loads under
+  `make_env()`;
 - the profile lint rejects a deliberately legacy file (the red run is recorded);
-- `play --validate` passes;
 - the full suite is green.
 
 ## How to verify
 
-From `python_tetris_lisp/`:
+From a checkout of this project:
 
 ```bash
 # the full suite
-../python_tetris/env/bin/python -m pytest -q
+python -m pytest -q
 
-# focused gates once the tasks land
-../python_tetris/env/bin/python -m pytest tests/test_r7rs.py -q
-../python_tetris/env/bin/python -m pytest tests/test_srfi.py -q
-../python_tetris/env/bin/python -m pytest tests/test_profile.py -q
-
-# the game, headless
-../python_tetris/env/bin/python -m lisp play --validate
+# focused gates
+python -m pytest tests/test_r7rs.py -q
+python -m pytest tests/test_srfi.py -q
+python -m pytest tests/test_profile.py -q
 ```
 
 The matrices and the tests are the source of truth. If this page and a matrix

@@ -18,7 +18,7 @@ DSL through an SRFI; the SRFI matrices live in `srfi.md` (S7).
 ## How to read the matrix
 
 - **procedure** names must evaluate to a procedure in
-  `make_env(install_tetris=False)`.
+  `make_env(profile="r7rs")`.
 - **syntax** names must be a special form, a macro binding, or documented
   auxiliary syntax (`else`, `=>`, `_`, `...`, `unquote`, `unquote-splicing`, and
   `syntax-rules`, which `define-syntax` parses structurally).
@@ -122,7 +122,7 @@ These are **not** R7RS and are not claimed as such:
 - hash tables (`make-hash-table`, `hash-table-*`);
 - the `Result` type and ROP vocabulary (`result-*`, `>=>`, `pipe-results`,
   `result-do`, `attempt`);
-- tagged values and the game vocabulary;
+- tagged values and host vocabulary;
 - `->`/`->>`, `partial`/`curry`, `range`, `sort`, and the rest of the prelude.
 
 They are documented in [Appendix A](lisp_tutorial/appendix-a-reference.md) and
@@ -130,17 +130,14 @@ in the [DSL specification](lisp-dsl.md), not in this page's R7RS matrix.
 
 ## How to verify
 
-From `python_tetris_lisp/`:
+From a checkout of this project:
 
 ```bash
 # the conformance harness (this page's matrix) — it runs the strict profile
-../python_tetris/env/bin/python -m pytest tests/test_r7rs.py -q
+python -m pytest tests/test_r7rs.py -q
 
 # the rest of the language suite
-../python_tetris/env/bin/python -m pytest -q
-
-# the game, headless
-../python_tetris/env/bin/python -m lisp play --validate
+python -m pytest -q
 ```
 
 `tests/test_r7rs.py` fails with a sorted, library-by-library list when the

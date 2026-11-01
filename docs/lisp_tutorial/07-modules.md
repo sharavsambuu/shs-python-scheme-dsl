@@ -28,9 +28,9 @@ def bases(self) -> List[Path]:
 ```
 
 The "loading file's own directory" part is the one that makes the tree composable:
-a library can say `(load "hud")` next to itself, while a script can say
-`(load "domains/planning/one-ply")` from anywhere because the project's
-`scripts/` tree is on the search path. The `.scm`-optional rule is why both
+a library can say `(load "keymap")` next to itself, while a script can say
+`(load "examples/announcement")` from anywhere because the working directory is
+on the search path. The `.scm`-optional rule is why both
 spellings below are the same file — the loader tries the name with `.scm` and
 then without it.
 
@@ -59,10 +59,9 @@ not two.
 (load "domains/pacing/gravity")   ; a no-op; returns the first load's value
 ```
 
-This is what makes the script tree safe to compose: a design and the design it is
-built from both loading `keymap` defines it once. (The comment in
-`scripts/play.scm` says it directly: "loading it twice is a no-op, and the file
-joins the same cache the host uses.")
+This is what makes a library tree safe to compose: a program and the library it
+is built from both loading `keymap` defines it once. Loading it twice is a
+no-op, and the file joins the same cache the host uses.
 
 ## Rule 3 — Cycles are errors
 
@@ -96,16 +95,16 @@ the working directory**:
 loader.add_search_paths([*search_paths, Path.cwd()])
 ```
 
-The project's `scripts/` tree is a *host* concern, so it is the CLI that adds it
-(not `lisp/runtime.py`), letting `run --no-tetris` still load plain-Lisp modules
-from there:
+Extra directories come from the caller: the CLI adds `SHS_PATH` entries, and a
+host passes its own library directory through `make_env(search_paths=[…])` —
+so `shs run` still loads plain-Lisp modules from any directory on the path:
 
 ```python
-def _project_search_paths():
-    return [SCRIPTS] if SCRIPTS.is_dir() else []
+def _search_paths():
+    return [Path(part) for part in os.environ.get("SHS_PATH", "").split(":") if part]
 ```
 
-so an embedder can put its own library first, ahead of the bundled scripts.
+so an embedder can put its own library first, ahead of the working directory.
 
 ## The other mechanism: `define-library`
 
@@ -128,22 +127,25 @@ the same registry:
 
 Unlike `(load …)`, a library does not leak names into the surrounding
 environment — only `import` binds. The two mechanisms compose: the SRFI
-libraries are files under `lisp/` loaded by the registry, while the game's
+libraries are files under `lisp/` loaded by the registry, while a host's
 scripts are loader modules. Use the loader for programs, `define-library` for
 reusable vocabulary — and see chapter [05](05-standard-library.md) and
 [Appendix A](appendix-a-reference.md) for the SRFI side of it.
 
 ## The entry file is module zero
 
-When you run `python -m lisp run FILE`, the file is loaded *through the loader*,
+When you run `shs run FILE`, the file is loaded *through the loader*,
 so it joins the load-once cache and its own `(load …)` calls resolve relative to
 *it*:
 
 ```python
-def _run_script(path, out, tetris):
+def _run_script(path, out, tetris, profile, script_args):
     env = make_env(
-        install_tetris=tetris, out=out, search_paths=_project_search_paths()
+        out=out, install_tetris=tetris,
+        profile=_profile_value(profile), search_paths=_search_paths(),
     )
+    if script_args is not None:
+        env.define(intern("*command-line-args*"), make_list(list(script_args)))
     return load_file(env, path), env
 ```
 

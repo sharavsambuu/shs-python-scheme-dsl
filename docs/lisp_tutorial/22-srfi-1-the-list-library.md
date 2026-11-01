@@ -15,7 +15,7 @@
 Start a REPL — any of them — and the SRFI layer is loaded:
 
 ```sh
-shs repl --no-tetris
+shs
 ```
 
 This is the **default DSL profile** at work: `make_env()` pre-imports every

@@ -113,19 +113,20 @@ fixed or pinned by `tests/test_hardening.py`:
    false; the interpreter (R7RS-correctly) treats only `#f` as false. The
    prose is fixed — and the discipline it now teaches ("a missing answer is
    `#f`, never `'()`") is load-bearing.
-4. **A latent game bug the old behaviour masked.** `piece_record(None)`
-   returned `()` — truthy — so the AI's steering guard passed on "no piece"
-   and the bool-as-int accident turned the bogus comparisons into a silent
-   refused slam. It now returns `#f`, and the guard works.
+4. **A latent host bug the old behaviour masked.** An adapter returning `()`
+   for "missing" — in the game edition, `piece_record(None)` did exactly that —
+   returns a *truthy* value, so a guard written as `(if (piece-record ...) …)`
+   passed on "no piece", and the bool-as-int accident turned the bogus
+   comparisons into a silently wrong action. The adapter now returns `#f`, and
+   the guard works.
 
-**Still open (the systemic audit):** other adapter seams
-(`tetris/adapters.py`) also return `NIL` for "missing" — `result-tx`,
-`result-error`, `event-field`. Under R7RS truthiness those values are
-*truthy*, so any script that guards on them with `if`/`when` rather than
-`null?` is a latent bug of the same shape. The shipped scripts happen to use
-them as values, not guards, so nothing currently misbehaves — but the audit
-(seam by seam: `#f` for missing, `NIL` only where a list is expected) is
-real follow-up work and belongs in the task ledger.
+**Still open (the systemic audit):** other adapter seams in a host edition can
+have the same flaw — returning `NIL` for "missing" (`result-tx`,
+`result-error`, `event-field` in the game edition). Under R7RS truthiness
+those values are *truthy*, so any script that guards on them with `if`/`when`
+rather than `null?` is a latent bug of the same shape. The convention to adopt
+in your own host: **`#f` for missing, `NIL` only where a list is expected** —
+and audit the seam seam by seam.
 
 ## How to read the two numbers
 
@@ -152,11 +153,11 @@ The practical consequences, stated plainly:
   enough to hold in your head, and why the prelude never mentions memory.
 - **Cycles are reclaimed when the cyclic collector runs**, not
   deterministically — the same contract Python gives. Fine for scripts,
-  game logic, and IDE-driven evaluation; not a real-time allocator.
+  policy layers, and IDE-driven evaluation; not a real-time allocator.
 - **Values are heavier than in a native Scheme** (a cons is a refcounted
-  Python object). The game runs its logic through this at 60 FPS and
-  `play --validate` passes headlessly, so the envelope is proven — but this
-  is not a high-throughput compute engine.
+  Python object). The Tetris edition runs its full game logic through this at
+  60 FPS, so the envelope is proven — but this is not a high-throughput
+  compute engine.
 - **The budgets bound compute, not memory.** `DEPTH_LIMIT` and
   `STEPS_BUDGET` catch runaway evaluation; a runaway allocation is caught by
   the OS, like any Python process.
@@ -173,15 +174,16 @@ would build new machinery rather than fight the interpreter.
 - **Ontology-driven → homoiconicity.** Ontology entries and program logic
   share one representation: a category can be a `define-variant` case
   (closed, tagged, exhaustively matched), a relation an alist record, a rule
-  a lambda stored in a hash table, and metadata-about-definitions is already
-  an established pattern (`design-meta`). `define-library` gives ontologies
+  a lambda stored in a hash table, and metadata-about-definitions is
+  an established pattern (a host can publish its own, the way `design-meta`
+  does in the game edition). `define-library` gives ontologies
   module boundaries; `variant-tags` is runtime reflection over declared
   categories.
-- **Cybernetics → the architecture is already a control loop.** The Tetris
-  tree is a working example: pure domain (`Tx` step, fact journals) is the
-  regulated plant; the hooks are the observers/controllers; the
-  rules-may-not-load-adapters fence is plant/actuator separation enforced by
-  `tests/test_architecture.py`; the budgets are homeostatic guardrails; ROP
+- **Cybernetics → the architecture is already a control loop.** The
+  host-edition pattern is a working example: a pure domain step with a fact
+  journal is the regulated plant; the host's hooks are the
+  observers/controllers; the rules-may-not-load-adapters fence is
+  plant/actuator separation; the budgets are homeostatic guardrails; ROP
   makes every regulation path a railway with explicit refusals.
 - **The IDE host → the seam was built for embedding.** The REPL accepts
   injectable `out`/`env`/`in_stream` and exposes `eval_source`
