@@ -51,7 +51,8 @@ that is not a plain identifier prints between bars (`|1+|`).
 - **Inexact math** `finite? infinite? nan? exp log sin cos tan asin acos
   atan` — `(log x base)` and `(atan y x)` take their optional second
   argument; the complex tower's polar half (`magnitude`, `angle`,
-  `make-polar`) and complex `sqrt`/`log` wait for C2
+  `make-polar`) landed in C2, and the transcendentals take complex
+  arguments (`(asin 2)` answers the complex arc-function)
 - **Equality / logic** `equal? eq? eqv? not boolean? boolean=? void`
 - **Pairs / lists** `cons car cdr` and every `cxr` composition through four
   levels (`caar cadr cdar cddr caaar … cddddr`), `list length append reverse

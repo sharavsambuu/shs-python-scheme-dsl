@@ -269,15 +269,16 @@ see [`r7rs.md`](r7rs.md) for the per-library matrix and
 A few shapes worth knowing:
 
 - **Numbers.** Exact integers, exact rationals (`p/q` — R1), exact complex
-  pairs (C1: `make-rectangular`/`real-part`/`imag-part`, exact arithmetic,
-  inexact contagion; an exact zero imaginary part *is* the real), and inexact
-  reals. `/` preserves exactness: `(/ 3 4)` is `3/4`, and
+  pairs (C1–C2: the rectangular *and* polar halves — `make-rectangular`,
+  `real-part`, `imag-part`, `magnitude`, `angle`, `make-polar`; exact
+  arithmetic; inexact contagion; an exact zero imaginary part *is* the
+  real), and inexact reals. `/` preserves exactness: `(/ 3 4)` is `3/4`, and
   even division stays an integer. `round` is ties-to-even and preserves
   inexactness; `exact` converts an inexact value to the exact rational
   numerically equal to it (`(exact 3.5)` is `7/2`), and `rationalize`
-  answers the simplest rational within its tolerance. The polar half of the
-  complex tower (`magnitude`, `angle`, `make-polar`) and complex `sqrt`/`log`
-  wait for C2; complex literals read in C3.
+  answers the simplest rational within its tolerance. `sqrt` of a negative
+  perfect square is an exact imaginary (`(sqrt -4)` is `2i`); `(log -1)` is
+  `+iπ`, inexact. Complex literals read in C3.
 - **Pairs vs. host lists.** A proper list is a host list; `Pair` is reserved
   for dotted structure. `set-cdr!` works on `Pair` cells only, which is why a
   proper list's tail cannot be mutated in place.

@@ -302,9 +302,9 @@ python -m pytest -q
 python -m pytest tests/test_srfi.py -q
 ```
 
-Last recorded run: **857 passed** — the C1 landing of the exact complex pair
-took the count from 846 with no failures. If the count drifts, update this
-section in the same change.
+Last recorded run: **865 passed** — the C2 landing of the polar half took the
+count from 857 with no failures. If the count drifts, update this section in
+the same change.
 
 ## The profiles
 

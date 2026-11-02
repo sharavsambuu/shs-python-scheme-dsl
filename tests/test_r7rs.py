@@ -977,13 +977,13 @@ def test_transcendental_functions(ev) -> None:
     assert ev("(atan 1 1)") == pytest.approx(0.7853981633974483)
 
 
-def test_inexact_domain_errors_are_lisp_errors(ev) -> None:
+def test_log_zero_is_an_error_in_both_towers(ev) -> None:
+    """C2 made the transcendentals complex-aware, but ``(log 0)`` has no
+    answer in any tower; ``(asin 2)`` gained one (the C2 block pins it)."""
     from lisp.errors import LispTypeError
 
     with pytest.raises(LispTypeError, match="log"):
         ev("(log 0)")
-    with pytest.raises(LispTypeError, match="asin"):
-        ev("(asin 2)")
 
 
 # --------------------------------------------------------------------------- #
@@ -1348,16 +1348,15 @@ def test_environment_isolates_definitions(ev) -> None:
 
 
 def test_environment_rejects_an_unknown_library(ev) -> None:
-    from lisp.errors import LispError, LispNameError
+    from lisp.errors import LispError
     from lisp.types import Complex
 
     with pytest.raises(LispError, match="no such library"):
         ev("(environment '(scheme no-such))")
-    # (scheme complex) is half-landed (C1): the rectangular half imports and
-    # works, and the polar half is still honestly absent — C2 finishes it.
+    # (scheme complex) landed whole in C1–C2: the library imports, and every
+    # one of its six names is bound.
     assert ev("(eval '(make-rectangular 1 2) (environment '(scheme complex)))") == Complex(1, 2)
-    with pytest.raises(LispNameError, match="magnitude"):
-        ev("(eval 'magnitude (environment '(scheme complex)))")
+    assert ev("(eval '(magnitude (make-rectangular 3 4)) (environment '(scheme complex)))") == 5
 
 
 def test_environment_rejects_a_non_library_spec(ev) -> None:
@@ -1501,9 +1500,6 @@ def test_the_real_only_family_refuses_complex_loudly(ev) -> None:
         "(numerator (make-rectangular 1 2))",
         "(denominator (make-rectangular 1 2))",
         "(rationalize (make-rectangular 1 2) 1)",
-        "(sqrt (make-rectangular 1 2))",
-        "(sin (make-rectangular 1 2))",
-        "(log (make-rectangular 1 2))",
         "(make-rectangular (make-rectangular 1 2) 3)",
     ):
         with pytest.raises(LispError):
@@ -1562,3 +1558,147 @@ def test_complex_values_hash_across_the_exactness_boundary(ev) -> None:
     ev("(define *h* (make-hash-table)) "
        "(hash-table-set! *h* (make-rectangular 1 2) 'ok)")
     assert ev("(hash-table-ref *h* (make-rectangular 1 2))") == Symbol("ok")
+
+
+# --------------------------------------------------------------------------- #
+#  C2 — the polar half, and the complex transcendentals                        #
+# --------------------------------------------------------------------------- #
+
+
+def test_magnitude_is_abs_over_the_whole_tower(ev) -> None:
+    """Row 6: exact when the sum of squares is a perfect rational square."""
+    assert ev("(magnitude 3)") == 3
+    assert ev("(magnitude -3)") == 3
+    assert ev("(magnitude -3.0)") == 3.0
+    assert ev("(magnitude (make-rectangular 3 4))") == 5
+    assert ev("(exact? (magnitude (make-rectangular 3 4)))") is True
+    assert ev("(magnitude (make-rectangular 1 1))") == pytest.approx(2 ** 0.5)
+    assert ev("(exact? (magnitude (make-rectangular 1 1)))") is False
+    assert ev("(magnitude (make-rectangular 3.0 4.0))") == 5.0
+
+
+def test_angle_answers_the_phase_with_honest_exactness(ev) -> None:
+    """Row 7: exact 0 for positive reals; π is inexact because it must be."""
+    assert ev("(angle 1)") == 0
+    assert ev("(exact? (angle 1))") is True
+    assert ev("(angle 2.0)") == 0.0
+    assert ev("(angle -1)") == pytest.approx(math.pi)
+    assert ev("(exact? (angle -1))") is False
+    # Signed zero, the IEEE way:
+    assert ev("(angle -0.0)") == pytest.approx(math.pi)
+    assert ev("(angle (make-rectangular 0 1))") == pytest.approx(math.pi / 2)
+    assert ev("(angle (make-rectangular 1 1))") == pytest.approx(math.pi / 4)
+    assert ev("(angle (make-rectangular -1.0 0.0))") == pytest.approx(math.pi)
+    # Bignum-safe: the angle is scale-invariant.
+    big = 10 ** 30
+    assert ev(f"(angle (make-rectangular {big} {big}))") == pytest.approx(math.pi / 4)
+
+
+def test_make_polar_round_trips_through_rectangular(ev) -> None:
+    """Row 4: exact zero angle stays exact; anything else is honestly inexact."""
+    assert ev("(make-polar 2 0)") == 2
+    assert ev("(exact? (make-polar 2 0))") is True
+    assert ev("(make-polar 1/2 0)") == Fraction(1, 2)
+    result = ev("(make-polar 2 1/2)")
+    assert isinstance(result, complex)  # no exact cosine exists
+    assert result == pytest.approx(complex(2 * math.cos(0.5), 2 * math.sin(0.5)))
+    assert ev("(make-polar 2.0 0.0)") == complex(2.0, 0.0)
+    # The polar/rectangular round trip, within double precision:
+    assert ev("(magnitude (make-rectangular 3 4))") == 5
+    assert ev("(angle (make-rectangular 3 4))") == pytest.approx(math.atan2(4, 3))
+    z = ev("(make-polar 3 4)")
+    assert z == pytest.approx(complex(3 * math.cos(4), 3 * math.sin(4)))
+
+
+def test_sqrt_of_negatives_answers_the_principal_root(ev) -> None:
+    """Row 8: exact when the magnitude's root is a perfect rational square."""
+    from lisp.types import Complex
+
+    assert ev("(sqrt -1)") == Complex(0, 1)
+    assert ev("(exact? (sqrt -1))") is True
+    assert ev("(sqrt -4)") == Complex(0, 2)
+    assert ev("(sqrt -1/4)") == Complex(0, Fraction(1, 2))
+    assert ev("(sqrt -9/16)") == Complex(0, Fraction(3, 4))
+    # No perfect square: honestly inexact.
+    assert ev("(sqrt -2)") == pytest.approx(complex(0, 2 ** 0.5))
+    assert ev("(exact? (sqrt -2))") is False
+    assert ev("(sqrt -2.0)") == pytest.approx(complex(0, 2 ** 0.5))
+    # The non-negative reals are unchanged from R4:
+    assert ev("(sqrt 4)") == 2
+    assert ev("(sqrt 2)") == pytest.approx(2 ** 0.5)
+    # A complex argument answers the principal root through cmath: (2+i)² = 3+4i.
+    assert ev("(sqrt (make-rectangular 3 4))") == pytest.approx(complex(2.0, 1.0))
+
+
+def test_log_of_negatives_answers_the_complex_logarithm(ev) -> None:
+    """Row 8's other half: ``(log -1)`` is ``+iπ``, inexact."""
+    from lisp.errors import LispError
+
+    result = ev("(log -1)")
+    assert result == pytest.approx(complex(0, math.pi))
+    assert isinstance(result, complex)
+    assert ev("(log -1.0)") == pytest.approx(complex(0, math.pi))
+    assert ev("(log (make-rectangular 0 1))") == pytest.approx(complex(0, math.pi / 2))
+    assert ev("(exact? (log -1))") is False
+    # The non-negative reals are unchanged:
+    assert ev("(log 1)") == 0.0
+    assert ev("(log 8 2)") == pytest.approx(3.0)
+    with pytest.raises(LispError):
+        ev("(log 0)")
+
+
+def test_the_transcendentals_reach_the_complex_plane(ev) -> None:
+    """exp/sin/cos/tan and the arc-functions take complex arguments now."""
+    from lisp.errors import LispError
+
+    assert ev("(exp (make-rectangular 0 1))") == pytest.approx(
+        complex(math.cos(1), math.sin(1))
+    )
+    assert ev("(sin (make-rectangular 0 0))") == 0j
+    assert ev("(cos 0)") == 1.0  # the real path is unchanged
+    assert ev("(sin 0)") == 0.0
+    # Euler's identity, in the tower: exp(iπ) = −1, with π from (angle -1).
+    assert ev("(exp (make-rectangular 0 (angle -1)))") == pytest.approx(
+        complex(-1.0, 0.0)
+    )
+    # Out-of-domain reals now answer the complex arc-function (R7RS). The
+    # branch convention is C99's (Python's cmath); sin/cos of the answer is 2
+    # either way — the two branches are both valid arc-functions.
+    result = ev("(asin 2)")
+    assert isinstance(result, complex)
+    assert result == pytest.approx(complex(math.pi / 2, math.log(2 + 3 ** 0.5)))
+    assert ev("(sin (asin 2))") == pytest.approx(2.0)
+    assert ev("(acos 2)") == pytest.approx(complex(-0.0, -math.log(2 + 3 ** 0.5)))
+    assert ev("(cos (acos 2))") == pytest.approx(2.0)
+    assert ev("(asin 0)") == 0.0  # the in-domain real path is unchanged
+    # Two-argument atan stays real-only:
+    with pytest.raises(LispError):
+        ev("(atan (make-rectangular 1 2) 1)")
+
+
+def test_expt_with_complex_parts_stays_exact_where_it_can(ev) -> None:
+    """Row 9's friends: exact complex base, exact integer exponent."""
+    from lisp.types import Complex
+
+    # (1+i)² = 2i — the schoolbook square, exactly.
+    assert ev("(expt (make-rectangular 1 1) 2)") == Complex(0, 2)
+    assert ev("(expt (make-rectangular 1 1) 0)") == 1
+    assert ev("(expt (make-rectangular 1 1) -1)") == Complex(
+        Fraction(1, 2), Fraction(-1, 2)
+    )
+    # e^(i·ln 2) = cos(ln 2) + i·sin(ln 2):
+    assert ev("(expt 2 (make-rectangular 0 1))") == pytest.approx(
+        complex(math.cos(math.log(2)), math.sin(math.log(2)))
+    )
+
+
+def test_the_polar_names_left_known_missing(ev) -> None:
+    """The gate's final move: KNOWN_MISSING is empty."""
+    from r7rs_manifest import KNOWN_MISSING
+
+    assert KNOWN_MISSING == frozenset()
+    assert ev("(magnitude (make-rectangular 3 4))") == 5
+    assert ev("(angle (make-rectangular 3 4))") == pytest.approx(math.atan2(4, 3))
+    assert ev("(make-polar 5 (angle (make-rectangular 3 4)))") == pytest.approx(
+        complex(3.0, 4.0)
+    )

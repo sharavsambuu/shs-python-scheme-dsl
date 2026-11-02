@@ -133,7 +133,7 @@ MANIFEST: dict[str, Library] = {
         procedures=_names(
             "angle imag-part magnitude make-polar make-rectangular real-part"
         ),
-        note="Only meaningful with the complex number tower (A7).",
+        note="The complex tower (C1–C2): exact pairs and the polar half.",
     ),
     "(scheme cxr)": Library(
         procedures=_names(
@@ -257,7 +257,7 @@ MANIFEST: dict[str, Library] = {
 
 #: Names that are deliberately absent today. Every procedure or syntax name
 #: in a non-optional library must be either implemented or listed here. When a
-#: task implements one, remove it from this set in the same change.
-#: C1 landed the rectangular half of ``(scheme complex)``; C2 lands the
-#: polar half (``magnitude``/``angle``/``make-polar``).
-KNOWN_MISSING: frozenset[str] = frozenset("angle magnitude make-polar".split())
+#: task implements one, remove it from this set in the same change. The set is
+#: **empty** as of C2: the complex tower finished the R7RS-small surface, and
+#: only R7RS's own exclusions (`transcript-on`/`transcript-off`) remain.
+KNOWN_MISSING: frozenset[str] = frozenset()

@@ -17,6 +17,7 @@ reason about.
 from __future__ import annotations
 
 import io
+import cmath
 import math
 import os
 import sys
@@ -125,18 +126,23 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     define("gcd", lambda *xs: _gcd(xs))
     define("lcm", lambda *xs: _lcm(xs))
 
-    # -- the inexact library (A7) ------------------------------------------- #
+    # -- the inexact library (A7); C2 makes it complex-aware ----------------- #
     define("finite?", _finite_p)
     define("infinite?", _infinite_p)
     define("nan?", _nan_p)
-    define("exp", lambda x: _math1("exp", math.exp, x))
+    define("exp", lambda x: _math1("exp", math.exp, cmath.exp, x))
     define("log", _log)
-    define("sin", lambda x: _math1("sin", math.sin, x))
-    define("cos", lambda x: _math1("cos", math.cos, x))
-    define("tan", lambda x: _math1("tan", math.tan, x))
-    define("asin", lambda x: _math1("asin", math.asin, x))
-    define("acos", lambda x: _math1("acos", math.acos, x))
+    define("sin", lambda x: _math1("sin", math.sin, cmath.sin, x))
+    define("cos", lambda x: _math1("cos", math.cos, cmath.cos, x))
+    define("tan", lambda x: _math1("tan", math.tan, cmath.tan, x))
+    define("asin", lambda x: _math1("asin", math.asin, cmath.asin, x))
+    define("acos", lambda x: _math1("acos", math.acos, cmath.acos, x))
     define("atan", _atan)
+    # -- the complex tower, polar half (C2) ---------------------------------- #
+    define("magnitude", lambda x: _normalize_rational(
+        abs(_expect_number(x, "magnitude"))))
+    define("angle", _angle_prim)
+    define("make-polar", _make_polar)
 
     define("=", lambda *xs: _chain(xs, lambda a, b: a == b))
     define("<", lambda *xs: _chain(xs, lambda a, b: a < b, ordered=True))
@@ -877,18 +883,48 @@ def _remainder(a: int, b: int) -> int:
     return _normalize_rational(a - b * _quotient(a, b))
 
 
-def _math1(name: str, fn: Callable[[float], float], x: Any) -> float:
-    """Apply a ``math`` function, turning a domain error into a Lisp error."""
-    value = _expect_real(x, name)
+def _math1(name: str, fn: Callable[[float], float], cfn: Any, x: Any) -> Any:
+    """Apply a ``math`` function — or its ``cmath`` twin for complex input.
+
+    A real argument uses the real function; a domain error there (``asin``
+    of 2) falls back to the complex answer now that the tower has one (C2),
+    the way R7RS's complex-supporting implementations behave. An OverflowError
+    is still a Lisp error: no double can hold it.
+    """
+    value = _expect_number(x, name)
+    if isinstance(value, (Complex, complex)):
+        z = complex(value) if isinstance(value, Complex) else value
+        try:
+            return cfn(z)
+        except ValueError as error:
+            raise LispTypeError(f"{name}: {error}") from None
     try:
         return float(fn(value))
-    except (ValueError, OverflowError) as error:
+    except ValueError:
+        # The real function refused the domain; the complex one may answer.
+        try:
+            return cfn(complex(value))
+        except ValueError as error:
+            raise LispTypeError(f"{name}: {error}") from None
+    except OverflowError as error:
         raise LispTypeError(f"{name}: {error}") from None
 
 
-def _log(x: Any, base: Any = None) -> float:
-    """``(log x)`` natural, ``(log x base)`` in that base."""
-    value = _expect_real(x, "log")
+def _log(x: Any, base: Any = None) -> Any:
+    """``(log x)`` natural, ``(log x base)`` in that base.
+
+    A negative or complex argument answers the complex logarithm (C2 row 8):
+    ``(log -1)`` is ``+iπ``, inexact — π is irrational. ``(log 0)`` is an
+    error in both worlds, and stays one.
+    """
+    value = _expect_number(x, "log")
+    negative = isinstance(value, (int, float, Fraction)) and value < 0
+    if isinstance(value, (Complex, complex)) or negative:
+        z = complex(value) if isinstance(value, Complex) else value
+        try:
+            return cmath.log(z)
+        except ValueError as error:
+            raise LispTypeError(f"log: {error}") from None
     try:
         if base is None:
             return float(math.log(value))
@@ -898,10 +934,14 @@ def _log(x: Any, base: Any = None) -> float:
         raise LispTypeError(f"log: {error}") from None
 
 
-def _atan(y: Any, x: Any = None) -> float:
-    """``(atan y)`` or the two-argument ``(atan y x)``."""
+def _atan(y: Any, x: Any = None) -> Any:
+    """``(atan y)`` or the two-argument ``(atan y x)``.
+
+    The one-argument form is complex-aware (C2); the two-argument form is
+    IEEE ``atan2`` over the reals — an angle has one pair of components.
+    """
     if x is None:
-        return _math1("atan", math.atan, y)
+        return _math1("atan", math.atan, cmath.atan, y)
     try:
         return float(math.atan2(_expect_real(y, "atan"), _expect_real(x, "atan")))
     except (ValueError, OverflowError) as error:
@@ -913,15 +953,29 @@ def _sqrt(x: Any) -> Any:
 
     An exact integer's perfect square is its own root; a rational's root is
     exact exactly when numerator and denominator both are perfect squares
-    (row 7 — ``(sqrt 1/4)`` is ``1/2``). Anything else is inexact. A negative
-    argument's root is complex — phase C2 lands that half of the row.
+    (row 7 — ``(sqrt 1/4)`` is ``1/2``). A negative real's root is complex
+    (C2 row 8): exact when the magnitude's root is a perfect rational square
+    — ``(sqrt -4)`` is the exact ``2i`` — and honestly inexact otherwise
+    (``(sqrt -2)``). A complex argument answers the principal root through
+    ``cmath``.
     """
-    value = _expect_real(x, "sqrt")
+    value = _expect_number(x, "sqrt")
+    if isinstance(value, (Complex, complex)):
+        z = complex(value) if isinstance(value, Complex) else value
+        return cmath.sqrt(z)
     if value < 0:
-        raise LispTypeError(
-            "sqrt: a negative argument has a complex root, which phase C2 of"
-            " the complex tower has not landed yet"
-        )
+        magnitude = -value
+        if isinstance(magnitude, int):
+            root = math.isqrt(magnitude)
+            if root * root == magnitude:
+                return Complex(0, root)
+        elif isinstance(magnitude, Fraction):
+            root_n = math.isqrt(magnitude.numerator)
+            root_d = math.isqrt(magnitude.denominator)
+            if root_n * root_n == magnitude.numerator \
+                    and root_d * root_d == magnitude.denominator:
+                return Complex(0, _normalize_rational(Fraction(root_n, root_d)))
+        return cmath.sqrt(complex(value))
     if isinstance(value, int):
         root = math.isqrt(value)
         if root * root == value:
@@ -932,6 +986,53 @@ def _sqrt(x: Any) -> Any:
         if root_n * root_n == value.numerator and root_d * root_d == value.denominator:
             return _normalize_rational(Fraction(root_n, root_d))
     return math.sqrt(value)
+
+
+def _angle_prim(z: Any) -> Any:
+    """``angle``: the phase in radians (C2 row 7).
+
+    A positive real answers exact ``0``; a negative real answers ``π``,
+    inexact — π is not rational. An inexact argument goes through
+    ``cmath.phase``, which honours signed zero the way IEEE ``atan2`` does
+    (``(angle -0.0)`` is ``π``, not ``0.0``). An exact complex pair answers
+    through ``atan2`` over its parts, also inexact.
+    """
+    value = _expect_number(z, "angle")
+    if isinstance(value, Complex):
+        return _exact_angle(value.real, value.imag)
+    if isinstance(value, complex):
+        return cmath.phase(value)
+    if isinstance(value, float):
+        return cmath.phase(complex(value, 0.0))
+    if value >= 0:
+        return 0
+    return math.pi
+
+
+def _exact_angle(a: Any, b: Any) -> float:
+    """``atan2(b, a)`` for exact parts, safe for bignums: the angle is
+    scale-invariant, so both parts shrink by the larger magnitude first."""
+    ra, rb = Fraction(a), Fraction(b)
+    scale = max(abs(ra), abs(rb))
+    if scale == 0:
+        return 0.0
+    return math.atan2(float(rb / scale), float(ra / scale))
+
+
+def _make_polar(magnitude: Any, angle: Any) -> Any:
+    """The complex ``magnitude·e^(i·angle)`` (C2 row 4).
+
+    Exact parts with a zero angle answer the exact magnitude — ``(make-polar
+    2 0)`` is ``2``. A nonzero exact angle has no exact cosine, so the honest
+    answer is inexact. Any inexact part contaminates through ``cmath.rect``.
+    """
+    m = _expect_real(magnitude, "make-polar")
+    a = _expect_real(angle, "make-polar")
+    if isinstance(m, float) or isinstance(a, float):
+        return cmath.rect(m, a)
+    if a == 0:
+        return _normalize_rational(m)
+    return cmath.rect(float(m), float(a))
 
 
 def _floor(x: Any) -> Any:

@@ -19,13 +19,14 @@
 > takes rationals and preserves inexactness, `gcd`/`lcm` take rationals,
 > `min`/`max` contaminate, and `integer?` is the mathematical property.
 > **Every CHANGE row of the table is live.** The KEEP rows held throughout.
-> **C1 has landed**: the exact complex pair of the phase C section exists
-> (`lisp/types.py`'s `Complex`), with rows 1–3, 5, 9–12 live — `make-rectangular`,
-> `real-part`, `imag-part`, exact arithmetic, contagion, `eqv?`/`equal?`, and
-> the real-only family's guard. Rows 4, 6–8, 13–14 (the polar half, complex
-> `sqrt`/`log`, reader literals) are C2/C3's work.
-> The "Today" column below records the pre-R1 tower this note was written
-> against.
+> **C1–C2 have landed**: the exact complex pair of the phase C section exists
+> (`lisp/types.py`'s `Complex`), with rows 1–3, 5–12 live — `make-rectangular`,
+> `real-part`, `imag-part`, the polar half (`magnitude`, `angle`, `make-polar`),
+> exact arithmetic, exact `sqrt` of negative perfect squares, `(log -1)` →
+> `+iπ`, the complex transcendentals, contagion, `eqv?`/`equal?`, and
+> the real-only family's guard. Rows 13–14 (reader literals and the
+> round-trip) are C3's work. The "Today" column below records the pre-R1
+> tower this note was written against.
 
 ## Where the tower stands
 
