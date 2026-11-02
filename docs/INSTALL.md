@@ -29,7 +29,7 @@ Pinned to a tag or commit, for a project that depends on a known version:
 pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.1.0
 ```
 
-In `requirements.txt`, the same line without the leading `pip install`:
+In your project's requirements.txt, the same line without the leading `pip install`:
 
 ```
 shs @ git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.1.0
