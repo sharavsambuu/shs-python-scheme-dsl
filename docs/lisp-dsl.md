@@ -154,8 +154,10 @@ Known deviations and boundaries:
   true values; ask `null?` when you mean "empty". (`NIL` keeps a false Python
   `__bool__` for the host's convenience; Lisp control flow uses `is_true`.)
 - **Numbers.** Exact integers, exact rationals (R1: `fractions.Fraction`,
-  whole values normalized to integers), and inexact reals; no complex tower.
-  `(scheme inexact)` is supported; `(scheme complex)` is not.
+  whole values normalized to integers), exact complex pairs (C1:
+  `make-rectangular`/`real-part`/`imag-part`, exact arithmetic, inexact
+  contagion), and inexact reals. `(scheme inexact)` is supported;
+  `(scheme complex)` is half-landed — the polar half waits for C2.
 - **Continuations.** `call/cc` is escape-only. Option A does not rewrite the
   evaluator for re-entrant continuations.
 - **Strings.** Literals are immutable Python `str`; `make-string` and

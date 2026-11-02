@@ -6,7 +6,8 @@ ordinary Python value the host can inspect:
 ======================  =========================================
 Lisp                    Python
 ======================  =========================================
-number                  ``int`` / ``float`` (one numeric tower)
+number                  ``int`` / ``Fraction`` / ``Complex`` (exact),
+                        ``float`` / ``complex`` (inexact) — one tower
 boolean                 ``True`` / ``False`` (``#t`` / ``#f``)
 string                  ``str``
 symbol                  :class:`Symbol` (a ``str`` subclass)
@@ -46,7 +47,9 @@ Three deliberate choices worth reading twice:
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
+from fractions import Fraction
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -528,6 +531,203 @@ def to_repr(value: Any) -> str:
 
 
 # --------------------------------------------------------------------------- #
+#  The exact complex pair (C1)                                                 #
+# --------------------------------------------------------------------------- #
+
+def _exact_component(value: Any) -> Any:
+    """A whole ``Fraction`` component is an ``int`` — one spelling per value."""
+    if isinstance(value, Fraction) and value.denominator == 1:
+        return int(value)
+    return value
+
+
+class Complex:
+    """An exact complex number: two exact components, never a zero imaginary.
+
+    R7RS 6.2.2 makes exactness a property of the *parts*, so the tower's
+    complex half is a pair of exact numbers — Python's ``complex`` cannot
+    represent ``1+2i`` exactly. The constructor normalizes the way the tower's
+    other exact type does: a whole ``Fraction`` component collapses to
+    ``int``, and an exact zero imaginary part collapses the whole value to
+    its real part (an exact complex with no imaginary part *is* a real, so
+    the constructor answers that real directly). Inexact complex values are
+    plain ``complex``; any float in an operation contaminates the result.
+
+    Only :mod:`lisp.builtins` builds these from program input (gated through
+    ``_expect_number``/``_expect_real``); the class itself stays at the bottom
+    of the import graph, dependency-free.
+    """
+
+    __slots__ = ("real", "imag")
+
+    def __new__(cls, real: Any, imag: Any) -> Any:
+        real = _exact_component(real)
+        imag = _exact_component(imag)
+        for part in (real, imag):
+            if isinstance(part, (float, complex)):
+                raise TypeError(
+                    "Complex: an exact complex needs exact components; "
+                    "use complex() for the inexact half"
+                )
+        if imag == 0:
+            return real
+        self = super().__new__(cls)
+        self.real = real
+        self.imag = imag
+        return self
+
+    def __init__(self, real: Any, imag: Any) -> None:
+        # Normalization — and the zero-imaginary collapse, which may answer a
+        # bare real instead of a Complex — happened in __new__.
+        pass
+
+    # -- arithmetic: exact/exact is schoolbook; a float contaminates -------- #
+
+    def __add__(self, other: Any) -> Any:
+        if isinstance(other, Complex):
+            return Complex(self.real + other.real, self.imag + other.imag)
+        if isinstance(other, (int, Fraction)):
+            return Complex(self.real + other, self.imag)
+        if isinstance(other, (float, complex)):
+            return complex(self) + other
+        return NotImplemented
+
+    __radd__ = __add__  # addition commutes, and the parts are numbers
+
+    def __sub__(self, other: Any) -> Any:
+        if isinstance(other, Complex):
+            return Complex(self.real - other.real, self.imag - other.imag)
+        if isinstance(other, (int, Fraction)):
+            return Complex(self.real - other, self.imag)
+        if isinstance(other, (float, complex)):
+            return complex(self) - other
+        return NotImplemented
+
+    def __rsub__(self, other: Any) -> Any:
+        if isinstance(other, (int, Fraction)):
+            return Complex(other - self.real, -self.imag)
+        if isinstance(other, (float, complex)):
+            return other - complex(self)
+        return NotImplemented
+
+    def __mul__(self, other: Any) -> Any:
+        if isinstance(other, Complex):
+            return Complex(
+                self.real * other.real - self.imag * other.imag,
+                self.real * other.imag + self.imag * other.real,
+            )
+        if isinstance(other, (int, Fraction)):
+            return Complex(self.real * other, self.imag * other)
+        if isinstance(other, (float, complex)):
+            return complex(self) * other
+        return NotImplemented
+
+    __rmul__ = __mul__  # multiplication commutes over the complex field
+
+    def __truediv__(self, other: Any) -> Any:
+        if isinstance(other, Complex):
+            # (a+bi)/(c+di) = ((ac+bd) + (bc−ad)i) / (c²+d²); the denominator
+            # is zero only for the zero complex, which the constructor cannot
+            # produce and the ``/`` primitive refuses before getting here.
+            denom = other.real * other.real + other.imag * other.imag
+            return Complex(
+                Fraction(self.real * other.real + self.imag * other.imag, denom),
+                Fraction(self.imag * other.real - self.real * other.imag, denom),
+            )
+        if isinstance(other, (int, Fraction)):
+            if other == 0:
+                raise ZeroDivisionError("division by zero")
+            return Complex(Fraction(self.real, other), Fraction(self.imag, other))
+        if isinstance(other, (float, complex)):
+            return complex(self) / other
+        return NotImplemented
+
+    def __rtruediv__(self, other: Any) -> Any:
+        if isinstance(other, (int, Fraction)):
+            if other == 0:
+                return 0  # 0/(a+bi) is exactly 0 — the collapse does the rest
+            denom = self.real * self.real + self.imag * self.imag
+            return Complex(
+                Fraction(other * self.real, denom),
+                Fraction(-other * self.imag, denom),
+            )
+        if isinstance(other, (float, complex)):
+            return other / complex(self)
+        return NotImplemented
+
+    def __neg__(self) -> "Complex":
+        return Complex(-self.real, -self.imag)
+
+    def __pos__(self) -> "Complex":
+        return self
+
+    def __pow__(self, other: Any) -> Any:
+        if isinstance(other, int) and not isinstance(other, bool):
+            if other >= 0:
+                result: Any = 1
+                for _ in range(other):
+                    result = result * self
+                return result  # z⁰ is the exact real 1
+            return 1 / self  # exact reciprocal; 0**negative is refused in _expt
+        if isinstance(other, Fraction):
+            # z ** (p/q) is generally irrational — the honest answer is inexact.
+            return complex(self) ** float(other)
+        if isinstance(other, (float, complex)):
+            return complex(self) ** other
+        return NotImplemented
+
+    def __rpow__(self, other: Any) -> Any:
+        if isinstance(other, (int, Fraction, float)):
+            return complex(other) ** complex(self)
+        if isinstance(other, complex):
+            return other ** complex(self)
+        return NotImplemented
+
+    def __abs__(self) -> Any:
+        """|a+bi| = √(a²+b²): exact when the sum of squares is a perfect
+        rational square — |3+4i| is 5 — and honestly inexact otherwise."""
+        total = Fraction(self.real) ** 2 + Fraction(self.imag) ** 2
+        root_n = math.isqrt(total.numerator)
+        root_d = math.isqrt(total.denominator)
+        if root_n * root_n == total.numerator and root_d * root_d == total.denominator:
+            return _exact_component(Fraction(root_n, root_d))
+        return math.hypot(float(self.real), float(self.imag))
+
+    def __complex__(self) -> complex:
+        """The inexact image — the contagion target and the hash basis."""
+        return complex(float(self.real), float(self.imag))
+
+    # -- equality: exact components, exact comparison ----------------------- #
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, Complex):
+            return self.real == other.real and self.imag == other.imag
+        if isinstance(other, (int, Fraction)):
+            return self.imag == 0 and self.real == other  # imag is never 0
+        if isinstance(other, float):
+            return False  # a nonzero imaginary part is not a real
+        if isinstance(other, complex):
+            # Component-wise, and exact: Python's int/Fraction == float does
+            # not round through the double, so (= 1+2i 1.0+2.0i) is honest.
+            return self.real == other.real and self.imag == other.imag
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        try:
+            # Python's own complex hash, on the double images: values that
+            # compare equal hash equal across the exactness boundary — the
+            # same promise hash(1) == hash(1.0) makes.
+            return hash(complex(self))
+        except OverflowError:
+            # No double can equal a component this large, so the boundary
+            # promise does not constrain the spelling.
+            return hash((self.real, self.imag))
+
+    def __repr__(self) -> str:
+        return f"Complex({self.real!r}, {self.imag!r})"
+
+
+# --------------------------------------------------------------------------- #
 #  Hash tables                                                                 #
 # --------------------------------------------------------------------------- #
 
@@ -542,7 +742,7 @@ def hash_key(value: Any) -> Any:
         return ("bool", value)
     if value is NIL:
         return ("nil",)
-    if isinstance(value, (int, float)):
+    if isinstance(value, (int, float, Fraction, Complex, complex)):
         return ("num", value)
     if isinstance(value, Symbol):
         return ("sym", str(value))

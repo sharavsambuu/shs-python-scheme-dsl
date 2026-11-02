@@ -258,9 +258,6 @@ MANIFEST: dict[str, Library] = {
 #: Names that are deliberately absent today. Every procedure or syntax name
 #: in a non-optional library must be either implemented or listed here. When a
 #: task implements one, remove it from this set in the same change.
-KNOWN_MISSING: frozenset[str] = frozenset(
-    """
-    angle imag-part magnitude make-polar make-rectangular
-    real-part
-    """.split()
-)
+#: C1 landed the rectangular half of ``(scheme complex)``; C2 lands the
+#: polar half (``magnitude``/``angle``/``make-polar``).
+KNOWN_MISSING: frozenset[str] = frozenset("angle magnitude make-polar".split())

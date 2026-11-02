@@ -1293,7 +1293,9 @@ def test_cond_expand_and_or_not_and_else(ev) -> None:
 
 def test_cond_expand_library_requirement(ev) -> None:
     assert ev("(cond-expand ((library (scheme base)) 1) (else 2))") == 1
-    assert ev("(cond-expand ((library (scheme complex)) 1) (else 2))") == 2
+    # (scheme complex) is half-landed (C1), so the feature test answers true;
+    # the polar half is still in KNOWN_MISSING — C2 does not change this test.
+    assert ev("(cond-expand ((library (scheme complex)) 1) (else 2))") == 1
     assert ev("(cond-expand ((library (no such)) 1) (else 2))") == 2
 
 
@@ -1346,14 +1348,16 @@ def test_environment_isolates_definitions(ev) -> None:
 
 
 def test_environment_rejects_an_unknown_library(ev) -> None:
-    from lisp.errors import LispError
+    from lisp.errors import LispError, LispNameError
+    from lisp.types import Complex
 
     with pytest.raises(LispError, match="no such library"):
         ev("(environment '(scheme no-such))")
-    # (scheme complex) is declared but not implemented: importing it says so
-    # rather than pretending the library does not exist.
-    with pytest.raises(LispError, match="not implemented"):
-        ev("(environment '(scheme complex))")
+    # (scheme complex) is half-landed (C1): the rectangular half imports and
+    # works, and the polar half is still honestly absent — C2 finishes it.
+    assert ev("(eval '(make-rectangular 1 2) (environment '(scheme complex)))") == Complex(1, 2)
+    with pytest.raises(LispNameError, match="magnitude"):
+        ev("(eval 'magnitude (environment '(scheme complex)))")
 
 
 def test_environment_rejects_a_non_library_spec(ev) -> None:
@@ -1361,3 +1365,200 @@ def test_environment_rejects_a_non_library_spec(ev) -> None:
 
     with pytest.raises(LispTypeError, match="library name"):
         ev("(environment 3)")
+
+
+# --------------------------------------------------------------------------- #
+#  C1 — the exact complex pair                                                 #
+# --------------------------------------------------------------------------- #
+
+
+def test_the_exact_complex_pair_is_a_tower_citizen(ev) -> None:
+    """Rows 1–3 and 12: the pair exists, collapses, and answers honestly."""
+    from lisp.types import Complex
+
+    assert ev("(make-rectangular 1 2)") == Complex(1, 2)
+    # Row 2: an exact zero imaginary part *is* the real.
+    assert ev("(make-rectangular 1 0)") == 1
+    assert ev("(make-rectangular 1/2 1/3)") == Complex(Fraction(1, 2), Fraction(1, 3))
+    # Row 3: an inexact zero imaginary part stays visible — signed zero is
+    # honest, and the value is a plain inexact complex.
+    inexact = ev("(make-rectangular 1.0 0.0)")
+    assert inexact == complex(1.0, 0.0) and isinstance(inexact, complex)
+    assert ev("(exact? (make-rectangular 1 2))") is True
+    assert ev("(inexact? (make-rectangular 1 2))") is False
+    assert ev("(complex? (make-rectangular 1 2))") is True
+    assert ev("(number? (make-rectangular 1 2))") is True
+    assert ev("(real? (make-rectangular 1 2))") is False
+    assert ev("(rational? (make-rectangular 1 2))") is False
+    assert ev("(integer? (make-rectangular 1 2))") is False
+    # Row 12's property, on the inexact half:
+    assert ev("(real? (make-rectangular 1.0 0.0))") is True
+    assert ev("(rational? (make-rectangular 1.0 0.0))") is True
+
+
+def test_the_rectangular_accessors_keep_their_parts_exact(ev) -> None:
+    """Row 5: each part answers with its own exactness."""
+    assert ev("(real-part (make-rectangular 1 2))") == 1
+    assert ev("(imag-part (make-rectangular 1 2))") == 2
+    assert ev("(real-part (make-rectangular 1/2 1/3))") == Fraction(1, 2)
+    assert ev("(imag-part (make-rectangular 1/2 1/3))") == Fraction(1, 3)
+    assert ev("(imag-part 3)") == 0
+    assert ev("(imag-part 3.0)") == 0.0
+    assert ev("(exact? (imag-part 3))") is True
+    assert ev("(exact? (imag-part 3.0))") is False
+
+
+def test_exact_complex_arithmetic_is_schoolbook(ev) -> None:
+    """Row 9's exact half: the field operations, exactly."""
+    from lisp.types import Complex
+
+    assert ev("(+ (make-rectangular 1 2) (make-rectangular 3 4))") == Complex(4, 6)
+    assert ev("(- (make-rectangular 1 2))") == Complex(-1, -2)
+    assert ev("(- (make-rectangular 1 2) (make-rectangular 3 4))") == Complex(-2, -2)
+    assert ev("(* (make-rectangular 1 2) (make-rectangular 3 4))") == Complex(-5, 10)
+    assert ev("(/ (make-rectangular 1 2) (make-rectangular 3 4))") == Complex(
+        Fraction(11, 25), Fraction(2, 25)
+    )
+    # Division by an exact real keeps the pair exact.
+    assert ev("(/ (make-rectangular 3 4) 2)") == Complex(Fraction(3, 2), 2)
+    # A rational numerator over a complex denominator is exact, too.
+    assert ev("(/ 1/2 (make-rectangular 1 2))") == Complex(
+        Fraction(1, 10), Fraction(-1, 5)
+    )
+    # Cancellation answers the exact real zero — the collapse is the point.
+    assert ev("(+ (make-rectangular 1 2) (make-rectangular -1 -2))") == 0
+    assert ev("(square (make-rectangular 1 2))") == Complex(-3, 4)
+    assert ev("(expt (make-rectangular 1 2) 2)") == Complex(-3, 4)
+    assert ev("(expt (make-rectangular 1 2) -1)") == Complex(
+        Fraction(1, 5), Fraction(-2, 5)
+    )
+    # |3+4i| is exactly 5 — the perfect-square root R4 built.
+    assert ev("(abs (make-rectangular 3 4))") == 5
+    assert ev("(exact? (abs (make-rectangular 3 4)))") is True
+    assert ev("(exact? (abs (make-rectangular 1 1)))") is False
+
+
+def test_inexact_contagion_reaches_the_complex_pair(ev) -> None:
+    """Row 9's inexact half: any float contaminates the whole, everywhere."""
+    from lisp.types import Complex
+
+    result = ev("(+ (make-rectangular 1 2) 0.5)")
+    assert result == complex(1.5, 2.0) and isinstance(result, complex)
+    assert ev("(exact? (+ (make-rectangular 1 2) 0.5))") is False
+    assert ev("(* (make-rectangular 1 2) 0.5)") == complex(0.5, 1.0)
+    assert ev("(/ (make-rectangular 1 2) 0.5)") == complex(2.0, 4.0)
+    assert ev("(- (make-rectangular 1 2) 1.0)") == complex(0.0, 2.0)
+    # A rational next to an inexact complex goes through its float image…
+    assert ev("(/ 1/2 (make-rectangular 1.0 2.0))") == complex(0.1, -0.2)
+    # …but exact over exact stays exact (row 9's first rule).
+    assert ev("(/ 1/2 (make-rectangular 1 2))") == Complex(
+        Fraction(1, 10), Fraction(-1, 5)
+    )
+    # Row 2 does not extend to the inexact half:
+    assert ev("(exact? (make-rectangular 1.0 0.0))") is False
+
+
+def test_complex_values_print_as_r7rs_text(ev) -> None:
+    """Row 13's printing half; the reader round-trip is C3's pin."""
+    assert ev("(number->string (make-rectangular 1 2))") == "1+2i"
+    assert ev("(number->string (make-rectangular 1 -2))") == "1-2i"
+    assert ev("(number->string (make-rectangular 0 1))") == "0+i"
+    assert ev("(number->string (make-rectangular 0 -1))") == "0-i"
+    assert ev("(number->string (make-rectangular 1/2 1/3))") == "1/2+1/3i"
+    assert ev("(number->string (make-rectangular 1.0 0.0))") == "1.0+0.0i"
+    assert ev("(number->string (make-rectangular 1.0 -0.0))") == "1.0-0.0i"
+
+
+def test_eqv_and_equal_distinguish_complex_exactness(ev) -> None:
+    """Row 11: exactness distinguishes, value equality does not."""
+    assert ev("(eqv? (make-rectangular 1 2) (make-rectangular 1 2))") is True
+    assert ev("(equal? (make-rectangular 1 2) (make-rectangular 1 2))") is True
+    assert ev("(eqv? (make-rectangular 1 2) (+ (make-rectangular 1 2) 0.0))") is False
+    # The same rule that separates 1 from 1.0:
+    assert ev("(= (make-rectangular 1 2) (+ (make-rectangular 1 2) 0.0))") is True
+    assert ev("(= 1/2 (make-rectangular 0.5 0))") is True  # exact collapse
+
+
+def test_the_real_only_family_refuses_complex_loudly(ev) -> None:
+    """Row 10: the error stays; the reason changes to a Lisp error."""
+    from lisp.errors import LispError
+
+    for src in (
+        "(floor (make-rectangular 1 2))",
+        "(ceiling (make-rectangular 1 2))",
+        "(truncate (make-rectangular 1 2))",
+        "(round (make-rectangular 1 2))",
+        "(quotient (make-rectangular 1 2) 2)",
+        "(remainder (make-rectangular 1 2) 2)",
+        "(modulo (make-rectangular 1 2) 2)",
+        "(floor-quotient (make-rectangular 1 2) 2)",
+        "(gcd (make-rectangular 1 2) 3)",
+        "(lcm (make-rectangular 1 2) 3)",
+        "(min (make-rectangular 1 2) 3)",
+        "(max (make-rectangular 1 2) 3)",
+        "(< (make-rectangular 1 2) 3)",
+        "(> (make-rectangular 1 2) 3)",
+        "(numerator (make-rectangular 1 2))",
+        "(denominator (make-rectangular 1 2))",
+        "(rationalize (make-rectangular 1 2) 1)",
+        "(sqrt (make-rectangular 1 2))",
+        "(sin (make-rectangular 1 2))",
+        "(log (make-rectangular 1 2))",
+        "(make-rectangular (make-rectangular 1 2) 3)",
+    ):
+        with pytest.raises(LispError):
+            ev(src)
+
+
+def test_exact_and_inexact_convert_complex_honestly(ev) -> None:
+    """The corners: exactness conversions round-trip through the pair."""
+    from lisp.errors import LispError
+    from lisp.types import Complex
+
+    assert ev("(inexact (make-rectangular 1 2))") == complex(1.0, 2.0)
+    assert ev("(exact (inexact (make-rectangular 1 2)))") == Complex(1, 2)
+    # Row 2 again: the exact image of 1.0+0.0i collapses to the real 1.
+    assert ev("(exact (make-rectangular 1.0 0.0))") == 1
+    with pytest.raises(LispError):
+        # An infinity has no exact equal, in either component.
+        ev("(exact (make-rectangular +inf.0 0.0))")
+
+
+def test_inexact_complex_zero_division_stays_ieee(ev) -> None:
+    """Row 1's other half, extended to the complex plane."""
+    from lisp.errors import LispError
+
+    # The pure-real answers are unchanged from R1:
+    assert ev("(/ 1.0 0.0)") == float("inf")
+    assert ev("(/ -1.0 0.0)") == float("-inf")
+    assert ev("(/ 0.0 0.0)") != ev("(/ 0.0 0.0)")  # NaN is not itself
+    # A complex zero divisor answers component-wise (Annex G):
+    result = ev("(/ (make-rectangular 1.0 2.0) (make-rectangular 0.0 0.0))")
+    assert result == complex(float("inf"), float("inf"))
+    zero_numerator = ev("(/ (make-rectangular 0.0 0.0) (make-rectangular 0.0 0.0))")
+    assert zero_numerator != zero_numerator  # NaN in both components
+    # An exact zero divisor is still an error, full stop:
+    with pytest.raises(LispError):
+        ev("(/ (make-rectangular 1 2) 0)")
+
+
+def test_finite_infinite_and_nan_reach_the_complex_plane(ev) -> None:
+    """The inexact library's predicates see both components."""
+    assert ev("(finite? (make-rectangular 1 2))") is True
+    assert ev("(finite? (make-rectangular 1.0 2.0))") is True
+    assert ev("(infinite? (make-rectangular 1 2))") is False
+    assert ev("(nan? (make-rectangular 1 2))") is False
+    assert ev("(finite? (make-rectangular +inf.0 0.0))") is False
+    assert ev("(infinite? (make-rectangular +inf.0 0.0))") is True
+    assert ev("(nan? (make-rectangular +nan.0 0.0))") is True
+
+
+def test_complex_values_hash_across_the_exactness_boundary(ev) -> None:
+    """The same promise hash(1) == hash(1.0) makes, one dimension up."""
+    from lisp.types import Complex
+
+    assert hash(Complex(1, 2)) == hash(complex(1.0, 2.0))
+    # And through the host bridge: an equal?-keyed table finds the value.
+    ev("(define *h* (make-hash-table)) "
+       "(hash-table-set! *h* (make-rectangular 1 2) 'ok)")
+    assert ev("(hash-table-ref *h* (make-rectangular 1 2))") == Symbol("ok")

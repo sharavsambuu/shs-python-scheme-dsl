@@ -52,6 +52,7 @@ from .types import (
     ByteVector,
     Char,
     Closure,
+    Complex,
     EOF,
     ErrorObject,
     HashTable,
@@ -84,8 +85,10 @@ from .types import (
 
 #: The numeric tower's Python types: exact integers, exact rationals
 #: (:class:`fractions.Fraction` — always reduced, and normalized to ``int``
-#: whenever the denominator is 1), and inexact reals.
-Number = (int, float, Fraction)
+#: whenever the denominator is 1), exact complex pairs (:class:`Complex` —
+#: C1), and the inexact half (``float`` reals; ``complex`` is what inexact
+#: complex arithmetic answers).
+Number = (int, float, Fraction, Complex, complex)
 
 
 def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
@@ -102,9 +105,10 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     # while `number?` says `#f`. The gate is the difference between the two
     # answers.
     define("+", lambda *xs: _normalize_rational(
-        sum((_expect_number(x, "+") for x in xs), 0)))
+        sum((_expect_number(x, "+") for x in _complex_shim(xs)), 0)))
     define("-", _sub)
-    define("*", lambda *xs: _normalize_rational(_product(xs)))
+    define("*", lambda *xs: _normalize_rational(
+        _product(_complex_shim(xs))))
     define("/", _div)
     define("modulo", _modulo)
     define("quotient", _quotient)
@@ -121,10 +125,10 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     define("gcd", lambda *xs: _gcd(xs))
     define("lcm", lambda *xs: _lcm(xs))
 
-    # -- the inexact library (A7); complex numbers stay out of the tower --- #
-    define("finite?", lambda x: math.isfinite(_expect_number(x, "finite?")))
-    define("infinite?", lambda x: math.isinf(_expect_number(x, "infinite?")))
-    define("nan?", lambda x: math.isnan(_expect_number(x, "nan?")))
+    # -- the inexact library (A7) ------------------------------------------- #
+    define("finite?", _finite_p)
+    define("infinite?", _infinite_p)
+    define("nan?", _nan_p)
     define("exp", lambda x: _math1("exp", math.exp, x))
     define("log", _log)
     define("sin", lambda x: _math1("sin", math.sin, x))
@@ -135,21 +139,23 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     define("atan", _atan)
 
     define("=", lambda *xs: _chain(xs, lambda a, b: a == b))
-    define("<", lambda *xs: _chain(xs, lambda a, b: a < b))
-    define(">", lambda *xs: _chain(xs, lambda a, b: a > b))
-    define("<=", lambda *xs: _chain(xs, lambda a, b: a <= b))
-    define(">=", lambda *xs: _chain(xs, lambda a, b: a >= b))
+    define("<", lambda *xs: _chain(xs, lambda a, b: a < b, ordered=True))
+    define(">", lambda *xs: _chain(xs, lambda a, b: a > b, ordered=True))
+    define("<=", lambda *xs: _chain(xs, lambda a, b: a <= b, ordered=True))
+    define(">=", lambda *xs: _chain(xs, lambda a, b: a >= b, ordered=True))
 
     define("number?", lambda x: isinstance(x, Number) and not isinstance(x, bool))
     define("integer?", _is_integer_value)
-    # The tower's exactness is a type question: an exact number is an ``int``
-    # or a ``Fraction`` (R1), an inexact one is a ``float``.
+    # The tower's exactness is a type question: an exact number is an ``int``,
+    # a ``Fraction``, or an exact ``Complex`` (C1); an inexact one is a
+    # ``float`` or a Python ``complex``.
     define("exact?", lambda x: (
-        (isinstance(x, int) and not isinstance(x, bool)) or isinstance(x, Fraction)))
-    define("inexact?", lambda x: isinstance(x, float))
+        (isinstance(x, int) and not isinstance(x, bool))
+        or isinstance(x, (Fraction, Complex))))
+    define("inexact?", lambda x: isinstance(x, (float, complex)))
     define("exact-integer?", lambda x: isinstance(x, int) and not isinstance(x, bool))
-    define("rational?", lambda x: isinstance(x, Number) and not isinstance(x, bool))
-    define("real?", lambda x: isinstance(x, Number) and not isinstance(x, bool))
+    define("rational?", _rational_p)
+    define("real?", _real_p)
     define("complex?", lambda x: isinstance(x, Number) and not isinstance(x, bool))
     define("exact", _exact)
     define("inexact", _inexact)
@@ -164,6 +170,13 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     define("numerator", _numerator)
     define("denominator", _denominator)
     define("rationalize", _rationalize)
+    # -- the complex tower, first stage (C1) --------------------------------- #
+    # The rectangular accessors: the constructors and predicates the rest of
+    # the complex work hangs off. C2 lands make-polar/magnitude/angle and the
+    # exact sqrt of negatives; C3 lands the reader and printer round-trip.
+    define("make-rectangular", _make_rectangular)
+    define("real-part", _real_part)
+    define("imag-part", _imag_part)
     define("floor-quotient", lambda a, b: _floor_quotient(a, b))
     define("floor-remainder", lambda a, b: _floor_remainder(a, b))
     define("floor/", lambda a, b: Values((_floor_quotient(a, b), _floor_remainder(a, b))))
@@ -555,16 +568,137 @@ def _is_integer_value(x: Any) -> bool:
     return False
 
 
+def _real_p(x: Any) -> bool:
+    """``real?`` is the mathematical property (C1 row 12): a complex with a
+    zero imaginary part *is* a real — ``(real? 1.0+0.0i)`` is ``#t``. An exact
+    ``Complex`` never has a zero imaginary part (the constructor collapses
+    it), so only the inexact half can answer ``#t`` here."""
+    if isinstance(x, bool):
+        return False
+    if isinstance(x, Complex):
+        return False
+    if isinstance(x, complex):
+        return x.imag == 0
+    return isinstance(x, Number)
+
+
+def _rational_p(x: Any) -> bool:
+    """``rational?``: the tower's real numbers are all rational (an inexact
+    real is a double, a rational when finite); a complex with a nonzero
+    imaginary part is not."""
+    if isinstance(x, bool):
+        return False
+    if isinstance(x, Complex):
+        return False
+    if isinstance(x, complex):
+        return x.imag == 0 and math.isfinite(x.real)
+    return isinstance(x, Number)
+
+
+def _finite_p(x: Any) -> bool:
+    """``finite?``: exact numbers are neither infinite nor NaN by construction."""
+    value = _expect_number(x, "finite?")
+    if isinstance(value, (int, Fraction, Complex)):
+        return True
+    if isinstance(value, complex):
+        return math.isfinite(value.real) and math.isfinite(value.imag)
+    return math.isfinite(value)
+
+
+def _infinite_p(x: Any) -> bool:
+    """``infinite?``: a complex is infinite when either component is."""
+    value = _expect_number(x, "infinite?")
+    if isinstance(value, (int, Fraction, Complex)):
+        return False
+    if isinstance(value, complex):
+        return math.isinf(value.real) or math.isinf(value.imag)
+    return math.isinf(value)
+
+
+def _nan_p(x: Any) -> bool:
+    """``nan?``: a complex is NaN when either component is."""
+    value = _expect_number(x, "nan?")
+    if isinstance(value, (int, Fraction, Complex)):
+        return False
+    if isinstance(value, complex):
+        return math.isnan(value.real) or math.isnan(value.imag)
+    return math.isnan(value)
+
+
+def _expect_real(x: Any, who: str) -> Any:
+    """The real-only family's gate (C1 row 10): a complex with a nonzero
+    imaginary part is refused loudly. R7RS's ``floor``/``min``/``<`` and the
+    division family take reals, and a silent Python ``TypeError`` leaking out
+    of ``math.floor`` is not an answer."""
+    value = _expect_number(x, who)
+    if isinstance(value, Complex) or (
+        isinstance(value, complex) and value.imag != 0
+    ):
+        raise LispTypeError(f"{who}: expected a real number, got a complex")
+    return value
+
+
+def _as_real(value: Any) -> Any:
+    """A complex with a zero imaginary part *is* its real part (row 12) —
+    unwrap it so the orderable family works on honest floats."""
+    if isinstance(value, complex) and value.imag == 0:
+        return value.real
+    return value
+
+
+def _make_rectangular(re: Any, im: Any) -> Any:
+    """The complex ``re + im·i`` (C1 rows 1–3).
+
+    Exact components build the exact pair, and an exact zero imaginary part
+    collapses to the real (row 2). An inexact component contaminates the
+    whole into a Python ``complex`` (row 3), where a zero imaginary part
+    stays visible — signed zero is honest.
+    """
+    r = _as_real(_expect_real(re, "make-rectangular"))
+    i = _as_real(_expect_real(im, "make-rectangular"))
+    if isinstance(r, float) or isinstance(i, float):
+        return complex(r, i)
+    return Complex(r, i)
+
+
+def _real_part(z: Any) -> Any:
+    """The real part, with its own exactness (C1 row 5)."""
+    value = _expect_number(z, "real-part")
+    if isinstance(value, (Complex, complex)):
+        return value.real
+    return value
+
+
+def _imag_part(z: Any) -> Any:
+    """The imaginary part, with its own exactness (C1 row 5); a real's
+    imaginary part is zero, exactly as exact as the real itself."""
+    value = _expect_number(z, "imag-part")
+    if isinstance(value, (Complex, complex)):
+        return value.imag
+    if isinstance(value, float):
+        return 0.0
+    return 0
+
+
 def _expt(a: Any, b: Any) -> Any:
     """``expt`` with the exactness rules of the design note's row 6.
 
     Exact base, exact negative integer exponent → the exact rational
     (``(expt 2 -1)`` is ``1/2``). A non-integral exact exponent is generally
     irrational, so the honest answer is inexact. An inexact operand gives
-    IEEE double arithmetic, as everywhere else in the tower.
+    IEEE double arithmetic, as everywhere else in the tower. An exact complex
+    base with an exact integer exponent stays exact (C1); any other complex
+    involvement answers inexact.
     """
     base = _expect_number(a, "expt")
     exponent = _expect_number(b, "expt")
+    if isinstance(base, (Complex, complex)) or isinstance(exponent, (Complex, complex)):
+        if isinstance(base, Complex) and isinstance(exponent, int) \
+                and not isinstance(exponent, bool):
+            return base ** exponent  # exact schoolbook, both signs
+        left = complex(base) if isinstance(base, Complex) else base
+        right = complex(exponent) if isinstance(exponent, Complex) else exponent
+        return left ** right
     if isinstance(base, float) or isinstance(exponent, float):
         return base ** exponent
     if isinstance(exponent, Fraction):
@@ -586,6 +720,7 @@ def _product(xs: Iterable[Any]) -> Any:
 def _sub(*xs: Any) -> Any:
     if not xs:
         raise LispTypeError("-: needs at least one argument")
+    xs = _complex_shim(xs)
     total = _expect_number(xs[0], "-")
     if len(xs) == 1:
         return _normalize_rational(-total)
@@ -598,10 +733,11 @@ def _div(*xs: Any) -> Any:
     """Scheme's ``/``: exactness-preserving, never silently truncating.
 
     Exact operands divide exactly — a rational when the division is not even
-    (R1), an integer when it is. Any inexact operand gives IEEE double
-    arithmetic, where a zero divisor has an IEEE answer (``+inf.0`` by sign,
-    ``+nan.0`` for zero over zero). An *exact* zero divisor is an error, full
-    stop: the question has no answer in any tower this project will build.
+    (R1), an integer when it is, an exact complex pair by the schoolbook
+    identity (C1). Any inexact operand gives IEEE double arithmetic, where a
+    zero divisor has an IEEE answer (``+inf.0`` by sign, ``+nan.0`` for zero
+    over zero). An *exact* zero divisor is an error, full stop: the question
+    has no answer in any tower this project will build.
     """
     if not xs:
         raise LispTypeError("/: needs at least one argument")
@@ -610,30 +746,82 @@ def _div(*xs: Any) -> Any:
         xs = (1, xs[0])
     total = xs[0]
     for x in xs[1:]:
-        if isinstance(x, float) and x == 0:
-            if total == 0 or (isinstance(total, float) and math.isnan(total)):
-                total = float("nan")
-            else:
-                sign = math.copysign(1.0, total) * math.copysign(1.0, x)
-                total = math.copysign(float("inf"), sign)
-        elif x == 0:
-            raise LispTypeError("/: division by zero")
-        elif isinstance(total, float) or isinstance(x, float):
-            total = total / x
-        else:
-            total = _normalize_rational(Fraction(total) / Fraction(x))
+        total = _divide(total, x)
     return total
 
 
-def _chain(xs: tuple, op: Callable[[Any, Any], bool]) -> bool:
-    xs = tuple(_expect_number(x, "comparison") for x in xs)
+def _divide(total: Any, x: Any) -> Any:
+    """One exactness-aware division step of ``/``'s left fold."""
+    if isinstance(x, (float, complex)):
+        if x == 0:
+            return _ieee_zero_division(total, x)
+    elif x == 0:
+        raise LispTypeError("/: division by zero")
+    if isinstance(total, (float, complex)) or isinstance(x, (float, complex)):
+        left = complex(total) if isinstance(total, Complex) else total
+        right = complex(x) if isinstance(x, Complex) else x
+        # Python's complex does not interop with Fraction: the rational goes
+        # through its float image (the contagion already decided inexact).
+        if isinstance(left, complex) and isinstance(right, Fraction):
+            right = float(right)
+        elif isinstance(right, complex) and isinstance(left, Fraction):
+            left = float(left)
+        return left / right
+    if isinstance(total, Complex) or isinstance(x, Complex):
+        return total / x
+    return _normalize_rational(Fraction(total) / Fraction(x))
+
+
+def _ieee_zero_division(total: Any, x: Any) -> Any:
+    """IEEE's answer for an *inexact* zero divisor (row 1's other half).
+
+    Pure reals keep the sign-aware infinity the tower has always answered. A
+    complex zero divisor (or a complex numerator meeting a real zero) answers
+    component-wise, IEEE 754 Annex G style: a zero or NaN numerator part is
+    NaN, anything else is an infinity signed by the operand signs.
+    """
+    if isinstance(total, (Complex, complex)) or isinstance(x, complex):
+        z = complex(total) if isinstance(total, Complex) else total
+        if not isinstance(z, complex):
+            z = complex(z)
+        w = x if isinstance(x, complex) else complex(x)
+
+        def component(numerator: float, divisor_part: float) -> float:
+            if numerator == 0 or math.isnan(numerator):
+                return float("nan")
+            sign = math.copysign(1.0, numerator) * math.copysign(1.0, divisor_part)
+            return math.copysign(float("inf"), sign)
+
+        return complex(component(z.real, w.real), component(z.imag, w.imag))
+    if total == 0 or (isinstance(total, float) and math.isnan(total)):
+        return float("nan")
+    sign = math.copysign(1.0, total) * math.copysign(1.0, x)
+    return math.copysign(float("inf"), sign)
+
+
+def _complex_shim(values: tuple) -> tuple:
+    """Python's ``complex`` does not interoperate with ``Fraction``: where an
+    inexact complex meets an exact rational, the rational goes through its
+    float image — the contagion has already decided the answer is inexact."""
+    if not any(isinstance(v, complex) for v in values):
+        return values
+    return tuple(float(v) if isinstance(v, Fraction) else v for v in values)
+
+
+def _chain(xs: tuple, op: Callable[[Any, Any], bool], ordered: bool = False) -> bool:
+    if ordered:
+        # The ordering family takes reals only (C1 row 10), and a complex
+        # with a zero imaginary part is its real part (row 12).
+        xs = tuple(_as_real(_expect_real(x, "comparison")) for x in xs)
+    else:
+        xs = tuple(_as_real(_expect_number(x, "comparison")) for x in xs)
     return all(op(a, b) for a, b in zip(xs, xs[1:]))
 
 
 def _min(*xs: Any) -> Any:
     if len(xs) == 1 and isinstance(xs[0], list):
         xs = tuple(xs[0])
-    values = tuple(_expect_number(x, "min") for x in xs)
+    values = tuple(_as_real(_expect_real(x, "min")) for x in xs)
     result = min(values)
     # Row 10: any inexact argument contaminates the result.
     if any(isinstance(v, float) for v in values):
@@ -644,7 +832,7 @@ def _min(*xs: Any) -> Any:
 def _max(*xs: Any) -> Any:
     if len(xs) == 1 and isinstance(xs[0], list):
         xs = tuple(xs[0])
-    values = tuple(_expect_number(x, "max") for x in xs)
+    values = tuple(_as_real(_expect_real(x, "max")) for x in xs)
     result = max(values)
     # Row 10: any inexact argument contaminates the result.
     if any(isinstance(v, float) for v in values):
@@ -653,8 +841,8 @@ def _max(*xs: Any) -> Any:
 
 
 def _modulo(a: int, b: int) -> int:
-    a = _expect_number(a, "modulo")
-    b = _expect_number(b, "modulo")
+    a = _expect_real(a, "modulo")
+    b = _expect_real(b, "modulo")
     if b == 0:
         raise LispTypeError("modulo: division by zero")
     return a % b
@@ -668,8 +856,8 @@ def _quotient(a: int, b: int) -> int:
     integer arithmetic so bignums stay exact and ``(quotient -7 2)`` is ``-3``.
     Rationals truncate the same way; inexactness is preserved (row 9).
     """
-    a = _expect_number(a, "quotient")
-    b = _expect_number(b, "quotient")
+    a = _expect_real(a, "quotient")
+    b = _expect_real(b, "quotient")
     if b == 0:
         raise LispTypeError("quotient: division by zero")
     if isinstance(a, float) or isinstance(b, float):
@@ -680,8 +868,8 @@ def _quotient(a: int, b: int) -> int:
 
 def _remainder(a: int, b: int) -> int:
     """The remainder whose sign follows the dividend (Scheme's ``remainder``)."""
-    a = _expect_number(a, "remainder")
-    b = _expect_number(b, "remainder")
+    a = _expect_real(a, "remainder")
+    b = _expect_real(b, "remainder")
     if b == 0:
         raise LispTypeError("remainder: division by zero")
     if isinstance(a, float) or isinstance(b, float):
@@ -691,7 +879,7 @@ def _remainder(a: int, b: int) -> int:
 
 def _math1(name: str, fn: Callable[[float], float], x: Any) -> float:
     """Apply a ``math`` function, turning a domain error into a Lisp error."""
-    value = _expect_number(x, name)
+    value = _expect_real(x, name)
     try:
         return float(fn(value))
     except (ValueError, OverflowError) as error:
@@ -700,11 +888,11 @@ def _math1(name: str, fn: Callable[[float], float], x: Any) -> float:
 
 def _log(x: Any, base: Any = None) -> float:
     """``(log x)`` natural, ``(log x base)`` in that base."""
-    value = _expect_number(x, "log")
+    value = _expect_real(x, "log")
     try:
         if base is None:
             return float(math.log(value))
-        radix = _expect_number(base, "log")
+        radix = _expect_real(base, "log")
         return float(math.log(value) / math.log(radix))
     except (ValueError, ZeroDivisionError, OverflowError) as error:
         raise LispTypeError(f"log: {error}") from None
@@ -715,7 +903,7 @@ def _atan(y: Any, x: Any = None) -> float:
     if x is None:
         return _math1("atan", math.atan, y)
     try:
-        return float(math.atan2(_expect_number(y, "atan"), _expect_number(x, "atan")))
+        return float(math.atan2(_expect_real(y, "atan"), _expect_real(x, "atan")))
     except (ValueError, OverflowError) as error:
         raise LispTypeError(f"atan: {error}") from None
 
@@ -725,12 +913,14 @@ def _sqrt(x: Any) -> Any:
 
     An exact integer's perfect square is its own root; a rational's root is
     exact exactly when numerator and denominator both are perfect squares
-    (row 7 — ``(sqrt 1/4)`` is ``1/2``). Anything else is inexact.
+    (row 7 — ``(sqrt 1/4)`` is ``1/2``). Anything else is inexact. A negative
+    argument's root is complex — phase C2 lands that half of the row.
     """
-    value = _expect_number(x, "sqrt")
+    value = _expect_real(x, "sqrt")
     if value < 0:
         raise LispTypeError(
-            "sqrt: a negative argument needs complex numbers, which this tower lacks"
+            "sqrt: a negative argument has a complex root, which phase C2 of"
+            " the complex tower has not landed yet"
         )
     if isinstance(value, int):
         root = math.isqrt(value)
@@ -745,22 +935,22 @@ def _sqrt(x: Any) -> Any:
 
 
 def _floor(x: Any) -> Any:
-    value = _expect_number(x, "floor")
+    value = _expect_real(x, "floor")
     return float(math.floor(value)) if isinstance(value, float) else math.floor(value)
 
 
 def _ceiling(x: Any) -> Any:
-    value = _expect_number(x, "ceiling")
+    value = _expect_real(x, "ceiling")
     return float(math.ceil(value)) if isinstance(value, float) else math.ceil(value)
 
 
 def _truncate(x: Any) -> Any:
-    value = _expect_number(x, "truncate")
+    value = _expect_real(x, "truncate")
     return float(math.trunc(value)) if isinstance(value, float) else math.trunc(value)
 
 
 def _round(x: Any) -> Any:
-    value = _expect_number(x, "round")
+    value = _expect_real(x, "round")
     # Python's round() is ties-to-even, which is what R7RS asks for.
     return float(round(value)) if isinstance(value, float) else round(value)
 
@@ -771,8 +961,8 @@ def _floor_quotient(a: int, b: int) -> int:
     Rationals floor the exact quotient; integral inexact integers are
     accepted and the result stays inexact.
     """
-    a = _expect_number(a, "floor-quotient")
-    b = _expect_number(b, "floor-quotient")
+    a = _expect_real(a, "floor-quotient")
+    b = _expect_real(b, "floor-quotient")
     if b == 0:
         raise LispTypeError("floor-quotient: division by zero")
     if isinstance(a, float) or isinstance(b, float):
@@ -782,8 +972,8 @@ def _floor_quotient(a: int, b: int) -> int:
 
 def _floor_remainder(a: int, b: int) -> int:
     """The remainder whose sign follows the divisor (R7RS ``floor-remainder``)."""
-    a = _expect_number(a, "floor-remainder")
-    b = _expect_number(b, "floor-remainder")
+    a = _expect_real(a, "floor-remainder")
+    b = _expect_real(b, "floor-remainder")
     if b == 0:
         raise LispTypeError("floor-remainder: division by zero")
     if isinstance(a, float) or isinstance(b, float):
@@ -801,15 +991,26 @@ def _exact(x: Any) -> Any:
     has no exact equal, so it raises.
     """
     value = _expect_number(x, "exact")
-    if isinstance(value, (int, Fraction)):
+    if isinstance(value, (int, Fraction, Complex)):
         return value
+    if isinstance(value, complex):
+        if not (math.isfinite(value.real) and math.isfinite(value.imag)):
+            raise LispTypeError("exact: an infinity or a NaN has no exact equal")
+        # The exact image of the double pair; a zero imaginary part collapses
+        # to the real (C1 row 2 — ``(exact 1.0+0.0i)`` is ``1``).
+        return Complex(Fraction(value.real), Fraction(value.imag))
     if not math.isfinite(value):
         raise LispTypeError("exact: an infinity or a NaN has no exact equal")
     return _normalize_rational(Fraction(value))
 
 
 def _inexact(x: Any) -> float:
-    return float(_expect_number(x, "inexact"))
+    value = _expect_number(x, "inexact")
+    if isinstance(value, Complex):
+        return complex(value)
+    if isinstance(value, complex):
+        return value
+    return float(value)
 
 
 def _exact_integer_sqrt(n: Any) -> Values:
@@ -823,7 +1024,7 @@ def _exact_integer_sqrt(n: Any) -> Values:
 
 def _numerator(x: Any) -> Any:
     """The numerator of *x*; exact values keep exactness, floats stay inexact."""
-    value = _expect_number(x, "numerator")
+    value = _expect_real(x, "numerator")
     if isinstance(value, Fraction):
         return value.numerator
     if isinstance(value, int):
@@ -836,7 +1037,7 @@ def _numerator(x: Any) -> Any:
 
 def _denominator(x: Any) -> Any:
     """The denominator of *x*; exact integers have denominator ``1``."""
-    value = _expect_number(x, "denominator")
+    value = _expect_real(x, "denominator")
     if isinstance(value, Fraction):
         return value.denominator
     if isinstance(value, int):
@@ -886,8 +1087,8 @@ def _rationalize(x: Any, tolerance: Any) -> Any:
     happens exactly, then converts. An infinity or a NaN has no nearest
     rational, so it raises.
     """
-    xv = _expect_number(x, "rationalize")
-    tv = _expect_number(tolerance, "rationalize")
+    xv = _expect_real(x, "rationalize")
+    tv = _expect_real(tolerance, "rationalize")
     inexact = isinstance(xv, float) or isinstance(tv, float)
     if inexact and (not math.isfinite(xv) or not math.isfinite(tv)):
         raise LispTypeError("rationalize: expected finite numbers")
@@ -934,7 +1135,7 @@ def _rational_gcd_lcm(values: tuple, who: str, lcm: bool) -> Any:
     inexact = any(isinstance(v, float) for v in values)
     rationals = []
     for value in values:
-        n = _expect_number(value, who)
+        n = _expect_real(value, who)
         if isinstance(n, float):
             if not n.is_integer():
                 raise LispTypeError(

@@ -44,12 +44,14 @@ that is not a plain identifier prints between bars (`|1+|`).
   floor-remainder truncate/ truncate-quotient truncate-remainder`
   `exact-integer-sqrt` `= < > <= >=` `number? integer? exact-integer?`
 - **Exactness** `exact inexact exact? inexact? rational? real? complex?`
-  `numerator denominator rationalize` — the tower is exact integers and
-  inexact reals only; the predicates say exactly that, `(/ 3 4)` is `0.75`,
-  and `exact` of a non-integral float is an explicit restriction
+  `numerator denominator rationalize` — the tower is exact integers, exact
+  rationals, exact complex pairs (C1: `make-rectangular`/`real-part`/
+  `imag-part`), and inexact reals; the predicates say exactly that, and
+  `(/ 3 4)` is `3/4`
 - **Inexact math** `finite? infinite? nan? exp log sin cos tan asin acos
   atan` — `(log x base)` and `(atan y x)` take their optional second
-  argument; there is no complex tower, so `(scheme complex)` is out
+  argument; the complex tower's polar half (`magnitude`, `angle`,
+  `make-polar`) and complex `sqrt`/`log` wait for C2
 - **Equality / logic** `equal? eq? eqv? not boolean? boolean=? void`
 - **Pairs / lists** `cons car cdr` and every `cxr` composition through four
   levels (`caar cadr cdar cddr caaar … cddddr`), `list length append reverse

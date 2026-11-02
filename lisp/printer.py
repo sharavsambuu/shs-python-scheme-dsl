@@ -7,6 +7,7 @@ but ``(write "hi")`` prints ``"hi"``.
 """
 from __future__ import annotations
 
+import math
 from fractions import Fraction
 from typing import Any
 
@@ -15,6 +16,7 @@ from .types import (
     ByteVector,
     Char,
     Closure,
+    Complex,
     EOF,
     ErrorObject,
     HashTable,
@@ -57,6 +59,8 @@ def to_string(value: Any, write: bool = False) -> str:
         return _quote_string(text) if write else text
     if isinstance(value, (int, float, Fraction)):
         return _number_literal(value)
+    if isinstance(value, (Complex, complex)):
+        return _complex_literal(value)
     if isinstance(value, list):
         return "(" + " ".join(to_string(item, write) for item in value) + ")"
     if isinstance(value, Pair):
@@ -197,4 +201,24 @@ def _number_literal(value: float | int | Fraction) -> str:
         if value == float("-inf"):
             return "-inf.0"
     return repr(value)
+
+
+def _complex_literal(value: Complex | complex) -> str:
+    """A complex number as R7RS text: ``re+imi`` (C1; the reader round-trip
+    is C3's pin).
+
+    The ``1`` in ``±1i`` is dropped, R7RS-style (``1+i``, not ``1+1i``).
+    Inexact parts go through the float formatter, so ``+inf.0``/``+nan.0``
+    spell correctly, and a signed-zero imaginary part keeps its sign
+    (``1.0-0.0i``) — the reader will read it back to the same bits.
+    """
+    real = value.real
+    imag = value.imag
+    left = _number_literal(real)
+    if imag == 1:
+        return f"{left}+i"
+    if imag == -1:
+        return f"{left}-i"
+    sign = "+" if math.copysign(1.0, imag) > 0 else "-"
+    return f"{left}{sign}{_number_literal(abs(imag))}i"
 

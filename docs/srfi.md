@@ -302,11 +302,9 @@ python -m pytest -q
 python -m pytest tests/test_srfi.py -q
 ```
 
-Last recorded run: **845 passed, 1 failed** — the failure is
-`test_list_helpers_stay_linear`, a timing drift detector (5.4 s observed
-against the old 5.0 s bound on a slow machine, since relaxed to 8.0 s); it is
-unrelated to the SRFI layer. If the count drifts, update this section in the
-same change.
+Last recorded run: **857 passed** — the C1 landing of the exact complex pair
+took the count from 846 with no failures. If the count drifts, update this
+section in the same change.
 
 ## The profiles
 

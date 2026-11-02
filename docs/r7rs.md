@@ -38,7 +38,7 @@ but behaves differently is a **deviation**, listed below, not a pass.
 | `(scheme base)` | 200/200 | 32/32 | supported |
 | `(scheme case-lambda)` | 0/0 | 1/1 | supported |
 | `(scheme char)` | 22/22 | 0/0 | supported |
-| `(scheme complex)` | 0/6 | 0/0 | missing |
+| `(scheme complex)` | 3/6 | 0/0 | partial — C1 landed the rectangular half; `magnitude`/`angle`/`make-polar` wait for C2 |
 | `(scheme cxr)` | 24/24 | 0/0 | supported |
 | `(scheme eval)` | 2/2 | 0/0 | supported |
 | `(scheme file)` | 10/10 | 0/0 | supported |
@@ -58,8 +58,9 @@ four absent names — the `exact->inexact`/`inexact->exact` aliases and the
 `null-environment`/`scheme-report-environment` procedures — and taught the
 library system to resolve the report's auxiliary syntax (`else`, `unquote`,
 `unquote-splicing`) the way `(scheme base)`'s are, so the library now imports
-whole. The eight names still absent are the six `(scheme complex)` procedures
-and `transcript-on`/`transcript-off`, which R7RS itself excludes.
+whole. The five names still absent are the three remaining `(scheme complex)`
+procedures (`magnitude`, `angle`, `make-polar` — C1 landed the rectangular
+half) and `transcript-on`/`transcript-off`, which R7RS itself excludes.
 
 ## The missing names
 
@@ -69,7 +70,7 @@ both places in the same change; the test fails in either direction, so the page
 cannot rot.
 
 <!-- r7rs-missing:start -->
-angle imag-part magnitude make-polar make-rectangular real-part
+angle magnitude make-polar
 <!-- r7rs-missing:end -->
 
 ## External representations
@@ -103,7 +104,8 @@ round-trip corpus covering every form below.
   characters, and `|quoted symbols|` are never folded.
 
 Still missing: datum labels (`#1=`, `#1#`) and cyclic structure (A14), and
-complex literals (A7).
+complex literals (C3 — the printer already writes `1+2i`; the reader half is
+what remains).
 
 ## Deviations
 
@@ -114,10 +116,11 @@ instead.
 | --- | --- | --- |
 | Continuations | `call/cc` is escape-only; a continuation cannot be re-entered after its `dynamic-wind` extent ends. | Generators and coroutines built on re-entry do not work. `guard`, `dynamic-wind`, and escape continuations do. |
 | Libraries | `define-library`/`import`/`export` are supported (A13), with import sets `only`/`except`/`prefix`/`rename`. A `define-library` library's exports are validated at import time. | `(load ...)` remains the loader's own mechanism; `(environment ...)` returns a *restricted* import. |
-| Numbers | Exact integers, exact rationals (`p/q`, reduced; a whole rational is an integer), and inexact reals; no complex tower. `/` preserves exactness (`(/ 3 4)` is `3/4`; even division stays an integer), and a zero divisor answers IEEE semantics when inexact (`(/ 1 0.0)` is `+inf.0`) but is an error when exact. Rational literals read and print (`1/3`, `#e1.5` → `3/2`, `#e0.1` → `1/10`). `exact` converts any inexact value to the exact rational numerically equal to it (`(exact 3.5)` is `7/2`; an infinity or NaN raises), and `rationalize` answers the simplest rational within the tolerance (inexact operands give an inexact result). `expt` with a negative exact exponent answers a rational (`(expt 2 -1)` is `1/2`); `sqrt` of a rational stays exact when both parts are perfect squares. The division family (`quotient`, `remainder`, `modulo`, `floor-`/`truncate-` variants) takes rationals and preserves inexactness; a zero divisor is always an error. `gcd`/`lcm` take rationals and integral inexact integers. `min`/`max` contaminate: any inexact argument gives an inexact result. `integer?` is the mathematical property (`(integer? 3.0)` is `#t`); `exact-integer?` stays type-strict. `floor`, `ceiling`, `truncate`, and `round` preserve inexactness (ties-to-even). | Complex procedures are missing (phase C). |
+| Numbers | Exact integers, exact rationals (`p/q`, reduced; a whole rational is an integer), exact complex pairs (C1), and inexact reals. `/` preserves exactness (`(/ 3 4)` is `3/4`; even division stays an integer), and a zero divisor answers IEEE semantics when inexact (`(/ 1 0.0)` is `+inf.0`) but is an error when exact. Rational literals read and print (`1/3`, `#e1.5` → `3/2`, `#e0.1` → `1/10`). `exact` converts any inexact value to the exact rational numerically equal to it (`(exact 3.5)` is `7/2`; an infinity or NaN raises), and `rationalize` answers the simplest rational within the tolerance (inexact operands give an inexact result). `expt` with a negative exact exponent answers a rational (`(expt 2 -1)` is `1/2`); `sqrt` of a rational stays exact when both parts are perfect squares. The division family (`quotient`, `remainder`, `modulo`, `floor-`/`truncate-` variants) takes rationals and preserves inexactness; a zero divisor is always an error. `gcd`/`lcm` take rationals and integral inexact integers. `min`/`max` contaminate: any inexact argument gives an inexact result. `integer?` is the mathematical property (`(integer? 3.0)` is `#t`); `exact-integer?` stays type-strict. `floor`, `ceiling`, `truncate`, and `round` preserve inexactness (ties-to-even). | Complex procedures beyond the rectangular half are missing (C2): `magnitude`, `angle`, `make-polar`, and `sqrt`/`log` of negatives. |
+| Complex | C1 landed the exact complex pair (`lisp/types.py`'s `Complex`): `make-rectangular`, `real-part`, `imag-part`, exact arithmetic, inexact contagion, and `p/q`-part printing. An exact zero imaginary part *is* the real (`(make-rectangular 1 0)` is `1`); an inexact one stays visible (`1.0+0.0i`). `real?` is the mathematical property (`(real? 1.0+0.0i)` is `#t`). | The polar half (`magnitude`, `angle`, `make-polar`) and `sqrt`/`log` of negatives wait for C2; complex literals read in C3. |
 | Strings | Literals are immutable Python `str`; `make-string` and `string-copy` return a mutable wrapper. | `string-set!` on a literal raises a clear "immutable" error; mutate a `make-string`/`string-copy` result instead. |
 | Cycles | No datum labels (`#1=`, `#1#`); `write` does not detect shared structure. | Cyclic data cannot be read or printed; `equal?` can recurse forever on a cycle. |
-| Complex | `(scheme complex)` is not implemented; the numeric tower is real only. | `make-rectangular`, `real-part`, and complex literals are absent; `sqrt` of a negative number is an error, not a complex value. |
+| Complex | C1 landed the exact complex pair: `make-rectangular`, `real-part`, `imag-part`, exact arithmetic, and inexact contagion. | `magnitude`, `angle`, `make-polar`, and `sqrt`/`log` of negatives wait for C2; complex literals read in C3. |
 | Ports | Text and binary ports, `read`, bytevector I/O, and file predicates are supported. `write-shared`/`write-simple` share `write` and do not detect sharing (A14). | A program can read one datum at a time; cyclic data still cannot be printed. |
 
 ### Non-standard extensions
