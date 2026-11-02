@@ -265,7 +265,8 @@ def test_list_helpers_stay_linear(ev) -> None:
 
     Structural recursion over the same list costs ~12 s here (``cdr`` copies
     the tail); a linear walk is well under a second. The bound is deliberately
-    generous — it is a drift detector, not a benchmark.
+    generous — it is a drift detector, not a benchmark — and sits at 8.0 s
+    because slower machines have measured the linear walk at 5.4–5.8 s.
     """
     started = time.monotonic()
     assert ev("(length (map-index (lambda (i x) x) (range 50000)))") == 50000
@@ -275,4 +276,4 @@ def test_list_helpers_stay_linear(ev) -> None:
     assert ev("(length (take (range 50000) 50000))") == 50000
     assert ev("(length (drop (range 50000) 25000))") == 25000
     elapsed = time.monotonic() - started
-    assert elapsed < 5.0, f"list helpers look quadratic: {elapsed:.1f}s"
+    assert elapsed < 8.0, f"list helpers look quadratic: {elapsed:.1f}s"
