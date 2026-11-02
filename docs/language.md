@@ -278,7 +278,9 @@ A few shapes worth knowing:
   numerically equal to it (`(exact 3.5)` is `7/2`), and `rationalize`
   answers the simplest rational within its tolerance. `sqrt` of a negative
   perfect square is an exact imaginary (`(sqrt -4)` is `2i`); `(log -1)` is
-  `+iπ`, inexact. Complex literals read in C3.
+  `+iπ`, inexact. Complex literals read (`1+2i`, `1/2+1/3i`, `+i`, and the
+  polar `2@1`; `#e`/`#i` govern the whole) and round-trip through the
+  printer.
 - **Pairs vs. host lists.** A proper list is a host list; `Pair` is reserved
   for dotted structure. `set-cdr!` works on `Pair` cells only, which is why a
   proper list's tail cannot be mutated in place.

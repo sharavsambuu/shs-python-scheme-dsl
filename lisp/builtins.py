@@ -38,6 +38,7 @@ from .errors import (
 )
 from .features import feature_symbols
 from .libraries import library_name
+from .reader import NOT_A_NUMBER, _number_from_literal
 from .evaluator import (
     apply_procedure,
     equal,
@@ -2183,7 +2184,7 @@ def _substring(s: Any, start: int, end: Optional[int] = None) -> str:
 def _string_to_number(s: Any, radix: int = 10) -> Any:
     text = _expect_string(s).strip()
     if radix != 10:
-        if radix not in (2, 8, 16):
+        if radix not in (2, 8, 10, 16):
             raise LispTypeError(
                 f"string->number: radix must be 2, 8, 10, or 16, got {radix}"
             )
@@ -2191,29 +2192,17 @@ def _string_to_number(s: Any, radix: int = 10) -> Any:
             return int(text, radix)
         except ValueError:
             return False
+    # C3: the reader's twin, for real — one parser, two entrances. The
+    # reader's full syntax parses here: the prefixes (``#e1.5`` is ``3/2``,
+    # ``#x10`` is ``16``), the inexact specials, and the complex literals
+    # (``1+2i``, row 14). Where the reader raises — ``1/0`` — the string
+    # form politely declines: a literal in source means it (row 20), but a
+    # conversion may fail.
     try:
-        return int(text)
-    except ValueError:
-        pass
-    try:
-        return float(text)
-    except ValueError:
-        pass
-    # R2: the reader's twin — a rational literal parses, and "1/0" is not a
-    # number, so #f rather than the read error the *reader* raises (row 20:
-    # a literal in source means it; a string conversion may politely fail).
-    head, sep, tail = text.partition("/")
-    if sep and tail.isdigit():
-        try:
-            numerator = int(head)
-        except ValueError:
-            return False
-        denominator = int(tail)
-        if denominator == 0:
-            return False
-        value = Fraction(numerator, denominator)
-        return int(value) if value.denominator == 1 else value
-    return False
+        value = _number_from_literal(text)
+    except LispSyntaxError:
+        return False
+    return False if value is NOT_A_NUMBER else value
 
 
 def _strings_in_step(strings: tuple, who: str) -> list:

@@ -31,6 +31,9 @@ from .types import (
     intern_keyword,
     make_list,
 )
+from .types import Complex
+
+import cmath
 
 #: Characters that end an atom.
 _DELIMITERS = set("()'`\",; \t\r\n[]")
@@ -190,12 +193,17 @@ def _number_from_literal(token: str):
     rational literals: ``1/3`` reads as the exact rational it spells, and
     ``#e`` makes any decimal exact (``#e1.5`` is ``3/2``, ``#e0.1`` is
     ``1/10`` — the decimal denotes the rational, not the binary double).
+    Since C3, the complex spellings read too: ``1+2i``, ``1/2+1/3i``,
+    ``+i``, ``1.0-0.0i``, and the polar ``2@1`` — with ``#e``/``#i``
+    applying to the whole (row 13 of the phase C table).
     """
     if token in _INEXACT_NAMES:
         return _INEXACT_NAMES[token]
     if not token.startswith("#"):
         plain = _plain_number(token)
-        return NOT_A_NUMBER if plain is None else plain
+        if plain is not None:
+            return plain
+        return _complex_number(token, None)
     radix, exactness = 10, None
     rest = token[1:]
     consumed = False
@@ -223,7 +231,7 @@ def _number_from_literal(token: str):
             raise LispSyntaxError(f"bad number literal: {token}") from None
     value = _plain_number(rest)
     if value is None:
-        return NOT_A_NUMBER
+        return _complex_number(rest, exactness)
     if exactness == "e":
         # Row 2 of the design note: ``#e`` honours its promise. A decimal
         # denotes the exact rational it spells — ``#e1.5`` is ``3/2`` and
@@ -267,6 +275,114 @@ def _plain_number(token: str):
         value = Fraction(numerator, denominator)
         return int(value) if value.denominator == 1 else value
     return None
+
+
+def _complex_number(token: str, exactness: str | None):
+    """A complex literal — ``1+2i``, ``1/2+1/3i``, ``+i``, ``1.0-0.0i``,
+    ``2@1`` — or :data:`NOT_A_NUMBER` (C3, rows 13–14).
+
+    The grammar is R7RS §7.1.1's rectangular and polar spellings: an optional
+    real part, then ``+``/``-`` and an unsigned imaginary magnitude (or just
+    the sign, for ``±i``), then ``i`` — or two reals joined by ``@`` (polar).
+    The imaginary part always carries its sign, as the grammar spells it:
+    ``2i`` alone stays a symbol. ``#e`` makes every component the exact
+    rational it spells (``#e1.5+0.5i`` is ``3/2+1/2i``); ``#i`` makes every
+    component inexact. An exact zero imaginary part *is* the real part
+    (row 2), while an inexact one keeps its signed zero — ``1.0-0.0i`` reads
+    back to the same bits the printer wrote. A zero denominator anywhere is
+    a read error, exactly as for a bare rational (row 20).
+    """
+    if "@" in token:
+        return _complex_polar(token, exactness)
+    split = _split_rectangular(token)
+    if split is None:
+        return NOT_A_NUMBER
+    real_spelling, imag_spelling = split
+    if real_spelling:
+        real = _complex_component(real_spelling, exactness)
+        if real is None:
+            return NOT_A_NUMBER
+    else:
+        real = 0.0 if exactness == "i" else 0
+    if imag_spelling in ("+", "-"):
+        imag = 1 if imag_spelling == "+" else -1
+        if exactness == "i":
+            imag = float(imag)
+    else:
+        imag = _complex_component(imag_spelling, exactness)
+        if imag is None:
+            return NOT_A_NUMBER
+    if isinstance(real, float) or isinstance(imag, float):
+        return complex(real, imag)
+    if imag == 0:  # row 2: the exact zero imaginary part is the real part
+        return real
+    return Complex(real, imag)
+
+
+def _split_rectangular(token: str):
+    """Split ``1+2i`` into (``'1'``, ``'+2i'``); None when the token does not
+    end in a signed imaginary part.
+
+    The split point is the rightmost ``+``/``-`` that does not belong to an
+    exponent (``1e-3+2i`` splits after ``1e-3``, not inside it). The real
+    part may be empty: ``+2i`` is pure imaginary.
+    """
+    if not token.endswith(("i", "I")) or token in ("i", "I"):
+        return None
+    body = token[:-1]
+    for index in range(len(body) - 1, -1, -1):
+        if body[index] in "+-" and (index == 0 or body[index - 1] not in "eE"):
+            return body[:index], body[index:]
+    return None
+
+
+def _complex_polar(token: str, exactness: str | None):
+    """The ``@`` polar spelling, or :data:`NOT_A_NUMBER`.
+
+    ``2@0`` is the exact ``2`` — a zero angle has an exact cosine and sine —
+    while ``1@1`` is honestly inexact: no exact cosine of 1 exists (row 4).
+    """
+    left, sep, right = token.partition("@")
+    if not sep or "@" in right or not left or not right:
+        return NOT_A_NUMBER
+    magnitude = _complex_component(left, exactness)
+    angle = _complex_component(right, exactness)
+    if magnitude is None or angle is None:
+        return NOT_A_NUMBER
+    if isinstance(magnitude, float) or isinstance(angle, float):
+        return cmath.rect(magnitude, angle)
+    if angle == 0:
+        return magnitude
+    return cmath.rect(float(magnitude), float(angle))
+
+
+def _complex_component(spelling: str, exactness: str | None):
+    """One component spelling as a tower value; None if it is not one.
+
+    ``#e`` reads the spelling as the exact rational it writes (``#e0.1`` is
+    ``1/10``), ``#i`` forces inexact; an unprefixed spelling keeps its own
+    exactness (``1`` exact, ``1.5`` inexact, ``1/2`` the exact rational).
+    An exact infinity or NaN is refused — the prefix promises exact and the
+    value cannot be one — so ``#e+inf.0`` stays a symbol, as it is today.
+    """
+    if spelling in _INEXACT_NAMES:
+        if exactness == "e":
+            return None
+        return _INEXACT_NAMES[spelling]
+    if exactness == "e":
+        try:
+            value = Fraction(spelling)
+        except ValueError:
+            return None
+        except ZeroDivisionError:
+            raise LispSyntaxError(f"bad number literal: {spelling}") from None
+        return int(value) if value.denominator == 1 else value
+    value = _plain_number(spelling)
+    if value is None:
+        return None
+    if exactness == "i":
+        return float(value)
+    return value
 
 
 def _fold_symbol(token: str) -> str:

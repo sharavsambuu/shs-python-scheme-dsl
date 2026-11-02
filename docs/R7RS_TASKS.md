@@ -91,19 +91,23 @@ is underway:
    exact rationals") finds them only in the design note's clearly-labeled
    historical column. The matrix's *name* counts do not move: R changed
    behaviours, not the bound-name set.
-7. **Phase C — C1 and C2 landed.** The compatibility table the gate required
-   is in [`numeric-tower.md`](numeric-tower.md)'s phase C section. **C1**
-   landed the exact complex pair (`lisp/types.py`'s `Complex`), rows 1–3, 5,
-   9–12: `make-rectangular`, `real-part`, `imag-part`, exact arithmetic,
-   inexact contagion, `eqv?`/`equal?`, the real-only family's guard, and
-   `p/q`-part printing. **C2** landed the polar half — rows 4, 6–8:
-   `magnitude`, `angle`, `make-polar`, exact `sqrt` of negative perfect
+7. **Phase C — C1, C2, and C3 landed.** The compatibility table the gate
+   required is in [`numeric-tower.md`](numeric-tower.md)'s phase C section.
+   **C1** landed the exact complex pair (`lisp/types.py`'s `Complex`), rows
+   1–3, 5, 9–12: `make-rectangular`, `real-part`, `imag-part`, exact
+   arithmetic, inexact contagion, `eqv?`/`equal?`, the real-only family's
+   guard, and `p/q`-part printing. **C2** landed the polar half — rows 4,
+   6–8: `magnitude`, `angle`, `make-polar`, exact `sqrt` of negative perfect
    squares (`(sqrt -4)` is the exact `2i`), `(log -1)` → `+iπ`, and the
    complex transcendentals (`(asin 2)` answers the complex arc-function,
-   C99 branch). `(scheme complex)` is 6/6, `(scheme r5rs)` is 196/198, and
-   **`KNOWN_MISSING` is empty** — only R7RS's own exclusions remain.
-   **C3** next: reader literals and the round-trip. **C4**: the doc sweep
-   and the matrix counts.
+   C99 branch). **C3** landed rows 13–14: complex literals read
+   (`1+2i`, `1/2+1/3i`, `+i`, `1.0-0.0i`, the polar `2@1`; `#e`/`#i`
+   govern the whole), the reader/printer round trip is pinned, and
+   `string->number` became the reader's twin — one parser, two entrances
+   (`#e1.5`, `#x10`, `+inf.0`, and the complex spellings all parse; `1/0`
+   politely stays `#f`). `(scheme complex)` is 6/6, `(scheme r5rs)` is
+   196/198, and **`KNOWN_MISSING` is empty** — only R7RS's own exclusions
+   remain. **C4** is the last stage: the doc sweep and the matrix counts.
 
 Do not start phase C before R settles. [`capabilities.md`](capabilities.md)
 records the gap as Tier 2; nothing else in either ledger outranks it.

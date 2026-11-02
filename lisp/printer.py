@@ -205,12 +205,12 @@ def _number_literal(value: float | int | Fraction) -> str:
 
 def _complex_literal(value: Complex | complex) -> str:
     """A complex number as R7RS text: ``re+imi`` (C1; the reader round-trip
-    is C3's pin).
+    landed in C3 — everything written here reads back).
 
     The ``1`` in ``±1i`` is dropped, R7RS-style (``1+i``, not ``1+1i``).
     Inexact parts go through the float formatter, so ``+inf.0``/``+nan.0``
     spell correctly, and a signed-zero imaginary part keeps its sign
-    (``1.0-0.0i``) — the reader will read it back to the same bits.
+    (``1.0-0.0i``) — the reader reads it back to the same bits.
     """
     real = value.real
     imag = value.imag

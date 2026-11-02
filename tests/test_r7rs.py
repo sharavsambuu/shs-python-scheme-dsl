@@ -1702,3 +1702,126 @@ def test_the_polar_names_left_known_missing(ev) -> None:
     assert ev("(make-polar 5 (angle (make-rectangular 3 4)))") == pytest.approx(
         complex(3.0, 4.0)
     )
+
+
+# --------------------------------------------------------------------------- #
+#  C3 — reader literals, and the reader/printer round trip                     #
+# --------------------------------------------------------------------------- #
+
+
+def test_complex_literals_read(ev) -> None:
+    """Row 13: the R7RS rectangular spellings, exact parts exact."""
+    from lisp.types import Complex
+
+    assert ev("1+2i") == Complex(1, 2)
+    assert ev("1/2+1/3i") == Complex(Fraction(1, 2), Fraction(1, 3))
+    assert ev("+i") == Complex(0, 1)
+    assert ev("-i") == Complex(0, -1)
+    assert ev("1+i") == Complex(1, 1)
+    assert ev("1-2i") == Complex(1, -2)
+    assert ev("-1-1i") == Complex(-1, -1)
+    assert ev("+2i") == Complex(0, 2)
+    assert ev("0+2i") == Complex(0, 2)
+    assert ev("1+0i") == 1  # row 2: an exact zero imaginary part is the real
+    assert ev("(exact? 1+0i)") is True
+    assert ev("+0i") == 0
+    assert ev("1e3+2i") == complex(1000.0, 2.0)  # an exponent spelling is inexact
+    assert ev("1e-3+2i") == complex(0.001, 2.0)
+    assert ev("(+ 1+2i 3+4i)") == Complex(4, 6)  # row 9, spelled literally
+
+
+def test_inexact_complex_literals_read(ev) -> None:
+    assert ev("1.5+0.5i") == complex(1.5, 0.5)
+    assert ev("1.0+0.0i") == complex(1.0, 0.0)
+    assert ev("(real? 1.0+0.0i)") is True  # row 12, spelled literally
+    assert ev("1.0-0.0i") == complex(1.0, -0.0)
+    z = ev("1.0-0.0i")
+    assert math.copysign(1.0, z.imag) < 0  # the signed zero survives the read
+    assert ev("+inf.0+2i") == complex(float("inf"), 2.0)
+    assert ev("+inf.0-nan.0i").imag != ev("+inf.0-nan.0i").imag  # NaN is NaN
+    assert ev("(exact? 1.5+0.5i)") is False
+
+
+def test_exactness_prefixes_apply_to_complex_literals(ev) -> None:
+    """``#e``/``#i`` govern the whole literal, every component."""
+    from lisp.types import Complex
+
+    assert ev("#e1.5+0.5i") == Complex(Fraction(3, 2), Fraction(1, 2))
+    assert ev("#e0.1+0.2i") == Complex(Fraction(1, 10), Fraction(1, 5))
+    assert ev("#e1+2i") == Complex(1, 2)
+    assert ev("#e1+i") == Complex(1, 1)
+    assert ev("#i1+2i") == complex(1.0, 2.0)
+    assert ev("#i1.5+0.5i") == complex(1.5, 0.5)
+    assert ev("(exact? #e1+2i)") is True
+    assert ev("(exact? #i1+2i)") is False
+
+
+def test_polar_literals_read(ev) -> None:
+    """The ``@`` spelling: exact when the angle is exact zero, else inexact."""
+    assert ev("2@0") == 2
+    assert ev("(exact? 2@0)") is True
+    assert ev("1@1") == pytest.approx(complex(math.cos(1), math.sin(1)))
+    assert ev("(exact? 1@1)") is False
+    assert ev("1.0@2.0") == pytest.approx(
+        complex(math.cos(2.0), math.sin(2.0))
+    )
+    assert ev("1@-1") == pytest.approx(complex(math.cos(1), -math.sin(1)))
+
+
+def test_complex_literal_near_misses_stay_symbols(ev) -> None:
+    """The grammar is exact: an unsigned imaginary, a ``j`` suffix, a bare
+    ``i`` — none of them is a number, so none of them silently becomes one."""
+    from lisp.reader import read_one
+    from lisp.types import Symbol
+
+    for token in ("2i", "i", "1+2j", "foo+bari", "1e3i", "a+i", "1+", "xI"):
+        assert isinstance(read_one(token), Symbol), token
+    from lisp.errors import LispSyntaxError
+
+    with pytest.raises(LispSyntaxError):
+        ev("1+1/0i")  # row 20: a zero denominator is a read error, anywhere
+
+
+def test_string_to_number_takes_complex(ev) -> None:
+    """Row 14: the reader's twin, one parser two entrances; garbage stays #f."""
+    from lisp.types import Complex
+
+    assert ev('(string->number "1+2i")') == Complex(1, 2)
+    assert ev('(string->number "+i")') == Complex(0, 1)
+    assert ev('(string->number "1.0-0.0i")') == complex(1.0, -0.0)
+    assert ev('(string->number "1/2+1/3i")') == Complex(
+        Fraction(1, 2), Fraction(1, 3)
+    )
+    assert ev('(string->number "1+2j")') is False
+    assert ev('(string->number "2i")') is False  # unsigned imag: not a number
+    assert ev('(string->number "1/0")') is False  # politely, where the reader errors
+    # The prefixes parse here now too — the reader's whole syntax:
+    assert ev('(string->number "#e1.5")') == Fraction(3, 2)
+    assert ev('(string->number "#x10")') == 16
+    assert ev('(string->number "+inf.0")') == float("inf")
+    assert ev('(string->number "nope")') is False
+    assert ev('(string->number "" 10)') is False
+
+
+def test_complex_number_string_round_trip(ev) -> None:
+    """Row 13's printer half, closed: what the printer writes, the reader
+    reads back to the same number — exact stays exact, bits stay bits."""
+    from lisp.types import Complex
+
+    for source in (
+        "(make-rectangular 1 2)",
+        "(make-rectangular 0 1)",
+        "(make-rectangular 1 -2)",
+        "(make-rectangular 1/2 1/3)",
+        "(make-rectangular -1 -1)",
+        "1.5+0.5i",
+        "1.0+0.0i",
+        "1.0-0.0i",
+    ):
+        z = ev(source)
+        text = ev(f"(number->string {source})")
+        back = ev(f'(string->number "{text}")')
+        assert back == z, (source, text, back, z)
+        assert type(back) is type(z), (source, text, back, z)
+    # And a literal round-trips through number->string directly:
+    assert ev("(string->number (number->string 1+2i))") == Complex(1, 2)

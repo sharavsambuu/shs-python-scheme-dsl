@@ -173,7 +173,8 @@ Known deviations and boundaries:
   symbols, bytevectors, and the documented string/char escapes. Datum labels
   (`#1=`, `#1#`) and cyclic data are not supported (A14); rational literals
   read as the exact rationals they spell (`1/3`, R2 — `1/0` is a read error,
-  `1/x` stays a symbol).
+  `1/x` stays a symbol), and complex literals read and round-trip (`1+2i`,
+  `+i`, the polar `2@1`; `#e`/`#i` govern the whole — C3).
 
 The strict profile (`make_env(profile="r7rs")`) is what the conformance harness
 measures. The default profile adds the SRFI layer and the project extensions on
