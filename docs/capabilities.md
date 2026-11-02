@@ -33,7 +33,7 @@ scripting — the coverage is effectively complete.
 | Control flow | multiple values, `dynamic-wind`, parameters (dynamic scope), promises, escape continuations, `case-lambda` | `tests/test_r7rs.py` |
 | Argument passing | optional, named (keywords), defaults, rest — the full SRFI 89 surface | `tests/test_srfi.py`, ch. [25](lisp_tutorial/25-srfi-89-optional-and-named-parameters.md) |
 | Modularity | `define-library`/`import` with `only`/`except`/`prefix`/`rename`, load-once file modules, profiles + `cond-expand` | `tests/test_library.py`, `tests/test_profile.py` |
-| Interop & tooling | declared Python seam, string ports, file I/O, `process-context`, REPL, feature detection | `tests/test_architecture.py`, ch. [21](lisp_tutorial/21-embedding-in-python.md) |
+| Interop & tooling | declared Python seam, string ports, file I/O, `process-context`, REPL, feature detection | `tests/test_embed.py`, `tests/test_ports.py`, `tests/test_profile.py`, ch. [21](lisp_tutorial/21-embedding-in-python.md) |
 
 The point of the table: the missing percentages do not live here. A reader
 coming from Python finds every daily-driver feature present, and finds two
@@ -58,8 +58,8 @@ load-bearing in the shipped code.
 
 ### Tier 2 — the numeric/stdlib edge, small and documented
 
-- Numeric tower stops at exact integers + inexact reals: no exact rationals,
-  no complex numbers (`r7rs.md`).
+- Numeric tower: exact integers, exact rationals (R1), and inexact reals; no
+  complex numbers (`r7rs.md`, `numeric-tower.md`).
 - Immutable string literals; no datum labels, so cyclic data cannot be read
   or printed.
 - No regexps, no date-time library (SRFI 19 is not ingested), no JSON or
@@ -71,8 +71,10 @@ This tier is where the "90%" claim earns itself, because the language's own
 extension mechanisms (macros, the prelude, the Python seam) are exactly the
 tools for closing it:
 
-- **Generators / lazy sequences** — no continuation re-entry needed; a
-  closure over the remaining list is enough, and it works today:
+- **Generators / lazy sequences** — **landed as S9** (`lisp/generators.scm`,
+  chapter [28](lisp_tutorial/28-generators.md)): closures and `set!`, no
+  continuation re-entry, shipped in both profiles. The sketch below was the
+  pre-S9 shape, kept for the record:
 
   ```lisp
   (define (make-generator lst)
@@ -233,12 +235,16 @@ ontology layer.
 
 ## The recommendation
 
-If exactly one Tier-3 item is taken next, take **generators / lazy sequences
-as a prelude library**: it is the most-asked-for "modern" feature, it needs
-no interpreter change (the sketch above runs on today's core), and it would
-make the iteration code read closer to Python for newcomers. It is a natural
-S9-sized task: prelude additions, a test file, and a chapter alongside
-[22–27](lisp_tutorial/22-srfi-1-the-list-library.md).
+The S9 recommendation below has **landed**: generators are a prelude library
+(`lisp/generators.scm`), with tests, a chapter ([28](lisp_tutorial/28-generators.md)),
+and a matrix row in [`srfi.md`](srfi.md). The next Tier-3 item by the same
+logic — user value, no interpreter change — is **source locations** for the
+IDE, which is the first step of the numeric/IDE sequence in
+[`SRFI_TASKS.md`](SRFI_TASKS.md) and [`R7RS_TASKS.md`](R7RS_TASKS.md).
+
+> *(The original text, for the record: if exactly one Tier-3 item is taken
+> next, take generators / lazy sequences as a prelude library — the
+> most-asked-for "modern" feature, needing no interpreter change.)*
 
 ## See also
 
@@ -248,6 +254,6 @@ S9-sized task: prelude additions, a test file, and a chapter alongside
   above.
 - [`srfi.md`](srfi.md) — the SRFI matrix.
 - [`language.md`](language.md) — the one-stop language guide.
-- [`docs/SRFI_TASKS.md`](../../docs/SRFI_TASKS.md) — the task ledger, where an
+- [`docs/SRFI_TASKS.md`](SRFI_TASKS.md) — the task ledger, where an
   S9 (generator library) would be entered.
 

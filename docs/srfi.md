@@ -6,7 +6,7 @@
 > SRFI's semantics — audited name by name, with the tests to show it — or it
 > fails loudly as "not implemented yet". Nothing is aliased into pretending.
 > The plan and the per-name audit live in
-> [`docs/SRFI_TASKS.md`](../../docs/SRFI_TASKS.md); the umbrella language
+> [`docs/SRFI_TASKS.md`](SRFI_TASKS.md); the umbrella language
 > contract is [`lisp-dsl.md`](lisp-dsl.md); the base-language matrix is
 > [`r7rs.md`](r7rs.md).
 
@@ -269,6 +269,26 @@ appears here with a reason.
 - The dotted list patterns of SRFI 241 match a proper list's tail; an
   improper `Pair` is not a sequence in this dialect, so `(1 . 2)` patterns
   match no value here.
+
+## The generator library: prelude, not an SRFI (S9)
+
+Landing alongside the SRFI layer is **`lisp/generators.scm`** (task S9 in
+[`SRFI_TASKS.md`](SRFI_TASKS.md)): lazy sequences as ordinary closures. A
+generator is a procedure of zero arguments answering the next value, and the
+unique `generator-end` object at exhaustion — no evaluator change, no
+continuations, shipped in both profiles as part of the prelude.
+
+- **Constructors:** `generator`, `list->generator`, `vector->generator`,
+  `make-range-generator` (one argument is infinite), `make-cycle-generator`.
+- **Lazy combinators:** `gmap` (variadic, stops at the shortest, the SRFI 1
+  `map` rule made lazy), `gfilter`, `gtake`/`gdrop` (both answer generators).
+- **Drains:** `generator->list` (optional `k`), `generator->vector`,
+  `generator-fold`, `generator-for-each`.
+
+It is deliberately **not** claimed as `(srfi 158)`: that import still fails
+loudly, and will until the library is audited against SRFI 158's semantics
+name by name — the same gate every SRFI here passes. The tests are
+[`tests/test_generators.py`](../tests/test_generators.py).
 
 ## How to verify
 

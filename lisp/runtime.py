@@ -3,8 +3,9 @@
 Two layers are the *language*, and they always come:
 
 1. **core** — the primitives (:mod:`lisp.builtins`);
-2. **prelude** — the standard library and the ROP library, written in Lisp
-   itself (``lisp/prelude.scm``, ``lisp/rope.scm``).
+2. **prelude** — the standard library, the ROP library, and the generator
+   library, written in Lisp itself (``lisp/prelude.scm``, ``lisp/rope.scm``,
+   ``lisp/generators.scm``).
 
 Everything after that is an **extension**, and each can be left out:
 
@@ -41,13 +42,23 @@ from .loader import Loader
 from .reader import read_all
 from .types import intern, make_list, Primitive
 
-__all__ = ["load_file", "make_env", "run", "PRELUDE", "ROPE_PRELUDE"]
+__all__ = [
+    "load_file",
+    "make_env",
+    "run",
+    "PRELUDE",
+    "ROPE_PRELUDE",
+    "GENERATORS_PRELUDE",
+]
 
 #: The standard library, in Lisp.
 PRELUDE = Path(__file__).with_name("prelude.scm")
 
 #: The ROP library (Result, Kleisli, do-notation), also written in Lisp.
 ROPE_PRELUDE = Path(__file__).with_name("rope.scm")
+
+#: The generator library (lazy sequences, S9), also written in Lisp.
+GENERATORS_PRELUDE = Path(__file__).with_name("generators.scm")
 
 #: An extension is any callable ``env -> env`` or object with ``install(env)``.
 Extension = Any
@@ -117,6 +128,7 @@ def make_env(
     if prelude:
         loader.load_one(PRELUDE)
         loader.load_one(ROPE_PRELUDE)
+        loader.load_one(GENERATORS_PRELUDE)
 
     # The library system — registered after the prelude, because every
     # ``(scheme ...)`` export resolves against *env* itself: the bindings an

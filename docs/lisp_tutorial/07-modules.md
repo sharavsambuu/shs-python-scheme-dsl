@@ -174,12 +174,13 @@ EOF
 #f
 announcement-loaded
 #t
-3
+4
 1
 ```
 
-Two modules are loaded before the first form runs — `prelude.scm` and
-`rope.scm` — so the count starts at two and the announcement makes three. The
+Three modules are loaded before the first form runs — `prelude.scm`,
+`rope.scm`, and `generators.scm` — so the count starts at three and the
+announcement makes four. The
 search path here is just the working directory (`SHS_PATH` adds more). `(load …)`
 returns the module's *last value*, which is why the second line is the string
 the file ends with.

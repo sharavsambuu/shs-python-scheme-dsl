@@ -182,4 +182,4 @@ same
 > when it is a list's structure. Either way, the matcher names the value that
 > fits nothing — a silent default is the bug.
 
-Next: [Appendix A — Reference](appendix-a-reference.md).
+Next: [28 — Generators](28-generators.md).

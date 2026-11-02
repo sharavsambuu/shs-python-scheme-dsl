@@ -36,7 +36,8 @@ Part II is the language you will actually write day to day. Chapter
 [21](21-embedding-in-python.md) is the way out: how to take this language and put
 it over a project of your own. Chapters [22–27](22-srfi-1-the-list-library.md)
 are the SRFI layer — the standard batteries that ship pre-imported — one
-chapter per SRFI.
+chapter per SRFI; chapter [28](28-generators.md) is the generator library that
+ships beside them in the prelude.
 
 Every numbered chapter opens with **Before this / Time / After this you can**,
 and ends with **Try it** (a program you can paste and run) and **Exercises**.
@@ -68,6 +69,7 @@ Worked answers live in [`exercises/`](exercises/), and the test suite runs them
 | | [25 SRFI 89 — optional and named parameters](25-srfi-89-optional-and-named-parameters.md) | `define*`/`lambda*` and the keyword call syntax |
 | | [26 SRFI 197 — chain and nest](26-srfi-197-chain-and-nest.md) | Pipelines, early exit, and lexical substitution |
 | | [27 SRFI 241 — match](27-srfi-241-match.md) | Quasiquote patterns, guards, ellipsis, catamorphism |
+| | [28 Generators](28-generators.md) | Lazy sequences: infinite ranges, `gmap`/`gfilter`/`gtake`/`gdrop`, the drains |
 | **Appendix** | [A Reference](appendix-a-reference.md) | Signatures, common mistakes, CLI |
 | | [B Glossary](appendix-b-glossary.md) | The terms, and where each one lives |
 
