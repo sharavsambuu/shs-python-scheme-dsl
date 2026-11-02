@@ -7,6 +7,7 @@ but ``(write "hi")`` prints ``"hi"``.
 """
 from __future__ import annotations
 
+from fractions import Fraction
 from typing import Any
 
 from .types import (
@@ -54,7 +55,7 @@ def to_string(value: Any, write: bool = False) -> str:
     if isinstance(value, MutableString):
         text = value.text
         return _quote_string(text) if write else text
-    if isinstance(value, (int, float)):
+    if isinstance(value, (int, float, Fraction)):
         return _number_literal(value)
     if isinstance(value, list):
         return "(" + " ".join(to_string(item, write) for item in value) + ")"
@@ -178,12 +179,16 @@ def _quote_string(text: str) -> str:
     return f'"{escaped}"'
 
 
-def _number_literal(value: float | int) -> str:
+def _number_literal(value: float | int | Fraction) -> str:
     """A number as text, with the written inexact specials spelled out.
 
     ``repr`` handles integers and finite floats; R7RS's ``inf``/``nan`` have
-    their own literals (``+inf.0``), which the reader understands too.
+    their own literals (``+inf.0``), which the reader understands too. An
+    exact rational prints ``p/q`` — reduced, sign on the numerator — which the
+    reader reads back (R2 lands the literal side).
     """
+    if isinstance(value, Fraction):
+        return str(value)
     if isinstance(value, float):
         if value != value:
             return "+nan.0"

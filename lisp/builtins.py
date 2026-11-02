@@ -22,6 +22,7 @@ import os
 import sys
 import time
 import unicodedata
+from fractions import Fraction
 from typing import Any, Callable, Iterable, Optional, TextIO
 
 from .env import Environment
@@ -81,7 +82,10 @@ from .types import (
     to_cells,
 )
 
-Number = (int, float)
+#: The numeric tower's Python types: exact integers, exact rationals
+#: (:class:`fractions.Fraction` — always reduced, and normalized to ``int``
+#: whenever the denominator is 1), and inexact reals.
+Number = (int, float, Fraction)
 
 
 def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
@@ -97,17 +101,18 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     # Python's `bool` subclasses `int`, and `(+ #t 1)` would otherwise be 2
     # while `number?` says `#f`. The gate is the difference between the two
     # answers.
-    define("+", lambda *xs: sum((_expect_number(x, "+") for x in xs), 0))
+    define("+", lambda *xs: _normalize_rational(
+        sum((_expect_number(x, "+") for x in xs), 0)))
     define("-", _sub)
-    define("*", lambda *xs: _product(xs))
+    define("*", lambda *xs: _normalize_rational(_product(xs)))
     define("/", _div)
     define("modulo", _modulo)
     define("quotient", _quotient)
     define("remainder", _remainder)
-    define("abs", lambda x: abs(_expect_number(x, "abs")))
+    define("abs", lambda x: _normalize_rational(abs(_expect_number(x, "abs"))))
     define("min", _min)
     define("max", _max)
-    define("expt", lambda a, b: _expect_number(a, "expt") ** _expect_number(b, "expt"))
+    define("expt", _expt)
     define("sqrt", _sqrt)
     define("floor", _floor)
     define("ceiling", _ceiling)
@@ -136,10 +141,11 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     define(">=", lambda *xs: _chain(xs, lambda a, b: a >= b))
 
     define("number?", lambda x: isinstance(x, Number) and not isinstance(x, bool))
-    define("integer?", lambda x: isinstance(x, int) and not isinstance(x, bool))
-    # The tower is int/float only, and saying so is a feature: these answer
-    # honestly rather than pretending at rationals and complex numbers.
-    define("exact?", lambda x: isinstance(x, int) and not isinstance(x, bool))
+    define("integer?", _is_integer_value)
+    # The tower's exactness is a type question: an exact number is an ``int``
+    # or a ``Fraction`` (R1), an inexact one is a ``float``.
+    define("exact?", lambda x: (
+        (isinstance(x, int) and not isinstance(x, bool)) or isinstance(x, Fraction)))
     define("inexact?", lambda x: isinstance(x, float))
     define("exact-integer?", lambda x: isinstance(x, int) and not isinstance(x, bool))
     define("rational?", lambda x: isinstance(x, Number) and not isinstance(x, bool))
@@ -147,7 +153,13 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     define("complex?", lambda x: isinstance(x, Number) and not isinstance(x, bool))
     define("exact", _exact)
     define("inexact", _inexact)
-    define("square", lambda x: _expect_number(x, "square") ** 2)
+    # The R5RS spellings (A6/A7): the same two conversions under their
+    # historical names, so the optional `(scheme r5rs)` library imports whole.
+    # One place owns the semantics; these are aliases, not re-implementations.
+    define("exact->inexact", _inexact)
+    define("inexact->exact", _exact)
+    define("square", lambda x: _normalize_rational(
+        _expect_number(x, "square") ** 2))
     define("exact-integer-sqrt", _exact_integer_sqrt)
     define("numerator", _numerator)
     define("denominator", _denominator)
@@ -370,6 +382,28 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
         form, env if target is None else _expect_environment(target, "eval")))
     define("interaction-environment", lambda: env)
     define("environment", lambda *specs: _environment(env, specs))
+
+    def _r5rs_version(version: Any, who: str) -> None:
+        if version != 5:
+            raise LispError(f"{who}: only version 5 is defined (got {version})")
+
+    def null_environment(version: Any) -> Environment:
+        """``(null-environment 5)`` — syntax only: a root scope with no
+        bindings, where the special forms still work and nothing else does."""
+        _r5rs_version(version, "null-environment")
+        return Environment()
+
+    def scheme_report_environment(version: Any) -> Environment:
+        """``(scheme-report-environment 5)`` — the R5RS surface as this
+        interpreter spells it: the ``(scheme r5rs)`` exports in a root scope
+        (so a name outside that surface is unbound, as the report intends)."""
+        _r5rs_version(version, "scheme-report-environment")
+        from .library import environment_from_specs
+
+        return environment_from_specs(env, (read_all("(scheme r5rs)")[0],))
+
+    define("null-environment", null_environment)
+    define("scheme-report-environment", scheme_report_environment)
     define("features", lambda: make_list(feature_symbols()))
     define("read-string", lambda text: _read_first(text))
 
@@ -493,6 +527,55 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
 #  Number helpers                                                              #
 # --------------------------------------------------------------------------- #
 
+def _normalize_rational(value: Any) -> Any:
+    """A whole ``Fraction`` is an ``int`` — the tower never holds one.
+
+    Every exact arithmetic result passes through here (R1): ``(/ 4 2)`` is
+    ``2``, not ``Fraction(2, 1)``, so ``eqv?``, hashing, and printing keep one
+    spelling for one value.
+    """
+    if isinstance(value, Fraction) and value.denominator == 1:
+        return int(value)
+    return value
+
+
+def _is_integer_value(x: Any) -> bool:
+    """R7RS ``integer?`` is the mathematical property, not a type test (row
+    12): ``3.0`` is an integer. ``exact-integer?`` is the type-strict one,
+    and that distinction is why both exist.
+    """
+    if isinstance(x, bool):
+        return False
+    if isinstance(x, int):
+        return True
+    if isinstance(x, float):
+        return x.is_integer()
+    if isinstance(x, Fraction):
+        return x.denominator == 1  # unreachable post-normalization, but honest
+    return False
+
+
+def _expt(a: Any, b: Any) -> Any:
+    """``expt`` with the exactness rules of the design note's row 6.
+
+    Exact base, exact negative integer exponent → the exact rational
+    (``(expt 2 -1)`` is ``1/2``). A non-integral exact exponent is generally
+    irrational, so the honest answer is inexact. An inexact operand gives
+    IEEE double arithmetic, as everywhere else in the tower.
+    """
+    base = _expect_number(a, "expt")
+    exponent = _expect_number(b, "expt")
+    if isinstance(base, float) or isinstance(exponent, float):
+        return base ** exponent
+    if isinstance(exponent, Fraction):
+        return float(base) ** float(exponent)
+    if exponent >= 0:
+        return _normalize_rational(base ** exponent)
+    if base == 0:
+        raise LispTypeError("expt: zero to a negative power is a division by zero")
+    return _normalize_rational(Fraction(base) ** exponent)
+
+
 def _product(xs: Iterable[Any]) -> Any:
     total = 1
     for x in xs:
@@ -505,29 +588,40 @@ def _sub(*xs: Any) -> Any:
         raise LispTypeError("-: needs at least one argument")
     total = _expect_number(xs[0], "-")
     if len(xs) == 1:
-        return -total
+        return _normalize_rational(-total)
     for x in xs[1:]:
         total -= _expect_number(x, "-")
-    return total
+    return _normalize_rational(total)
 
 
 def _div(*xs: Any) -> Any:
+    """Scheme's ``/``: exactness-preserving, never silently truncating.
+
+    Exact operands divide exactly — a rational when the division is not even
+    (R1), an integer when it is. Any inexact operand gives IEEE double
+    arithmetic, where a zero divisor has an IEEE answer (``+inf.0`` by sign,
+    ``+nan.0`` for zero over zero). An *exact* zero divisor is an error, full
+    stop: the question has no answer in any tower this project will build.
+    """
     if not xs:
         raise LispTypeError("/: needs at least one argument")
     xs = tuple(_expect_number(x, "/") for x in xs)
     if len(xs) == 1:
-        return 1 / xs[0]
+        xs = (1, xs[0])
     total = xs[0]
-    exact = isinstance(total, int) and not isinstance(total, bool)
     for x in xs[1:]:
-        if x == 0:
+        if isinstance(x, float) and x == 0:
+            if total == 0 or (isinstance(total, float) and math.isnan(total)):
+                total = float("nan")
+            else:
+                sign = math.copysign(1.0, total) * math.copysign(1.0, x)
+                total = math.copysign(float("inf"), sign)
+        elif x == 0:
             raise LispTypeError("/: division by zero")
-        exact = exact and isinstance(x, int) and not isinstance(x, bool)
-        if exact and total % x == 0:
-            total = total // x
-        else:
-            exact = False
+        elif isinstance(total, float) or isinstance(x, float):
             total = total / x
+        else:
+            total = _normalize_rational(Fraction(total) / Fraction(x))
     return total
 
 
@@ -539,17 +633,31 @@ def _chain(xs: tuple, op: Callable[[Any, Any], bool]) -> bool:
 def _min(*xs: Any) -> Any:
     if len(xs) == 1 and isinstance(xs[0], list):
         xs = tuple(xs[0])
-    return min(_expect_number(x, "min") for x in xs)
+    values = tuple(_expect_number(x, "min") for x in xs)
+    result = min(values)
+    # Row 10: any inexact argument contaminates the result.
+    if any(isinstance(v, float) for v in values):
+        return float(result)
+    return result
 
 
 def _max(*xs: Any) -> Any:
     if len(xs) == 1 and isinstance(xs[0], list):
         xs = tuple(xs[0])
-    return max(_expect_number(x, "max") for x in xs)
+    values = tuple(_expect_number(x, "max") for x in xs)
+    result = max(values)
+    # Row 10: any inexact argument contaminates the result.
+    if any(isinstance(v, float) for v in values):
+        return float(result)
+    return result
 
 
 def _modulo(a: int, b: int) -> int:
-    return _expect_number(a, "modulo") % _expect_number(b, "modulo")
+    a = _expect_number(a, "modulo")
+    b = _expect_number(b, "modulo")
+    if b == 0:
+        raise LispTypeError("modulo: division by zero")
+    return a % b
 
 
 def _quotient(a: int, b: int) -> int:
@@ -558,22 +666,27 @@ def _quotient(a: int, b: int) -> int:
     Python's ``/`` would route even exact integers through a float, losing
     precision past 2**53; ``//`` floors instead of truncating. Do it with
     integer arithmetic so bignums stay exact and ``(quotient -7 2)`` is ``-3``.
+    Rationals truncate the same way; inexactness is preserved (row 9).
     """
     a = _expect_number(a, "quotient")
     b = _expect_number(b, "quotient")
+    if b == 0:
+        raise LispTypeError("quotient: division by zero")
     if isinstance(a, float) or isinstance(b, float):
-        return int(a / b)
+        return float(int(a / b))
     q = abs(a) // abs(b)
-    return q if (a < 0) == (b < 0) else -q
+    return _normalize_rational(q if (a < 0) == (b < 0) else -q)
 
 
 def _remainder(a: int, b: int) -> int:
     """The remainder whose sign follows the dividend (Scheme's ``remainder``)."""
     a = _expect_number(a, "remainder")
     b = _expect_number(b, "remainder")
+    if b == 0:
+        raise LispTypeError("remainder: division by zero")
     if isinstance(a, float) or isinstance(b, float):
         return a - b * int(a / b)
-    return a - b * _quotient(a, b)
+    return _normalize_rational(a - b * _quotient(a, b))
 
 
 def _math1(name: str, fn: Callable[[float], float], x: Any) -> float:
@@ -608,7 +721,12 @@ def _atan(y: Any, x: Any = None) -> float:
 
 
 def _sqrt(x: Any) -> Any:
-    """``sqrt``: an exact perfect square stays exact, anything else is inexact."""
+    """``sqrt``: an exact value with an exact rational root stays exact.
+
+    An exact integer's perfect square is its own root; a rational's root is
+    exact exactly when numerator and denominator both are perfect squares
+    (row 7 — ``(sqrt 1/4)`` is ``1/2``). Anything else is inexact.
+    """
     value = _expect_number(x, "sqrt")
     if value < 0:
         raise LispTypeError(
@@ -618,6 +736,11 @@ def _sqrt(x: Any) -> Any:
         root = math.isqrt(value)
         if root * root == value:
             return root
+    elif isinstance(value, Fraction):
+        root_n = math.isqrt(value.numerator)
+        root_d = math.isqrt(value.denominator)
+        if root_n * root_n == value.numerator and root_d * root_d == value.denominator:
+            return _normalize_rational(Fraction(root_n, root_d))
     return math.sqrt(value)
 
 
@@ -643,38 +766,46 @@ def _round(x: Any) -> Any:
 
 
 def _floor_quotient(a: int, b: int) -> int:
-    """Integer division rounding toward negative infinity (R7RS ``floor-quotient``)."""
-    _expect_int(a, "floor-quotient")
-    _expect_int(b, "floor-quotient")
+    """Integer division rounding toward negative infinity (R7RS ``floor-quotient``).
+
+    Rationals floor the exact quotient; integral inexact integers are
+    accepted and the result stays inexact.
+    """
+    a = _expect_number(a, "floor-quotient")
+    b = _expect_number(b, "floor-quotient")
     if b == 0:
         raise LispTypeError("floor-quotient: division by zero")
-    return a // b
+    if isinstance(a, float) or isinstance(b, float):
+        return float(math.floor(a / b))
+    return _normalize_rational(Fraction(a) // Fraction(b))
 
 
 def _floor_remainder(a: int, b: int) -> int:
     """The remainder whose sign follows the divisor (R7RS ``floor-remainder``)."""
-    _expect_int(a, "floor-remainder")
-    _expect_int(b, "floor-remainder")
+    a = _expect_number(a, "floor-remainder")
+    b = _expect_number(b, "floor-remainder")
     if b == 0:
         raise LispTypeError("floor-remainder: division by zero")
-    return a % b
+    if isinstance(a, float) or isinstance(b, float):
+        return a % b
+    return _normalize_rational(Fraction(a) % Fraction(b))
 
 
-def _exact(x: Any) -> int:
-    """``exact``: an integral inexact value becomes an exact integer.
+def _exact(x: Any) -> Any:
+    """``exact``: an exact value passes through; an inexact value converts to
+    the exact rational *numerically equal* to it (row 4 of the design note).
 
-    There are no exact rationals in this tower, so a non-integral float is an
-    implementation restriction rather than a quiet truncation.
+    The conversion is honest about the double: ``(exact 0.1)`` is the exact
+    binary value ``3602879701896397/36028797018963968``, not ``1/10`` — write
+    ``#e0.1`` when the decimal itself is what you mean. An infinity or a NaN
+    has no exact equal, so it raises.
     """
     value = _expect_number(x, "exact")
-    if isinstance(value, int):
+    if isinstance(value, (int, Fraction)):
         return value
-    if value.is_integer():
-        return int(value)
-    raise LispTypeError(
-        "exact: cannot represent a non-integral value exactly "
-        "(no exact rationals in this tower)"
-    )
+    if not math.isfinite(value):
+        raise LispTypeError("exact: an infinity or a NaN has no exact equal")
+    return _normalize_rational(Fraction(value))
 
 
 def _inexact(x: Any) -> float:
@@ -691,8 +822,10 @@ def _exact_integer_sqrt(n: Any) -> Values:
 
 
 def _numerator(x: Any) -> Any:
-    """The numerator of *x*; exact integers keep exactness, floats stay inexact."""
+    """The numerator of *x*; exact values keep exactness, floats stay inexact."""
     value = _expect_number(x, "numerator")
+    if isinstance(value, Fraction):
+        return value.numerator
     if isinstance(value, int):
         return value
     if not math.isfinite(value):
@@ -704,6 +837,8 @@ def _numerator(x: Any) -> Any:
 def _denominator(x: Any) -> Any:
     """The denominator of *x*; exact integers have denominator ``1``."""
     value = _expect_number(x, "denominator")
+    if isinstance(value, Fraction):
+        return value.denominator
     if isinstance(value, int):
         return 1
     if not math.isfinite(value):
@@ -712,21 +847,58 @@ def _denominator(x: Any) -> Any:
     return float(bottom)
 
 
-def _rationalize(x: Any, tolerance: Any) -> Any:
-    """The simplest rational within *tolerance* of *x*.
+def _simplest(lo: Fraction, hi: Fraction) -> Fraction:
+    """The simplest rational in ``[lo, hi]`` — fewest denominator digits.
 
-    Without exact rationals this cannot answer in general. An exact integer
-    is already its own simplest rational, so it passes through; anything else
-    is an explicit implementation restriction.
+    The classic continued-fraction algorithm: mirror negatives, answer 0 or 1
+    when the interval contains them, otherwise peel off the integer part and
+    recurse on the reciprocals of the fractional remainders. Terminates
+    because each recursion strictly shrinks the interval's distance from the
+    nearest integer.
     """
-    value = _expect_number(x, "rationalize")
-    _expect_number(tolerance, "rationalize")
-    if isinstance(value, int):
-        return value
-    raise LispTypeError(
-        "rationalize: no exact rationals in this tower; "
-        "only exact integers can be rationalized"
-    )
+    if lo > hi:
+        lo, hi = hi, lo
+    if lo == hi:
+        return lo
+    if lo < 0:
+        if hi < 0:
+            return -_simplest(-hi, -lo)
+        return Fraction(0)
+    if lo == 0:
+        return Fraction(0)
+    if lo < 1 <= hi:
+        return Fraction(1)
+    if hi < 1:
+        # 0 < lo < hi < 1: reciprocals flip the interval past 1.
+        return 1 / _simplest(1 / hi, 1 / lo)
+    # 1 <= lo < hi: peel the integer part.
+    n = lo.numerator // lo.denominator
+    if n + 1 <= hi:
+        return Fraction(n + 1)
+    return n + 1 / _simplest(1 / (hi - n), 1 / (lo - n))
+
+
+def _rationalize(x: Any, tolerance: Any) -> Any:
+    """The simplest rational within *tolerance* of *x* (R7RS).
+
+    Exact operands answer an exact rational — ``(rationalize 7/2 1/5)`` is
+    ``7/2``. Any inexact operand makes the result inexact (row 5): the work
+    happens exactly, then converts. An infinity or a NaN has no nearest
+    rational, so it raises.
+    """
+    xv = _expect_number(x, "rationalize")
+    tv = _expect_number(tolerance, "rationalize")
+    inexact = isinstance(xv, float) or isinstance(tv, float)
+    if inexact and (not math.isfinite(xv) or not math.isfinite(tv)):
+        raise LispTypeError("rationalize: expected finite numbers")
+    exact_x, exact_y = Fraction(xv), Fraction(tv)
+    if exact_y < 0:
+        exact_y = -exact_y
+    if exact_y == 0:
+        result = exact_x
+    else:
+        result = _simplest(exact_x - exact_y, exact_x + exact_y)
+    return float(result) if inexact else _normalize_rational(result)
 
 
 # --------------------------------------------------------------------------- #
@@ -750,19 +922,51 @@ def _expect_int(x: Any, who: str) -> int:
     raise LispTypeError(f"{who}: expected an integer, got {type(x).__name__}")
 
 
-def _gcd(values: tuple) -> int:
-    out = 0
+def _rational_gcd_lcm(values: tuple, who: str, lcm: bool) -> Any:
+    """The shared engine for ``gcd``/``lcm`` over the whole exact tower.
+
+    For rationals the identities are ``gcd(a/b, c/d) = gcd(a·d, c·b)/(b·d)``
+    and ``lcm(a/b, c/d) = lcm(a·d, c·b)/(b·d)`` — in numerator/denominator
+    terms, gcd pairs numerators with the *lcm* of denominators and vice versa.
+    Integral inexact integers are accepted (R7RS's whole-value rule, row 8);
+    any inexact argument makes the result inexact.
+    """
+    inexact = any(isinstance(v, float) for v in values)
+    rationals = []
     for value in values:
-        out = math.gcd(out, _expect_int(value, "gcd"))
-    return abs(out)
+        n = _expect_number(value, who)
+        if isinstance(n, float):
+            if not n.is_integer():
+                raise LispTypeError(
+                    f"{who}: expected an integer, got a non-integral float"
+                )
+            rationals.append(Fraction(int(n)))
+        else:
+            rationals.append(Fraction(n))
+    if lcm:
+        top, bottom = 1, 1
+        for r in rationals:
+            top = (
+                0
+                if top == 0 or r.numerator == 0
+                else abs(top * r.numerator) // math.gcd(top, r.numerator)
+            )
+            bottom = math.gcd(bottom, r.denominator)
+    else:
+        top, bottom = 0, 1
+        for r in rationals:
+            top = math.gcd(top, r.numerator)
+            bottom = bottom * r.denominator // math.gcd(bottom, r.denominator)
+    result = _normalize_rational(Fraction(top, bottom))
+    return float(result) if inexact else result
 
 
-def _lcm(values: tuple) -> int:
-    out = 1
-    for value in values:
-        n = _expect_int(value, "lcm")
-        out = 0 if out == 0 or n == 0 else abs(out * n) // math.gcd(out, n)
-    return out
+def _gcd(values: tuple) -> Any:
+    return _rational_gcd_lcm(values, "gcd", lcm=False)
+
+
+def _lcm(values: tuple) -> Any:
+    return _rational_gcd_lcm(values, "lcm", lcm=True)
 
 
 def _number_to_string(n: Any, radix: int = 10) -> str:
@@ -1692,7 +1896,22 @@ def _string_to_number(s: Any, radix: int = 10) -> Any:
     try:
         return float(text)
     except ValueError:
-        return False
+        pass
+    # R2: the reader's twin — a rational literal parses, and "1/0" is not a
+    # number, so #f rather than the read error the *reader* raises (row 20:
+    # a literal in source means it; a string conversion may politely fail).
+    head, sep, tail = text.partition("/")
+    if sep and tail.isdigit():
+        try:
+            numerator = int(head)
+        except ValueError:
+            return False
+        denominator = int(tail)
+        if denominator == 0:
+            return False
+        value = Fraction(numerator, denominator)
+        return int(value) if value.denominator == 1 else value
+    return False
 
 
 def _strings_in_step(strings: tuple, who: str) -> list:

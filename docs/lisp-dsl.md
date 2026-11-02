@@ -13,8 +13,8 @@ four questions in one place:
 
 The per-name truth lives in `docs/r7rs.md` (R7RS) and `docs/srfi.md` (SRFIs).
 This page is the contract those matrices implement. The work is tracked in
-[`docs/R7RS_TASKS.md`](../../docs/R7RS_TASKS.md) and
-[`docs/SRFI_TASKS.md`](../../docs/SRFI_TASKS.md).
+[`docs/R7RS_TASKS.md`](R7RS_TASKS.md) and
+[`docs/SRFI_TASKS.md`](SRFI_TASKS.md).
 
 > **Status.** The interpreter is mid-migration. The R7RS tasks (A0–A15) and the
 > SRFI tasks (S0–S8) are the plan; until they land, a name described here may
@@ -133,8 +133,8 @@ not an accident.
 
 | Layer | What it gives | Where it is specified |
 | --- | --- | --- |
-| **R7RS-small subset** | Reader, evaluator, tail calls, closures, the base procedures, `(scheme base)`, `(scheme write)` | `docs/r7rs.md`, [`docs/R7RS_TASKS.md`](../../docs/R7RS_TASKS.md) |
-| **SRFI layer** | SRFI 1, 26, 88, 89, 197, 241 | `docs/srfi.md`, [`docs/SRFI_TASKS.md`](../../docs/SRFI_TASKS.md) |
+| **R7RS-small subset** | Reader, evaluator, tail calls, closures, the base procedures, `(scheme base)`, `(scheme write)` | `docs/r7rs.md`, [`docs/R7RS_TASKS.md`](R7RS_TASKS.md) |
+| **SRFI layer** | SRFI 1, 26, 88, 89, 197, 241 | `docs/srfi.md`, [`docs/SRFI_TASKS.md`](SRFI_TASKS.md) |
 | **Python seam** | `install_primitives`, `install_extension`, `make_env`, `run`, `load_lisp` | `lisp/embed.py`, chapter [21](lisp_tutorial/21-embedding-in-python.md) |
 
 ### R7RS-small: the honest claim
@@ -153,8 +153,9 @@ Known deviations and boundaries:
 - **Truthiness.** R7RS semantics: only `#f` is false. `0`, `""`, and `()` are
   true values; ask `null?` when you mean "empty". (`NIL` keeps a false Python
   `__bool__` for the host's convenience; Lisp control flow uses `is_true`.)
-- **Numbers.** Exact integers and inexact reals; no exact rationals or complex
-  tower. `(scheme inexact)` is supported; `(scheme complex)` is not.
+- **Numbers.** Exact integers, exact rationals (R1: `fractions.Fraction`,
+  whole values normalized to integers), and inexact reals; no complex tower.
+  `(scheme inexact)` is supported; `(scheme complex)` is not.
 - **Continuations.** `call/cc` is escape-only. Option A does not rewrite the
   evaluator for re-entrant continuations.
 - **Strings.** Literals are immutable Python `str`; `make-string` and
@@ -169,8 +170,9 @@ Known deviations and boundaries:
 - **External representation.** `write` round-trips the forms the reader
   accepts, including radix/exactness prefixes, `+inf.0`/`+nan.0`, bar-quoted
   symbols, bytevectors, and the documented string/char escapes. Datum labels
-  (`#1=`, `#1#`) and cyclic data are not supported (A14); `1/3` reads as a
-  symbol because the tower has no exact rationals.
+  (`#1=`, `#1#`) and cyclic data are not supported (A14); rational literals
+  read as the exact rationals they spell (`1/3`, R2 — `1/0` is a read error,
+  `1/x` stays a symbol).
 
 The strict profile (`make_env(profile="r7rs")`) is what the conformance harness
 measures. The default profile adds the SRFI layer and the project extensions on
@@ -364,5 +366,5 @@ Update the page in the same change.
 - [Chapter 10 — railway-oriented programming](lisp_tutorial/10-railway-oriented.md)
 - [Chapter 21 — embedding in Python](lisp_tutorial/21-embedding-in-python.md)
 - [Appendix A — reference](lisp_tutorial/appendix-a-reference.md)
-- [`docs/R7RS_TASKS.md`](../../docs/R7RS_TASKS.md)
-- [`docs/SRFI_TASKS.md`](../../docs/SRFI_TASKS.md)
+- [`docs/R7RS_TASKS.md`](R7RS_TASKS.md)
+- [`docs/SRFI_TASKS.md`](SRFI_TASKS.md)

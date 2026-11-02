@@ -7,6 +7,8 @@ a silent one.
 """
 from __future__ import annotations
 
+from fractions import Fraction
+
 import pytest
 
 from lisp.errors import LispError, LispRecursionError, LispTypeError
@@ -64,7 +66,7 @@ def test_arithmetic_still_works_after_the_gate(env) -> None:
     assert run(env, "(- 10 1 2)") == 7
     assert run(env, "(- 5)") == -5
     assert run(env, "(/ 6 3)") == 2
-    assert run(env, "(/ 3 4)") == 0.75
+    assert run(env, "(/ 3 4)") == Fraction(3, 4)
     assert run(env, "(min 3 1 2)") == 1
     assert run(env, "(max 3 1 2)") == 3
     assert run(env, "(abs -3)") == 3

@@ -18,6 +18,7 @@ time anything is evaluated, quoting has already turned code into data.
 """
 from __future__ import annotations
 
+from fractions import Fraction
 from typing import Iterator, List
 
 from .errors import LispSyntaxError
@@ -184,9 +185,11 @@ def _number_from_literal(token: str):
     """A numeric literal, or :data:`NOT_A_NUMBER` if *token* is not one.
 
     Supports the R7RS radix and exactness prefixes in either order
-    (``#x1f``/``#b101``/``#e1``/``#i1``/``#e#x10``), and the written inexact
-    specials ``+inf.0``/``-inf.0``/``+nan.0``/``-nan.0``. Dotted rationals
-    (``1/3``) are outside the numeric tower; those tokens stay symbols.
+    (``#x1f``/``#b101``/``#e1``/``#i1``/``#e#x10``), the written inexact
+    specials ``+inf.0``/``-inf.0``/``+nan.0``/``-nan.0``, and — since R1/R2 —
+    rational literals: ``1/3`` reads as the exact rational it spells, and
+    ``#e`` makes any decimal exact (``#e1.5`` is ``3/2``, ``#e0.1`` is
+    ``1/10`` — the decimal denotes the rational, not the binary double).
     """
     if token in _INEXACT_NAMES:
         return _INEXACT_NAMES[token]
@@ -222,18 +225,27 @@ def _number_from_literal(token: str):
     if value is None:
         return NOT_A_NUMBER
     if exactness == "e":
-        return int(value) if isinstance(value, float) and value.is_integer() else value
+        # Row 2 of the design note: ``#e`` honours its promise. A decimal
+        # denotes the exact rational it spells — ``#e1.5`` is ``3/2`` and
+        # ``#e0.1`` is ``1/10``, not the binary double the float path gives.
+        try:
+            exact = Fraction(rest)
+        except (ValueError, ZeroDivisionError):
+            raise LispSyntaxError(f"bad number literal: {token}") from None
+        return int(exact) if exact.denominator == 1 else exact
     if exactness == "i":
         return float(value)
     return value
 
 
 def _plain_number(token: str):
-    """``42`` -> ``42``, ``3.5`` -> ``3.5``, anything else -> ``None``.
+    """``42`` -> ``42``, ``3.5`` -> ``3.5``, ``1/3`` -> ``Fraction(1, 3)``.
 
-    ``1/3`` and friends are intentionally *not* numbers here: the tower has no
-    exact rationals, so such a token falls through to the symbol path and the
-    deviation stays loud instead of silently wrong.
+    A rational literal is ``p/q``: optional sign, decimal digits both sides,
+    nonzero denominator — reduced, and normalized to ``int`` when whole, like
+    every exact value in the tower (R1). A zero denominator is a *read error*
+    (row 20): the token means a number, and that number does not exist.
+    Anything else with a slash — ``1/x``, ``1/2/3`` — stays a symbol.
     """
     try:
         return int(token)
@@ -242,7 +254,19 @@ def _plain_number(token: str):
     try:
         return float(token)
     except ValueError:
-        return None
+        pass
+    head, sep, tail = token.partition("/")
+    if sep and tail.isdigit():
+        try:
+            numerator = int(head)
+        except ValueError:
+            return None
+        denominator = int(tail)
+        if denominator == 0:
+            raise LispSyntaxError(f"bad number literal: {token}")
+        value = Fraction(numerator, denominator)
+        return int(value) if value.denominator == 1 else value
+    return None
 
 
 def _fold_symbol(token: str) -> str:

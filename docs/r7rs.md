@@ -50,11 +50,16 @@ but behaves differently is a **deviation**, listed below, not a pass.
 | `(scheme repl)` | 1/1 | 0/0 | supported |
 | `(scheme time)` | 3/3 | 0/0 | supported |
 | `(scheme write)` | 4/4 | 0/0 | supported |
-| `(scheme r5rs)` | 186/198 | 23/23 | optional |
+| `(scheme r5rs)` | 190/198 | 23/23 | optional |
 
 The `(scheme r5rs)` library is optional in the report itself. It is measured
-for completeness and does not gate the subset claim; its `exact->inexact` and
-`inexact->exact` aliases are absent until A6/A7.
+for completeness and does not gate the subset claim. A6/A7 landed its last
+four absent names — the `exact->inexact`/`inexact->exact` aliases and the
+`null-environment`/`scheme-report-environment` procedures — and taught the
+library system to resolve the report's auxiliary syntax (`else`, `unquote`,
+`unquote-splicing`) the way `(scheme base)`'s are, so the library now imports
+whole. The eight names still absent are the six `(scheme complex)` procedures
+and `transcript-on`/`transcript-off`, which R7RS itself excludes.
 
 ## The missing names
 
@@ -76,8 +81,11 @@ round-trip corpus covering every form below.
 - **Numbers.** Radix prefixes `#b`, `#o`, `#d`, `#x`; exactness prefixes `#e`,
   `#i`; the prefixes may appear in either order (`#e#x10`, `#x#e10`); the
   written inexact specials `+inf.0`, `-inf.0`, `+nan.0`, `-nan.0` read and
-  print. `#e` on a non-integral value returns the inexact value (there are no
-  exact rationals); `1/3` reads as a *symbol*, not a number.
+  print. Rational literals read as the exact rationals they spell — `1/3` is
+  `1/3`, reduced, and whole forms (`2/2`) read as integers — while `1/0` is a
+  read error and `1/x` stays a symbol. `#e` makes the number exact the way
+  the decimal spells it (`#e1.5` is `3/2`, `#e0.1` is `1/10`); `#i` forces
+  inexact. Rational literals are decimal only (`#x1/3` is refused).
 - **Symbols.** `|...|` preserves case and spaces. The printer wraps any symbol
   that is not a plain R7RS identifier in bars and escapes `\|` and `\\`;
   `\xHH;` is accepted inside the bars. A symbol such as `1+` therefore reads
@@ -106,7 +114,7 @@ instead.
 | --- | --- | --- |
 | Continuations | `call/cc` is escape-only; a continuation cannot be re-entered after its `dynamic-wind` extent ends. | Generators and coroutines built on re-entry do not work. `guard`, `dynamic-wind`, and escape continuations do. |
 | Libraries | `define-library`/`import`/`export` are supported (A13), with import sets `only`/`except`/`prefix`/`rename`. A `define-library` library's exports are validated at import time. | `(load ...)` remains the loader's own mechanism; `(environment ...)` returns a *restricted* import. |
-| Numbers | Exact integers and inexact reals only; no exact rationals, no complex tower. `(/ 3 4)` is `0.75` (never `0`), and `/` keeps an exact integer result when the division is even. `exact` of a non-integral float raises an implementation-restriction error, and `rationalize` accepts only exact integers. `floor`, `ceiling`, `truncate`, and `round` preserve inexactness (ties-to-even). | `1/3` is not an exact rational; complex procedures are missing (A7). |
+| Numbers | Exact integers, exact rationals (`p/q`, reduced; a whole rational is an integer), and inexact reals; no complex tower. `/` preserves exactness (`(/ 3 4)` is `3/4`; even division stays an integer), and a zero divisor answers IEEE semantics when inexact (`(/ 1 0.0)` is `+inf.0`) but is an error when exact. Rational literals read and print (`1/3`, `#e1.5` → `3/2`, `#e0.1` → `1/10`). `exact` converts any inexact value to the exact rational numerically equal to it (`(exact 3.5)` is `7/2`; an infinity or NaN raises), and `rationalize` answers the simplest rational within the tolerance (inexact operands give an inexact result). `expt` with a negative exact exponent answers a rational (`(expt 2 -1)` is `1/2`); `sqrt` of a rational stays exact when both parts are perfect squares. The division family (`quotient`, `remainder`, `modulo`, `floor-`/`truncate-` variants) takes rationals and preserves inexactness; a zero divisor is always an error. `gcd`/`lcm` take rationals and integral inexact integers. `min`/`max` contaminate: any inexact argument gives an inexact result. `integer?` is the mathematical property (`(integer? 3.0)` is `#t`); `exact-integer?` stays type-strict. `floor`, `ceiling`, `truncate`, and `round` preserve inexactness (ties-to-even). | Complex procedures are missing (phase C). |
 | Strings | Literals are immutable Python `str`; `make-string` and `string-copy` return a mutable wrapper. | `string-set!` on a literal raises a clear "immutable" error; mutate a `make-string`/`string-copy` result instead. |
 | Cycles | No datum labels (`#1=`, `#1#`); `write` does not detect shared structure. | Cyclic data cannot be read or printed; `equal?` can recurse forever on a cycle. |
 | Complex | `(scheme complex)` is not implemented; the numeric tower is real only. | `make-rectangular`, `real-part`, and complex literals are absent; `sqrt` of a negative number is an error, not a complex value. |
@@ -148,7 +156,7 @@ name or move it between `KNOWN_MISSING` and the matrix.
 
 - [`lisp-dsl.md`](lisp-dsl.md) — the umbrella contract: R7RS subset + SRFIs +
   default profile + Python seam.
-- [`docs/R7RS_TASKS.md`](../../docs/R7RS_TASKS.md) — A0–A15, including A13.
-- [`docs/SRFI_TASKS.md`](../../docs/SRFI_TASKS.md) — S0–S8.
+- [`docs/R7RS_TASKS.md`](R7RS_TASKS.md) — A0–A15, including A13.
+- [`docs/SRFI_TASKS.md`](SRFI_TASKS.md) — S0–S8.
 - [`lisp_tutorial/appendix-a-reference.md`](lisp_tutorial/appendix-a-reference.md)
   — the user-facing lookup sheet.

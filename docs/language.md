@@ -116,6 +116,8 @@ stable. The sugar the reader applies first:
 
   ```scheme
   #e#x10        ;=> 16
+  #e1.5         ;=> 3/2  (the decimal denotes the exact rational)
+  1/3           ;=> 1/3  (an exact rational; 1/0 is a read error)
   ```
 
   plus the inexact specials `+inf.0 -inf.0 +nan.0`
@@ -266,9 +268,12 @@ see [`r7rs.md`](r7rs.md) for the per-library matrix and
 [Appendix A](lisp_tutorial/appendix-a-reference.md) for the full name list.
 A few shapes worth knowing:
 
-- **Numbers.** Exact integers and inexact reals only — no exact rationals, no
-  complex tower. `(/ 3 4)` is `0.75` (never `0`); `round` is ties-to-even and
-  preserves inexactness; `exact` of a non-integral float raises.
+- **Numbers.** Exact integers, exact rationals (`p/q` — R1), and inexact
+  reals; no complex tower. `/` preserves exactness: `(/ 3 4)` is `3/4`, and
+  even division stays an integer. `round` is ties-to-even and preserves
+  inexactness; `exact` converts an inexact value to the exact rational
+  numerically equal to it (`(exact 3.5)` is `7/2`), and `rationalize`
+  answers the simplest rational within its tolerance.
 - **Pairs vs. host lists.** A proper list is a host list; `Pair` is reserved
   for dotted structure. `set-cdr!` works on `Pair` cells only, which is why a
   proper list's tail cannot be mutated in place.
@@ -361,7 +366,7 @@ files. Its rules:
 - **Load once** — a module is read and evaluated at most once per
   environment; the second `(load ...)` returns the first result and defines
   nothing again. The cache is keyed by the resolved absolute path, so
-  `domains/x.scm` and `./domains/x.scm` are one module.
+  `(load "domains/x.scm")` and `(load "./domains/x.scm")` are one module.
 - **Cycles are errors** — `a -> b -> a` raises, naming the chain, instead of
   looping forever.
 - `(loaded-modules)` reports the resolved paths, in load order.
@@ -456,7 +461,7 @@ The full table lives in [`r7rs.md`](r7rs.md); the short version:
 | Area | Deviation |
 | --- | --- |
 | Continuations | `call/cc` is escape-only; re-entry after the `dynamic-wind` extent ends does not work. `guard`, `dynamic-wind`, and escape continuations do. |
-| Numbers | Exact integers + inexact reals; no exact rationals, no complex tower. |
+| Numbers | Exact integers + exact rationals (R1) + inexact reals; no complex tower. |
 | Strings | Literals are immutable; mutate a `make-string`/`string-copy` result. |
 | Cycles | No datum labels (`#1=`); cyclic data cannot be read or printed. |
 | Libraries | `define-library`/`import` supported; `(load ...)` remains the loader's own mechanism. |
@@ -483,7 +488,7 @@ project extensions (`define-variant`, the ROP vocabulary, `->`/`->>`,
   modern-language checklist: parity, gaps, and the roadmap.
 - The tests are documentation with teeth: `tests/test_r7rs.py`,
   `tests/test_srfi.py`, `tests/test_profile.py`, `tests/test_rop.py`,
-  `tests/test_architecture.py`, `tests/test_tutorial.py`.
+  `tests/test_embed.py`, `tests/test_ports.py`, `tests/test_tutorial.py`.
 
 
 

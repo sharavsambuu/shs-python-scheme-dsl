@@ -19,7 +19,9 @@ set, and a name in the set may not start working without leaving it.
 
 from __future__ import annotations
 
+import math
 import re
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -602,21 +604,155 @@ def test_exactness_conversions_and_predicate(ev) -> None:
     assert ev("(exact-integer? 1.5)") is False
 
 
-def test_exact_rejects_a_non_integral_float(ev) -> None:
+def test_exact_converts_an_inexact_value_to_its_exact_equal(ev) -> None:
+    # Row 4: the implementation-restriction error is gone. The conversion is
+    # honest about the double — the exact value *numerically equal* to it.
+    assert ev("(exact 3.5)") == Fraction(7, 2)
+    assert ev("(exact 0.5)") == Fraction(1, 2)
+    assert ev("(exact 2.0)") == 2
+    assert type(ev("(exact 2.0)")) is int
+    assert ev("(exact 0.1)") == Fraction(0.1)  # the binary double, not 1/10
+    assert ev("(exact (/ 3 4))") == Fraction(3, 4)  # an exact value passes through
     from lisp.errors import LispTypeError
 
-    with pytest.raises(LispTypeError, match="non-integral"):
-        ev("(exact 3.5)")
+    with pytest.raises(LispTypeError, match="no exact equal"):
+        ev("(exact +inf.0)")
 
 
-def test_division_is_inexact_when_not_even_but_never_zero(ev) -> None:
-    assert ev("(/ 3 4)") == 0.75
-    assert ev("(/ 3 4)") != 0
+def test_the_r5rs_aliases_are_the_same_conversions(ev) -> None:
+    # A6/A7: the historical R5RS spellings are aliases of `exact`/`inexact` —
+    # one semantics (the same underlying function), two names.
+    assert ev("(exact->inexact 3)") == 3.0
+    assert type(ev("(exact->inexact 3)")) is float
+    assert ev("(inexact->exact 3.0)") == 3
+    assert type(ev("(inexact->exact 3.0)")) is int
+    assert ev("(inexact->exact 3.5)") == Fraction(7, 2)  # R3: converts, not raises
+    assert ev("(procedure? exact->inexact)") is True
+
+
+def test_scheme_r5rs_imports_whole(ev) -> None:
+    # The manifest always promised these names; before A6/A7 the import
+    # failed with "exports inexact->exact, but it is not bound".
+    ev("(import (scheme r5rs))")
+    assert ev("(exact->inexact (inexact->exact 2.0))") == 2.0
+
+
+def test_the_r5rs_environment_procedures(ev) -> None:
+    from lisp.errors import LispError
+
+    # A6/A7 grew one pair of hands: the import could not resolve until the
+    # report's two environment procedures existed either.
+    assert ev("(eval '(if #t 1 2) (null-environment 5))") == 1
+    # Syntax works, bindings do not: `car` is unbound in the null environment.
+    with pytest.raises(LispError, match="car"):
+        ev("(eval '(car '(1)) (null-environment 5))")
+    assert ev("(eval '(car '(1 2)) (scheme-report-environment 5))") == 1
+    assert ev("(eval '(exact->inexact 3) (scheme-report-environment 5))") == 3.0
+    # A name outside the R5RS surface is unbound there, as the report intends.
+    with pytest.raises(LispError, match="generator->list"):
+        ev("(eval '(generator->list (generator 1)) (scheme-report-environment 5))")
+    with pytest.raises(LispError, match="version 5"):
+        ev("(null-environment 4)")
+
+
+def test_division_preserves_exactness_and_never_divides_by_zero(ev) -> None:
+    # R1: `/` answers an exact rational when the exact division is not even —
+    # the design note's headline change (row 1).
+    assert ev("(/ 3 4)") == Fraction(3, 4)
     assert ev("(/ 12 4)") == 3
     assert type(ev("(/ 12 4)")) is int
     assert ev("(/ 12 4.0)") == 3.0
     assert type(ev("(/ 12 4.0)")) is float
-    assert ev("(/ 1 3 3)") == pytest.approx(1 / 9)
+    assert ev("(/ 1 3 3)") == Fraction(1, 9)
+
+
+def test_exact_rationals_are_a_type(ev) -> None:
+    # R1: the tower grows Fraction — exact, reduced, whole values normalized.
+    value = ev("(/ 6 4)")
+    assert value == Fraction(3, 2)
+    assert type(value) is Fraction
+    assert ev("(exact? (/ 3 4))") is True
+    assert ev("(inexact? (/ 3 4))") is False
+    assert ev("(rational? (/ 3 4))") is True
+    assert ev("(real? (/ 3 4))") is True
+    assert ev("(number? (/ 3 4))") is True
+    assert ev("(integer? (/ 4 2))") is True
+    assert ev("(exact-integer? (/ 4 2))") is True
+
+
+def test_rational_arithmetic_normalizes(ev) -> None:
+    # A whole rational is an integer: the tower never holds Fraction(2, 1).
+    assert ev("(+ (/ 1 2) (/ 1 2))") == 1
+    assert type(ev("(+ (/ 1 2) (/ 1 2))")) is int
+    assert ev("(* (/ 2 3) (/ 3 2))") == 1
+    assert ev("(- (/ 1 2) (/ 1 4))") == Fraction(1, 4)
+    assert ev("(/ 2)") == Fraction(1, 2)
+    assert ev("(/ (/ 1 2))") == 2
+    assert ev("(abs (- (/ 1 2)))") == Fraction(1, 2)
+    assert ev("(expt (/ 2 3) 2)") == Fraction(4, 9)
+
+
+def test_inexact_operands_contaminate(ev) -> None:
+    # Exact op exact is exact; any inexact operand makes the result inexact.
+    assert ev("(+ (/ 1 2) 0.5)") == 1.0
+    assert type(ev("(+ (/ 1 2) 0.5)")) is float
+    assert ev("(* (/ 1 3) 3.0)") == 1.0
+    assert type(ev("(* (/ 1 3) 3.0)")) is float
+    assert ev("(/ 1.0 3)") == pytest.approx(1 / 3)
+
+
+def test_division_by_inexact_zero_answers_ieee(ev) -> None:
+    # Row 11: an inexact zero divisor has IEEE answers; an exact zero divisor
+    # is an error, full stop — even for an inexact dividend.
+    assert ev("(/ 1 0.0)") == float("inf")
+    assert ev("(/ -1 0.0)") == float("-inf")
+    assert ev("(/ 1.0 0.0)") == float("inf")
+    assert math.isnan(ev("(/ 0 0.0)"))
+    from lisp.errors import LispTypeError
+
+    with pytest.raises(LispTypeError, match="division by zero"):
+        ev("(/ 1 0)")
+    with pytest.raises(LispTypeError, match="division by zero"):
+        ev("(/ 1.0 0)")
+
+
+def test_eqv_and_equal_distinguish_exactness(ev) -> None:
+    # Row 16: exactness distinguishes eqv?; = stays numerical.
+    assert ev("(eqv? (/ 3 4) 0.75)") is False
+    assert ev("(eqv? (/ 3 4) (/ 3 4))") is True
+    assert ev("(eqv? (/ 4 2) 2)") is True
+    assert ev("(equal? (/ 3 4) (/ 3 4))") is True
+    assert ev("(= (/ 3 4) 0.75)") is True
+
+
+def test_rationals_print_and_convert(ev) -> None:
+    # The printer's ``p/q`` is what R2's reader will read back.
+    assert ev("(number->string (/ 3 4))") == "3/4"
+    assert ev("(number->string (/ -3 4))") == "-3/4"
+    assert ev("(exact->inexact (/ 3 4))") == 0.75
+    assert ev("(inexact (/ 3 4))") == 0.75
+    assert ev("(exact (/ 3 4))") == Fraction(3, 4)
+    assert ev("(numerator (/ 3 4))") == 3
+    assert ev("(denominator (/ 3 4))") == 4
+
+
+def test_string_to_number_reads_rationals(ev) -> None:
+    # Row 17: the reader's twin. A rational string parses; "1/0" is not a
+    # number, so #f rather than the error the *reader* raises.
+    assert ev('(string->number "3/4")') == Fraction(3, 4)
+    assert ev('(string->number "-3/4")') == Fraction(-3, 4)
+    assert ev('(string->number "2/2")') == 1
+    assert ev('(string->number "1/0")') is False
+    assert ev('(string->number "1/x")') is False
+    assert ev('(string->number "3/4" 16)') is False  # row 18: decimal only
+
+
+def test_exactness_prefix_denotes_the_rational(ev) -> None:
+    # Row 2, from the evaluator side: `#e1.5` is the exact rational the
+    # decimal spells, not the binary double.
+    assert ev("#e1.5") == Fraction(3, 2)
+    assert ev("#e0.1") == Fraction(1, 10)
+    assert ev("#e1/3") == Fraction(1, 3)
 
 
 def test_division_by_zero_is_a_lisp_error(ev) -> None:
@@ -653,12 +789,136 @@ def test_numerator_and_denominator(ev) -> None:
     assert ev("(denominator 0.5)") == 2.0
 
 
-def test_rationalize_is_an_explicit_restriction(ev) -> None:
+def test_rationalize_answers_the_simplest_rational(ev) -> None:
+    # Row 5: the R7RS algorithm, on exact rationals. The classic example:
+    # the simplest rational within 1/5 of 7/2 is 7/2 itself.
+    assert ev("(rationalize (/ 7 2) (/ 1 5))") == Fraction(7, 2)
+    assert ev("(rationalize (/ 1 3) (/ 1 100))") == Fraction(1, 3)
+    assert ev("(rationalize 5 0)") == 5
+    assert ev("(rationalize 0 1)") == 0
+    assert ev("(rationalize (/ -1 2) (/ 1 4))") == Fraction(-1, 2)
+    # An inexact operand makes the result inexact: computed exactly, then
+    # converted — the textbook answer for (3.5, 0.1) is 7/2, i.e. 3.5.
+    assert ev("(rationalize 3.5 0.1)") == 3.5
+    assert type(ev("(rationalize 3.5 0.1)")) is float
+    assert ev("(rationalize 3 0.1)") == 3.0
+    assert type(ev("(rationalize 3 0.1)")) is float
     from lisp.errors import LispTypeError
 
-    assert ev("(rationalize 3 0.1)") == 3
-    with pytest.raises(LispTypeError, match="rationalize"):
-        ev("(rationalize 3.5 0.1)")
+    with pytest.raises(LispTypeError, match="finite"):
+        ev("(rationalize +inf.0 0.1)")
+
+
+# --------------------------------------------------------------------------- #
+#  R4: the exact cases, the division family, and the contagion rules          #
+# --------------------------------------------------------------------------- #
+
+
+def test_expt_exact_negative_exponent_answers_a_rational(ev) -> None:
+    # Row 6: exact base, exact negative integer exponent.
+    assert ev("(expt 2 -1)") == Fraction(1, 2)
+    assert ev("(expt 2 -3)") == Fraction(1, 8)
+    assert ev("(expt (/ 2 3) -2)") == Fraction(9, 4)
+    assert ev("(expt 2 10)") == 1024
+    assert type(ev("(expt 2 10)")) is int
+    # A non-integral exact exponent is generally irrational: inexact.
+    assert ev("(expt 2 (/ 1 2))") == pytest.approx(2 ** 0.5)
+    assert ev("(expt 4 (/ 1 2))") == 2.0
+    from lisp.errors import LispTypeError
+
+    with pytest.raises(LispTypeError, match="division by zero"):
+        ev("(expt 0 -1)")
+
+
+def test_sqrt_of_a_rational_stays_exact_when_it_can(ev) -> None:
+    # Row 7: numerator and denominator both perfect squares.
+    assert ev("(sqrt (/ 1 4))") == Fraction(1, 2)
+    assert ev("(sqrt (/ 9 4))") == Fraction(3, 2)
+    assert ev("(sqrt 4)") == 2
+    assert ev("(sqrt 2)") == pytest.approx(2 ** 0.5)  # irrational stays inexact
+    assert ev("(sqrt (/ 2 4))") == pytest.approx(2 ** -0.5)  # 1/2 has no rational root
+
+
+def test_the_division_family_takes_rationals(ev) -> None:
+    # Row 9's exact half: the family operates on exact rationals.
+    # (quotient 7/2 2) is truncate(7/4) = 1 — the divisor divides the quotient.
+    assert ev("(quotient (/ 7 2) 2)") == 1
+    assert ev("(quotient (/ -7 2) 2)") == -1  # truncation, not floor
+    assert ev("(remainder (/ 7 2) 2)") == Fraction(3, 2)
+    assert ev("(modulo (/ 7 2) 2)") == Fraction(3, 2)
+    assert ev("(floor-quotient (/ 7 2) 2)") == 1
+    assert ev("(floor-remainder (/ -7 2) 2)") == Fraction(1, 2)
+    assert ev("(call-with-values (lambda () (floor/ (/ 7 2) 2)) list)") == [1, Fraction(3, 2)]
+
+
+def test_the_division_family_preserves_inexactness(ev) -> None:
+    # Row 9: `(quotient 7.0 2)` is `3.0` — consistent with `modulo`, which
+    # always preserved it.
+    assert ev("(quotient 7.0 2)") == 3.0
+    assert type(ev("(quotient 7.0 2)")) is float
+    assert ev("(remainder 7.0 2)") == 1.0
+    assert type(ev("(remainder 7.0 2)")) is float
+    assert ev("(floor-quotient 7.0 2)") == 3.0
+    assert ev("(floor-remainder 7.0 2)") == 1.0
+    assert ev("(modulo -7.0 2)") == 1.0
+
+
+def test_the_division_family_refuses_a_zero_divisor_loudly(ev) -> None:
+    # A hazard closed while in the family: `modulo`/`quotient` by exact zero
+    # used to leak a raw Python ZeroDivisionError.
+    from lisp.errors import LispTypeError
+
+    for source in (
+        "(modulo 1 0)",
+        "(quotient 1 0)",
+        "(remainder 1 0)",
+        "(floor-quotient 1 0)",
+        "(floor-remainder 1 0)",
+    ):
+        with pytest.raises(LispTypeError, match="division by zero"):
+            ev(source)
+
+
+def test_gcd_and_lcm_take_rationals_and_integral_inexact_integers(ev) -> None:
+    # Row 8: gcd(a/b, c/d) = gcd(a·d, c·b)/(b·d); the whole-value rule for
+    # inexact arguments, and exactness contagion.
+    assert ev("(gcd 2 4)") == 2
+    assert ev("(gcd (/ 1 2) (/ 1 3))") == Fraction(1, 6)
+    assert ev("(lcm (/ 1 2) (/ 1 3))") == 1
+    assert ev("(lcm (/ 2 3) (/ 3 4))") == 6  # lcm(8, 9) / gcd(3, 4) = 72/12
+    assert ev("(gcd 2.0 4)") == 2.0
+    assert type(ev("(gcd 2.0 4)")) is float
+    assert ev("(lcm 4.0 6)") == 12.0
+    assert ev("(gcd)") == 0
+    assert ev("(lcm)") == 1
+    from lisp.errors import LispTypeError
+
+    with pytest.raises(LispTypeError, match="non-integral float"):
+        ev("(gcd 2.5 4)")
+
+
+def test_min_and_max_contaminate(ev) -> None:
+    # Row 10: any inexact argument makes the result inexact.
+    assert ev("(min 1 2.0)") == 1.0
+    assert type(ev("(min 1 2.0)")) is float
+    assert ev("(max 1 2.0)") == 2.0
+    assert type(ev("(max 1 2.0)")) is float
+    assert ev("(min (/ 1 2) 0.4)") == 0.4
+    assert ev("(min 1 2)") == 1
+    assert type(ev("(min 1 2)")) is int
+    assert ev("(min (/ 1 2) (/ 1 3))") == Fraction(1, 3)
+
+
+def test_integer_predicate_is_the_mathematical_property(ev) -> None:
+    # Row 12: `3.0` is an integer; `exact-integer?` stays type-strict.
+    assert ev("(integer? 3.0)") is True
+    assert ev("(integer? 3.5)") is False
+    assert ev("(integer? 3)") is True
+    assert ev("(integer? (/ 4 2))") is True
+    assert ev("(integer? (/ 3 4))") is False
+    assert ev("(integer? #t)") is False
+    assert ev("(exact-integer? 3.0)") is False
+    assert ev("(exact-integer? 3)") is True
 
 
 def test_rounding_preserves_inexactness_and_is_ties_to_even(ev) -> None:

@@ -1,6 +1,8 @@
 """The reader: text in, forms out."""
 from __future__ import annotations
 
+from fractions import Fraction
+
 import pytest
 
 from lisp.errors import LispSyntaxError
@@ -14,6 +16,59 @@ def test_reads_numbers() -> None:
     assert read_one("-7") == -7
     assert read_one("3.5") == 3.5
     assert isinstance(read_one("42"), int)
+
+
+def test_reads_rational_literals() -> None:
+    # R2: `p/q` reads as the exact rational it spells — reduced, and
+    # normalized to an integer when whole, like every exact value.
+    assert read_one("1/3") == Fraction(1, 3)
+    assert read_one("-3/4") == Fraction(-3, 4)
+    assert read_one("+1/3") == Fraction(1, 3)
+    assert read_one("2/4") == Fraction(1, 2)  # reduced
+    assert read_one("2/2") == 1               # whole -> int
+    assert type(read_one("2/2")) is int
+    assert read_one("0/5") == 0
+
+
+def test_a_zero_denominator_is_a_read_error() -> None:
+    # Row 20: `1/0` means a number that does not exist — it must not quietly
+    # become a symbol.
+    with pytest.raises(LispSyntaxError, match="1/0"):
+        read_one("1/0")
+    with pytest.raises(LispSyntaxError, match="bad number literal"):
+        read_one("-1/0")
+
+
+def test_slash_tokens_that_are_not_rationals_stay_symbols() -> None:
+    for text in ("1/x", "1/2/3", "1/", "a/b"):
+        assert is_symbol(read_one(text)), text
+
+
+def test_exactness_prefix_honours_its_promise() -> None:
+    # Row 2: `#e` makes the number exact — a decimal denotes the rational it
+    # spells, not the binary double.
+    assert read_one("#e1.5") == Fraction(3, 2)
+    assert read_one("#e0.1") == Fraction(1, 10)
+    assert read_one("#e1/3") == Fraction(1, 3)
+    assert read_one("#e10") == 10
+    assert read_one("#e#x10") == 16
+    assert read_one("#i2") == 2.0
+    assert type(read_one("#i2")) is float
+    assert read_one("#i1/3") == pytest.approx(1 / 3)
+
+
+def test_rational_literals_are_decimal_only() -> None:
+    # Row 18: R7RS requires no radix-rational spelling, so `#x1/3` is refused
+    # rather than guessed at.
+    with pytest.raises(LispSyntaxError, match="bad number literal"):
+        read_one("#x1/3")
+
+
+def test_rationals_round_trip_through_the_printer() -> None:
+    # The printer's `p/q` is the reader's literal: write must read back.
+    for text in ("1/3", "-3/4", "22/7"):
+        value = read_one(text)
+        assert read_one(to_string(value, write=True)) == value, text
 
 
 def test_reads_symbols() -> None:
