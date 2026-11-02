@@ -36,9 +36,11 @@
   - the manifest's r5rs `syntax` list carried `else`/`unquote`/
     `unquote-splicing` as if they were bindings — they are auxiliary syntax,
     and now sit in the `auxiliary` field exactly as `(scheme base)`'s do.
-  The matrix is 190/198 procedures ([`r7rs.md`](r7rs.md)); the eight absent
-  are the six complex numbers below plus `transcript-on`/`transcript-off`,
-  which R7RS itself excludes.
+  The matrix was 190/198 procedures at that landing ([`r7rs.md`](r7rs.md));
+  the eight absent were the six complex numbers below plus
+  `transcript-on`/`transcript-off`, which R7RS itself excludes. The complex
+  tower has since landed (phase C below): the matrix is 196/198, and only
+  the report's own exclusions remain.
 
 ## Open
 

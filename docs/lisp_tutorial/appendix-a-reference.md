@@ -45,9 +45,10 @@ that is not a plain identifier prints between bars (`|1+|`).
   `exact-integer-sqrt` `= < > <= >=` `number? integer? exact-integer?`
 - **Exactness** `exact inexact exact? inexact? rational? real? complex?`
   `numerator denominator rationalize` — the tower is exact integers, exact
-  rationals, exact complex pairs (C1: `make-rectangular`/`real-part`/
-  `imag-part`), and inexact reals; the predicates say exactly that, and
-  `(/ 3 4)` is `3/4`
+  rationals, exact complex pairs (C1–C2: `make-rectangular`/`real-part`/
+  `imag-part` and the polar half), and inexact reals; the predicates say
+  exactly that, and `(/ 3 4)` is `3/4`. Complex literals read and round-trip
+  (C3: `1+2i`, `+i`, the polar `2@1`)
 - **Inexact math** `finite? infinite? nan? exp log sin cos tan asin acos
   atan` — `(log x base)` and `(atan y x)` take their optional second
   argument; the complex tower's polar half (`magnitude`, `angle`,

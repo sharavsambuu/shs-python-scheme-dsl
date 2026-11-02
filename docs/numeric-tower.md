@@ -19,16 +19,17 @@
 > takes rationals and preserves inexactness, `gcd`/`lcm` take rationals,
 > `min`/`max` contaminate, and `integer?` is the mathematical property.
 > **Every CHANGE row of the table is live.** The KEEP rows held throughout.
-> **C1–C3 have landed**: the exact complex pair of the phase C section exists
-> (`lisp/types.py`'s `Complex`), with **rows 1–14 all live** — `make-rectangular`,
-> `real-part`, `imag-part`, the polar half (`magnitude`, `angle`, `make-polar`),
-> exact arithmetic, exact `sqrt` of negative perfect squares, `(log -1)` →
-> `+iπ`, the complex transcendentals, contagion, `eqv?`/`equal?`, the
-> real-only family's guard, and the reader/printer round trip (row 13–14:
-> `1+2i`, `1/2+1/3i`, `+i`, the polar `2@1`, with `#e`/`#i` governing the
-> whole; `string->number` is the reader's twin). **C4** remains: the final
-> doc sweep and the matrix counts. The "Today" column below records the
-> pre-R1 tower this note was written against.
+> **C1–C4 have landed — phase C is complete.** The exact complex pair of the
+> phase C section exists (`lisp/types.py`'s `Complex`), with **rows 1–14 all
+> live** — `make-rectangular`, `real-part`, `imag-part`, the polar half
+> (`magnitude`, `angle`, `make-polar`), exact arithmetic, exact `sqrt` of
+> negative perfect squares, `(log -1)` → `+iπ`, the complex transcendentals,
+> contagion, `eqv?`/`equal?`, the real-only family's guard, and the
+> reader/printer round trip (rows 13–14: `1+2i`, `1/2+1/3i`, `+i`, the polar
+> `2@1`, with `#e`/`#i` governing the whole; `string->number` is the
+> reader's twin). `(scheme complex)` is 6/6, `(scheme r5rs)` is 196/198, and
+> `KNOWN_MISSING` is empty. The "Today" column below records the pre-R1
+> tower this note was written against.
 
 ## Where the tower stands
 
@@ -204,12 +205,12 @@ a NaN in either part makes every arithmetic answer `+nan.0+nan.0i`-shaped
 garbage honestly rather than hiding it; `(exact 1.0+0.0i)` is the exact
 complex `1+0i` — which collapses to `1` by row 2.
 
-**Matrix impact:** the six `KNOWN_MISSING` names leave
+**Matrix impact, as landed:** the six `KNOWN_MISSING` names left across C1–C2
 (`magnitude`, `angle`, `real-part`, `imag-part`, `make-rectangular`,
-`make-polar`); `(scheme complex)` moves 0/6 → 6/6; `(scheme r5rs)` moves
+`make-polar`); `(scheme complex)` moved 0/6 → 6/6; `(scheme r5rs)` moved
 190/198 → 196/198, leaving only `transcript-on`/`transcript-off`, which R7RS
-itself excludes. The base-library `sqrt`/`log` verdict changes (row 8) —
-their tests flip in the same change, R1-style.
+itself excludes. The base-library `sqrt`/`log` verdict changed (row 8) —
+their tests flipped in C2, R1-style.
 
 **Rollout:** C1 — the exact complex pair, normalization, predicates,
 arithmetic, `eqv?`/`equal?`; C2 — the six procedures, `sqrt`/`log` of

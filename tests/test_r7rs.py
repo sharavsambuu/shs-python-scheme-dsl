@@ -1293,8 +1293,7 @@ def test_cond_expand_and_or_not_and_else(ev) -> None:
 
 def test_cond_expand_library_requirement(ev) -> None:
     assert ev("(cond-expand ((library (scheme base)) 1) (else 2))") == 1
-    # (scheme complex) is half-landed (C1), so the feature test answers true;
-    # the polar half is still in KNOWN_MISSING — C2 does not change this test.
+    # (scheme complex) landed whole in C1–C2, so the feature test answers true.
     assert ev("(cond-expand ((library (scheme complex)) 1) (else 2))") == 1
     assert ev("(cond-expand ((library (no such)) 1) (else 2))") == 2
 
@@ -1458,7 +1457,7 @@ def test_inexact_contagion_reaches_the_complex_pair(ev) -> None:
 
 
 def test_complex_values_print_as_r7rs_text(ev) -> None:
-    """Row 13's printing half; the reader round-trip is C3's pin."""
+    """Row 13's printing half; the reader round-trip landed in C3."""
     assert ev("(number->string (make-rectangular 1 2))") == "1+2i"
     assert ev("(number->string (make-rectangular 1 -2))") == "1-2i"
     assert ev("(number->string (make-rectangular 0 1))") == "0+i"
