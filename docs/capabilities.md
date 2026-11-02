@@ -7,8 +7,13 @@
 > [`srfi.md`](srfi.md), the contract in [`lisp-dsl.md`](lisp-dsl.md), and the
 > tests. Where a claim here and a test disagree, the test wins.
 >
-> **Status.** Assessed 2026-10-31, after S8 (the profiles) and the `.scm`
-> rename, at 1095 passing tests.
+> **Status.** First assessed 2026-10-31, after S8 (the profiles) and the
+> `.scm` rename. Re-assessed 2026-11-03 after phase C of the numeric tower
+> (C1–C4: exact complex pairs, the polar half, complex literals) — the full
+> suite is 872 passing tests, `(scheme complex)` is 6/6, and `KNOWN_MISSING`
+> is empty. The [fitness-for-use section](#fitness-for-use-what-to-build-with-it)
+> below answers the follow-up this re-assessment was asked for: *what is it
+> good enough to build?*
 
 ## The verdict, in one paragraph
 
@@ -20,7 +25,11 @@ orientation, static analysis — it is closer to **65–70%**, and the differenc
 is mostly *deliberate*: nearly every structural gap is written down as a
 documented non-goal rather than an accident. For the domain the language
 targets — pure domain rules, pipelines, typed control flow, embedded
-scripting — the coverage is effectively complete.
+scripting — the coverage is effectively complete. The numeric/stdlib edge
+that the first assessment logged as Tier 2 has since closed: the complex
+tower landed whole (phase C, C1–C4), so the tower is now exact integers,
+exact rationals, exact complex pairs, and inexact reals, with literals that
+round-trip.
 
 ## Where the DSL is at parity (or ahead)
 
@@ -58,8 +67,10 @@ load-bearing in the shipped code.
 
 ### Tier 2 — the numeric/stdlib edge, small and documented
 
-- Numeric tower: exact integers, exact rationals (R1), and inexact reals; no
-  complex numbers (`r7rs.md`, `numeric-tower.md`).
+- Numeric tower: exact integers, exact rationals (R1), exact complex pairs
+  (C1–C4: the rectangular and polar halves, complex literals with `#e`/`#i`,
+  the complex transcendentals — `r7rs.md`, `numeric-tower.md`), and inexact
+  reals. The "no complex numbers" gap this tier used to list is closed.
 - Immutable string literals; no datum labels, so cyclic data cannot be read
   or printed.
 - No regexps, no date-time library (SRFI 19 is not ingested), no JSON or
@@ -138,6 +149,58 @@ table is pinned by a test; every gap in Tiers 1–2 is listed in a matrix that
 a test keeps honest (`KNOWN_MISSING` in `tests/r7rs_manifest.py`, the
 withdrawn `(srfi 204)` handler in `lisp/library.py`). The tier-3 items are
 neither claimed nor tested — they are the roadmap.
+
+## Fitness for use: what to build with it
+
+Asked and answered 2026-11-03: *is this good enough to use for various
+ideas, with the impossible parts implemented through Python?* Yes — with a
+clear-eyed view of what it is good for and where the walls are. The escape
+hatch the question assumes is not a workaround; it is the design.
+
+### Use it confidently for
+
+- **Embedded scripting and rules/policy layers** in a Python application —
+  the sweet spot. The profiles decide how much power to hand over
+  (`make_env(profile="r7rs")` vs the default with the SRFI layer), the step
+  budget makes runaway scripts impossible, and the game edition is a working
+  proof of the pattern at 60 FPS.
+- **Teaching and tutorials** — the docs are written and machine-checked, and
+  the exact tower means `(+ 1/3 1/6)` is `1/2`, not `0.5`.
+- **Prototyping algorithms where exactness matters** — rationals, bignums,
+  and exact complex arithmetic (`(sqrt -4)` is `2i`, `(log -1)` is `+iπ`)
+  are genuinely useful for math-heavy sketches.
+- **Building your own DSL** — `syntax-rules`, `define-variant`,
+  `variant-match`, hash tables, and `define-library` are the material.
+
+### The walls (so they are not surprises)
+
+1. **Performance.** A tree-walking interpreter on CPython: expect 10–100×
+   slower than native Schemes for hot loops. The honest pattern is
+   *Scheme orchestrates, Python computes* — push the compute into a
+   primitive.
+2. **No threads.** Concurrency is generators-and-coroutines-shaped, not
+   parallel; an embedding must not share an env across OS threads.
+3. **The FFI is manual and loud.** Every Python capability is an explicit
+   `install_primitives` registration (chapter
+   [21](lisp_tutorial/21-embedding-in-python.md)) — a feature for safety,
+   but work per capability.
+4. **Tooling depth.** The error messages are honest and the REPL exists, but
+   there is no debugger or profiler; source locations are the known next
+   step (the recommendation below).
+5. **An ecosystem of one.** The SRFI layer covers the useful core; you will
+   be writing libraries, not downloading them.
+
+### The escape hatch, precisely
+
+Three layers, all already in the repo. **Primitives** — `install_primitives`
+or `Primitive(...)` in `make_env` — expose a Python capability as a
+first-class Scheme procedure. **The prelude** (`lisp/prelude.scm`) is
+library code written *in Scheme* over those primitives — 86 defines, the
+pattern every host edition follows. **Embedding** — `make_env` →
+`run`/`evaluate`, output redirection, host exceptions surfacing as catchable
+Lisp errors. Anything a Python process can do, a Scheme program in this
+tower can call; the only design question is which side of the seam a given
+idea belongs on.
 
 ## Memory management: outsourced, by design
 

@@ -111,8 +111,10 @@ is underway:
    196/198, and **`KNOWN_MISSING` is empty** — only R7RS's own exclusions
    remain. **C4** is the last stage: the doc sweep and the matrix counts.
 
-Do not start phase C before R settles. [`capabilities.md`](capabilities.md)
-records the gap as Tier 2; nothing else in either ledger outranks it.
+Phase C has since landed (item 7 above): [`capabilities.md`](capabilities.md)'s
+Tier 2 no longer lists the numeric gap, and nothing else in either ledger is
+scheduled — the remaining documented gaps are deliberate non-goals or the
+Tier-3 library items in `capabilities.md`.
 
 ## How to verify
 

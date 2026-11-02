@@ -100,6 +100,10 @@ SRFI 197 pipeline, and Python exceptions caught as Lisp conditions via `guard`.
   deviations.
 - **The DSL specification** — [`docs/lisp-dsl.md`](docs/lisp-dsl.md): the target
   language contract (R7RS-small subset + the SRFIs above).
+- **The capability assessment** — [`docs/capabilities.md`](docs/capabilities.md):
+  the honest answer to "what is this good enough to build?" — the parity
+  table, the documented gaps in three tiers, and the fitness-for-use verdict
+  with the Python escape hatch spelled out.
 
 ## Embed it in your own Python project
 
