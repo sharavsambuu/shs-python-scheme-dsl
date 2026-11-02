@@ -237,12 +237,15 @@ MANIFEST: dict[str, Library] = {
         ),
         syntax=_names(
             """
-            and begin case cond define define-syntax delay do else if lambda
+            and begin case cond define define-syntax delay do if lambda
             let let* let-syntax letrec letrec-syntax or quasiquote quote set!
-            syntax-rules unquote unquote-splicing
+            syntax-rules
             """
         ),
-        auxiliary=_names("=> ... _"),
+        # `else`, `unquote`, and `unquote-splicing` are the report's exports
+        # too, but they are not bindings — the same treatment `(scheme base)`
+        # gives its clause keywords and reader escapes (A6/A7).
+        auxiliary=_names("=> ... _ else unquote unquote-splicing"),
         optional=True,
         note=(
             "Optional compatibility library. It is measured but does not gate "
