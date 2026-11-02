@@ -91,8 +91,13 @@ is underway:
    exact rationals") finds them only in the design note's clearly-labeled
    historical column. The matrix's *name* counts do not move: R changed
    behaviours, not the bound-name set.
-7. **Phase C** (complex numbers) gets its own compatibility table only after
-   R settles; the six `KNOWN_MISSING` names wait for it.
+7. **Phase C — table drafted, implementation next.** The compatibility table
+   the gate required is in [`numeric-tower.md`](numeric-tower.md)'s phase C
+   section: an exact complex pair (R7RS 6.2.2's exactness rule), the six
+   `KNOWN_MISSING` procedures, `sqrt`/`log` of negatives, reader/printer
+   literals, and the NaN/inf corners — staged C1–C4 like R was. Nothing is
+   implemented yet; the table is the contract the implementation will be
+   held to.
 
 Do not start phase C before R settles. [`capabilities.md`](capabilities.md)
 records the gap as Tier 2; nothing else in either ledger outranks it.
