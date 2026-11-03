@@ -42,6 +42,23 @@ def test_nested_quasiquote_keeps_inner_unquote(ev) -> None:
     assert to_string(ev("`(a `(b ,x))"), write=True) == "(a (quasiquote (b (unquote x))))"
 
 
+def test_double_unquote_fires_the_inner_unquote(ev) -> None:
+    # R7RS §4.2.6: an unquote lowers the depth, so `,,(+ 1 2)` inside one
+    # quasiquote spends both levels and the inner comma fires: the answer is
+    # the value, not an error about evaluating `(unquote …)` as code.
+    assert ev("`(1 ,,(+ 1 2))") == [1, 3]
+    assert ev("`(a ,,(+ 1 2) b)") == [intern("a"), 3, intern("b")]
+
+
+def test_double_unquote_inside_a_nested_quasiquote(ev) -> None:
+    # The R5RS nested example: the inner `,(+ 1 3)` fires (the unfired outer
+    # unquote spends one depth for it), while the outer unquote, the nested
+    # quasiquote, and the outer-level `e` all survive as data.
+    assert to_string(
+        ev("`(a `(b ,(foo ,(+ 1 3)) d) e)"), write=True
+    ) == "(a (quasiquote (b (unquote (foo 4)) d)) e)"
+
+
 def test_defmacro_swap_is_hygienic_enough(ev) -> None:
     ev("(define left 1)")
     ev("(define right 2)")

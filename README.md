@@ -48,7 +48,7 @@ pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.1.0
 ```
 
 No runtime dependencies: the interpreter is pure Python standard library
-(Python 3.10+). Both the `shs` command and the `import lisp` module are installed.
+(Python 3.11+). Both the `shs` command and the `import lisp` module are installed.
 
 > **Do not `pip install shs`** — that PyPI name belongs to an unrelated
 > project ("Security Hygiene Scanner"). Ours is `shs-scheme-dsl`; the command

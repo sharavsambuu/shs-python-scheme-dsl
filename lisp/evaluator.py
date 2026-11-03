@@ -18,7 +18,6 @@ Everything else follows from the reader's quote expansion:
 """
 from __future__ import annotations
 
-import itertools
 import sys
 import threading
 from typing import Any, List, Optional
@@ -86,9 +85,13 @@ _FRAMES_PER_CALL = 4
 #: backstop to :data:`DEPTH_LIMIT`: tail-position loops are flat, so an
 #: infinite ``(let loop () (force))`` costs no depth — but it must still end,
 #: with a Lisp error, not as a hang. The budget is *per root call* (one hook
-#: call, one ``lisp run`` program, one entry from a test), so a frame whose
-#: AI plan genuinely needs 100k steps passes while ``(loop nothing)`` dies at
-#: 5,000,000 — and is tunable in an embedder the way DEPTH_LIMIT is.
+#: call, one ``lisp run`` program, one entry from a test), so a program whose
+#: legitimate work needs hundreds of thousands of steps passes while an
+#: endless loop dies at 5,000,000 — and is tunable in an embedder the way
+#: DEPTH_LIMIT is. One step is one trampoline transition — a literal, a tail
+#: jump, one special-form dispatch — so a simple tail loop spends about five
+#: per iteration: the default bounds such a loop at roughly a million
+#: iterations, and a host that needs more raises the budget.
 STEPS_BUDGET = 5_000_000
 
 #: How many macro expansions ``macroexpand`` will take before it declares the
@@ -194,7 +197,7 @@ _SPECIAL_FORMS = frozenset(
 # difference between typed control flow and a `cond` that falls through: the
 # refusal says "expected ok or err", not "no default".
 #
-# The registry is global (like the edge's closed screen set) because a tag's
+# The registry is global (like the interned symbol table) because a tag's
 # meaning is not lexical: `result?` must answer the same way in any scope.
 
 _VARIANTS: dict = {}       #: union name -> (tag, ...)
@@ -342,8 +345,7 @@ def _run(expr: Any, env: Environment, budget: _Budget) -> Any:
                 expr = _step_letrec(expr, "letrec*")
                 continue
             if head is CASE_LAMBDA:
-                expr = _step_case_lambda(expr)
-                continue
+                return _eval_case_lambda(expr, env)
             if head is COND:
                 result = _step_cond(expr, env)
                 if isinstance(result, _Result):
@@ -606,8 +608,10 @@ def macroexpand(expr: Any, env: Environment, *, once: bool = False) -> Any:
 def quasiquote(expr: Any, env: Environment, depth: int = 1) -> Any:
     """Build a template: ``unquote`` evaluates, ``unquote-splicing`` splices.
 
-    Nested quasiquotes raise the depth, so only the innermost matching
-    ``unquote`` fires — the rule that lets a macro *build* a macro.
+    Nested quasiquotes raise the depth and an ``unquote`` lowers it, so only
+    the innermost matching ``unquote`` fires — the rule that lets a macro
+    *build* a macro, and the one that makes `` `(1 ,,(+ 1 2)) `` answer
+    ``(1 3)`` (the outer comma spends the depth the inner one needs).
     """
     if isinstance(expr, Pair):
         items, node = [], expr
@@ -629,7 +633,7 @@ def quasiquote(expr: Any, env: Environment, depth: int = 1) -> Any:
     if isinstance(expr, list):
         if expr and expr[0] is UNQUOTE:
             if depth == 1:
-                return evaluate(expr[1], env)
+                return _eval_unquoted(expr[1], env)
             return [UNQUOTE, quasiquote(expr[1], env, depth - 1)]
         if expr and expr[0] is QUASIQUOTE:
             return [QUASIQUOTE, quasiquote(expr[1], env, depth + 1)]
@@ -646,6 +650,27 @@ def quasiquote(expr: Any, env: Environment, depth: int = 1) -> Any:
                 )
         return make_list(out)
     return expr
+
+
+def _eval_unquoted(template: Any, env: Environment) -> Any:
+    """The template an ``unquote`` fires with, at depth zero.
+
+    Usually it is an ordinary expression and simply evaluates. When the
+    template is itself an ``unquote`` — a double comma, ``,,x`` inside one
+    quasiquote — the outer comma has spent the depth the inner one needs, so
+    by R7RS's depth arithmetic (a substitution happens when the depth reaches
+    zero) the inner one fires *now*: `` `(1 ,,(+ 1 2)) `` is ``(1 3)``, not an
+    error about evaluating ``(unquote (+ 1 2))`` as code. An
+    ``unquote-splicing`` at depth zero has no list to splice into at the fire
+    site, so it evaluates to its list as one value.
+    """
+    if (
+        isinstance(template, list)
+        and len(template) == 2
+        and (template[0] is UNQUOTE or template[0] is UNQUOTE_SPLICING)
+    ):
+        return evaluate(template[1], env)
+    return evaluate(template, env)
 
 
 def _is_splice(item: Any, depth: int) -> bool:
@@ -776,49 +801,50 @@ def _step_letrec(expr: list, who: str = "letrec") -> Any:
     return [LET, blanks, *assigns, *expr[2:]]
 
 
-#: The gensym counter for expansions that need a name the user cannot have
-#: typed. Interning makes the result a symbol; the low phrase plus an integer
-#: makes it unreachable from source.
-_EXPANSION = itertools.count(1)
-
-
-def _fresh(prefix: str) -> Any:
-    return intern(f"%{prefix}-{next(_EXPANSION)}%")
-
-
-def _step_case_lambda(expr: list) -> Any:
+def _eval_case_lambda(expr: list, env: Environment) -> Any:
     """``case-lambda`` — one procedure, a different body per arity.
 
-    Expands to a ``lambda`` with a single rest parameter and a ``cond`` on
-    ``(length args)``, dispatching to a per-clause closure via ``apply``. The
-    arity tests are computed here, from the clause's own formals, so a variadic
-    clause (``(a b . rest)``) tests ``>= 2`` and a fixed one tests ``= n``.
-    Falling off the end is an error that names the count, never a silent #f.
+    Each clause becomes its own closure over the definition scope, and the
+    procedure is a Python-side dispatcher: it counts the arguments it was
+    handed and applies the first clause whose formals accept that count — a
+    fixed clause exactly ``n``, a variadic clause (``(a b . rest)``) at least
+    ``n``. The dispatch lives here rather than in an expansion that calls
+    ``length``/``apply`` by name, which is what keeps the form *hygienic*: a
+    caller's local binding of those helpers cannot change what ``case-lambda``
+    means (the report's syntax is not up for capture). The dispatched clause
+    runs through the same non-tail path the old expansion's ``apply`` did, so
+    the depth budget sees one unit per dispatch, as before. Falling off the
+    end raises the same condition ``(error ...)`` would — naming the count,
+    never a silent #f.
     """
     if len(expr) < 2:
         raise LispSyntaxError("case-lambda: expected at least one clause")
-    args = _fresh("case-lambda-args")
-    clauses = []
+    clauses: List[tuple[int, bool, Closure]] = []
     for clause in expr[1:]:
         if not isinstance(clause, list) or not clause:
             raise LispSyntaxError("case-lambda: each clause is (formals body...)")
         params, rest = _parse_params(clause[0], "case-lambda")
-        count = [intern("length"), args]
-        test = (
-            [intern(">="), count, len(params)]
-            if rest is not None
-            else [intern("="), count, len(params)]
+        clauses.append(
+            (
+                len(params),
+                rest is not None,
+                Closure(params, rest, clause[1:], env, "lambda"),
+            )
         )
-        clauses.append([test, [intern("apply"), [LAMBDA, clause[0], *clause[1:]], args]])
-    fallback = [
-        ELSE,
-        [
-            intern("error"),
-            "case-lambda: no clause accepts this many arguments",
-            [intern("length"), args],
-        ],
-    ]
-    return [LAMBDA, args, [COND, *clauses, fallback]]
+
+    def dispatch(*args: Any) -> Any:
+        count = len(args)
+        for fixed, variadic, clause_closure in clauses:
+            accepts = count >= fixed if variadic else count == fixed
+            if accepts:
+                return apply_procedure(clause_closure, list(args))
+        raise LispRaise(
+            ErrorObject(
+                "case-lambda: no clause accepts this many arguments", [count]
+            )
+        )
+
+    return Primitive("case-lambda", dispatch)
 
 
 def _step_cond(expr: list, env: Environment) -> Any:

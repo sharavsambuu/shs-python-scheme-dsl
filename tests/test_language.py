@@ -676,3 +676,29 @@ def test_case_lambda_refuses_an_unhandled_arity(ev) -> None:
     ev("(define g (case-lambda ((a) a)))")
     with pytest.raises(LispError, match="no clause accepts"):
         ev("(g 1 2)")
+
+
+def test_case_lambda_is_immune_to_local_shadowing(ev) -> None:
+    # The dispatch is evaluator-side, so the caller's bindings of the names a
+    # naive expansion would call (length, apply, =, >=) cannot change what
+    # case-lambda means — the report's syntax is not up for capture.
+    ev(
+        """
+        (define h
+          (let ((length (lambda (x) 999))
+                (apply (lambda (a b) 'shadowed))
+                (= (lambda (a b) #f))
+                (>= (lambda (a b) #f)))
+            (case-lambda ((a) a) ((a b) 'two))))
+        """
+    )
+    assert ev("(h 1)") == 1
+    assert ev("(h 1 2)") == intern("two")
+    # The refusal is the same condition (error ...) raises: catchable by
+    # guard, with the offending count as an irritant.
+    assert ev(
+        """
+        (guard (e ((error-object? e) (error-object-irritants e)))
+          ((let ((length (lambda (x) 999))) (case-lambda ((a) a))) 1 2))
+        """
+    ) == [2]

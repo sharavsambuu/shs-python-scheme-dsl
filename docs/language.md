@@ -154,6 +154,12 @@ Everything ordinary Scheme gives you is here and behaves per the report:
 `define-record-type` is supported; a record is a distinct type with a
 predicate, accessors, and an equality that follows the report.
 
+One documented deviation: a special form is recognized *before* any binding
+is consulted, so the forms above cannot be shadowed — `(let ((if …)) (if 1
+2))` still runs the special form (R7RS would let a lexical binding shadow a
+syntactic keyword). Ordinary procedures shadow freely; only this fixed list
+of heads is reserved.
+
 ## Macros: hygienic and classic
 
 Two macro systems coexist by design:

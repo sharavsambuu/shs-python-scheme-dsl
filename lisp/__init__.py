@@ -26,6 +26,20 @@ Then ``tetris/`` for the game edition, and ``python -m lisp repl`` to use it.
 """
 from __future__ import annotations
 
+import sys
+
+# The floor is a semantics guarantee, not a packaging nicety: the evaluator
+# sizes the host recursion limit for a million nested Lisp calls, which only
+# holds where Python-to-Python calls do not consume C stack (CPython 3.11+).
+# pip refuses to install on an older interpreter; this catches a tree that
+# was vendored in instead, loudly, before a deep recursion can segfault it.
+if sys.version_info < (3, 11):
+    raise ImportError(
+        "lisp requires Python 3.11 or newer (the evaluator's recursion "
+        f"ceiling relies on 3.11+ stackless calls); this is "
+        f"{sys.version.split()[0]}"
+    )
+
 from .embed import install_extension, install_primitives, load_lisp
 from .env import Environment
 from .errors import (

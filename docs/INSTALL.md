@@ -1,8 +1,11 @@
 # Installing shs
 
 `shs` is one pure-standard-library Python package. There is nothing to compile
-and nothing to download besides the source itself: any Python **3.10 or newer**
-with `pip` is the whole requirement list.
+and nothing to download besides the source itself: any Python **3.11 or newer**
+with `pip` is the whole requirement list. (3.11 is a hard floor, not a
+suggestion: the evaluator's million-deep recursion ceiling relies on 3.11's
+stackless Python-to-Python calls, so on 3.10 a deep non-tail recursion in the
+REPL would exhaust the C stack instead of raising a Lisp error.)
 
 ## 1. Pick an install method
 

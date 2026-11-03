@@ -10,12 +10,27 @@ name = "shs-scheme-dsl"
 version = "0.1.0"
 description = "shs — a small Scheme-flavored DSL over Python, with SRFIs 1/26/88/89/197/241 and a gosh-like CLI."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 keywords = ["scheme", "lisp", "dsl", "r7rs", "srfi", "interpreter"]
 # The language itself is pure standard library: no runtime dependencies. A
 # *host* project brings its own vocabulary (see lisp/embed.py).
 dependencies = []
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Compilers and Interpreters",
+    "Topic :: Software Development :: Embedded Systems",
+]
 
 [project.optional-dependencies]
 dev = ["pytest"]
@@ -27,6 +42,7 @@ lisppy = "lisp.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/sharavsambuu/shs-python-scheme-dsl"
+Issues = "https://github.com/sharavsambuu/shs-python-scheme-dsl/issues"
 
 [tool.setuptools]
 # Only the language package is published. A host edition (a game, a tool)
