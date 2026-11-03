@@ -1,3 +1,8 @@
+# About
+
+A custom Scheme/LISP DSL running on Python, created to bring LISP-style expressions into personal Python projects. Over time, my projects began evolving into disparate LISP dialects, so I created this repository to establish a lightweight mini-standard based on Scheme's R7RS-small specification and selected SRFIs. While it serves as a practical introductory tool for embedded LISP design, it is not intended as a robust general-purpose solution for serious production use. Please note that this repository was built strictly for personal needs and will not be actively maintained. Thanks for stopping by!
+
+
 # shs — a small Scheme DSL over Python
 
 `shs` is a gosh-shaped command line for a small Scheme-flavored Lisp that runs
@@ -5,7 +10,7 @@ on Python. The language is one pure-standard-library package (`lisp`) you can
 install, script with, embed in your own Python projects, and read in an
 afternoon.
 
-This is my custom Scheme DSL over Python as runtime. It uses the following SRFIs,
+It uses the following SRFIs,
 all pre-imported by the default profile:
 
 | SRFI | Name | What you get |
