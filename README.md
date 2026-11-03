@@ -2,6 +2,9 @@
 
 A custom Scheme/LISP DSL running on Python, created to bring LISP-style expressions into personal Python projects. Over time, my projects began evolving into disparate LISP dialects, so I created this repository to establish a lightweight mini-standard based on Scheme's R7RS-small specification and selected SRFIs. While it serves as a practical introductory tool for embedded LISP design, it is not intended as a robust general-purpose solution for serious production use. Please note that this repository was built strictly for personal needs and will not be actively maintained. Thanks for stopping by!
 
+You can check docs/lisp_tutorial/ for more usages and also you can check my Tetris demo code how to use this library
+https://github.com/sharavsambuu/python-lisp-tetris-exp
+
 
 # shs — a small Scheme DSL over Python
 
