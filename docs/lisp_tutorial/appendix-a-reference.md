@@ -9,12 +9,18 @@
 
 ```sh
 shs                                  # the REPL (default)
-shs -e '(+ 1 2)'                     # evaluate an expression
+shs -e "(+ 1 2)"                     # evaluate an expression
 shs run FILE                         # run a Lisp file
 shs run FILE arg1 arg2               # args become *command-line-args*
 shs --profile r7rs                   # strict R7RS-small, no SRFIs preloaded
 shs --version
 ```
+
+The examples quote `-e` expressions with **double quotes** on purpose: on
+Windows, cmd and PowerShell treat single quotes as ordinary characters, so
+`shs -e '(+ 1 2)'` would reach the interpreter as several arguments — the
+space-split pieces of the form — and fail with an argparse `invalid choice`.
+Double quotes work in cmd, PowerShell, and every Unix shell.
 
 ## Special forms (`lisp/evaluator.py`)
 

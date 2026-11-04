@@ -57,7 +57,7 @@ Both the command and the importable module are installed together:
 
 ```sh
 shs --version                      # shs 0.1.0
-shs -e '(fold + 0 (iota 5 1))'     # 15  (SRFI 1 is pre-imported)
+shs -e "(fold + 0 (iota 5 1))"     # 15  (SRFI 1 is pre-imported)
 
 python -c "import lisp; print(lisp.run('(+ 40 2)'))"   # 42
 ```

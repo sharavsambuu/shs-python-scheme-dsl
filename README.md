@@ -58,7 +58,7 @@ No runtime dependencies: the interpreter is pure Python standard library
 
 ```sh
 shs                              # interactive REPL (the default)
-shs -e '(+ 1 2)'                 # evaluate an expression, print the value
+shs -e "(+ 1 2)"                 # evaluate an expression, print the value
 shs run program.scm              # run a script
 shs program.scm                  # the same, gosh-style: the file is the command
 shs run program.scm arg1 arg2    # args become *command-line-args*

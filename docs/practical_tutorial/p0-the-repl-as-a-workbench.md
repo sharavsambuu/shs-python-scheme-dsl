@@ -16,9 +16,13 @@ a script does not make: every value you produce comes back to you immediately.
 
 ```sh
 shs                      # the REPL: talk to your program
-shs -e '(+ 1 2)'         # one shot: evaluate, print, leave
+shs -e "(+ 1 2)"         # one shot: evaluate, print, leave
 shs run program.scm      # a file: no echo, only what it displays
 ```
+
+*(The `-e` expression is quoted with double quotes — on Windows, single quotes
+are not shell quotes, and the form would be space-split into several
+arguments.)*
 
 The difference between the first door and the other two is *echo*. The REPL
 prints every value — including a `define`'s, which answers with the name it
@@ -73,7 +77,7 @@ One error deserves its own sentence: an *endless* loop is not a crash either —
 it ends, cleanly, when the interpreter's step budget runs out:
 
 ```sh
-$ shs -e '(let loop () (loop))'
+$ shs -e "(let loop () (loop))"
 shs: one evaluation spent more than 5,000,000 steps — an endless loop?
 (tail calls cost no depth, so only this budget can see it)
 ```

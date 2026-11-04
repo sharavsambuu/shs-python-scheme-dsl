@@ -102,7 +102,7 @@ Install, then everything in this tutorial is a paste away:
 pip install .        # from a checkout of this project
 
 shs                  # the REPL — try (fact 20) after ,help
-shs -e '(+ 1 2)'
+shs -e "(+ 1 2)"
 shs run examples/fizzbuzz.scm
 ```
 

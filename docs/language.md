@@ -39,7 +39,7 @@ is the front door:
 ```sh
 shs                              # the REPL (default), SRFIs preloaded
 shs repl                         # the same, explicit
-shs -e '(+ 1 2)'                 # evaluate an expression, print the value
+shs -e "(+ 1 2)"                 # evaluate an expression, print the value
 shs run FILE                     # run a .scm file
 shs FILE                         # gosh-style: the file is the command
 shs run FILE arg1 arg2           # script args become *command-line-args*

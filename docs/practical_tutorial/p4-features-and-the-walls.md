@@ -81,10 +81,13 @@ says which wall it was:
   past the budget, the evaluation ends with:
 
 ```sh
-$ shs -e '(let loop () (loop))'
+$ shs -e "(let loop () (loop))"
 shs: one evaluation spent more than 5,000,000 steps — an endless loop?
 (tail calls cost no depth, so only this budget can see it)
 ```
+
+*(Quoted with double quotes — on Windows, single quotes are not shell quotes,
+and the form would be space-split into several arguments.)*
 
 Neither is catchable by `guard` — see [P1](p1-when-things-go-wrong.md) for why
 that is a feature. The constants live in `lisp/evaluator.py`
