@@ -101,6 +101,11 @@ SRFI 197 pipeline, and Python exceptions caught as Lisp conditions via `guard`.
 - **The tutorial** — [`docs/lisp_tutorial/README.md`](docs/lisp_tutorial/README.md):
   from "Lisp in ten minutes" to macros, modules, ROP, and the SRFI layer, with
   every example machine-checked by the test suite.
+- **The practical handbook** — [`docs/practical_tutorial/README.md`](docs/practical_tutorial/README.md):
+  the tooling track, planned as P0–P6: the REPL as a workbench, reading a
+  failure, programs across files, ports and files, the profiler, shipping a
+  host extension, and testing Lisp from the host. The ledger in its README is
+  the schedule.
 - **The language guide** — [`docs/language.md`](docs/language.md): the one-stop
   reference with verified examples.
 - **The SRFI contract** — [`docs/srfi.md`](docs/srfi.md): exactly what each SRFI
