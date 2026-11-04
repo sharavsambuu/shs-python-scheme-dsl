@@ -1,7 +1,7 @@
 """``shs`` — the command line for this Scheme.
 
     shs                              # the REPL (the default)
-    shs -e '(+ 1 2)'                 # evaluate an expression, print the value
+    shs -e "(+ 1 2)"                 # evaluate an expression, print the value
     shs run program.scm [args ...]   # run a script; args become
                                      # ``*command-line-args*``
     shs program.scm [args ...]       # the same, gosh-style: the file *is* the
