@@ -47,7 +47,7 @@ PROGRAM = "shs"
 
 #: Fallback version when the distribution metadata is absent (a source tree
 #: run in place rather than installed).
-_FALLBACK_VERSION = "0.1.0"
+_FALLBACK_VERSION = "0.2.0"
 
 
 def _version() -> str:
@@ -55,10 +55,9 @@ def _version() -> str:
     try:
         from importlib.metadata import version, PackageNotFoundError
 
-        try:
-            return version("shs-scheme-dsl")
-        except PackageNotFoundError:
-            return version("shs")  # a distribution installed under the old name
+        return version("shslisp")
+    except PackageNotFoundError:
+        return _FALLBACK_VERSION
     except Exception:  # noqa: BLE001 — any metadata trouble is the same answer
         return _FALLBACK_VERSION
 

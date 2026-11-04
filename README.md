@@ -44,7 +44,7 @@ pip install .
 pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git
 
 # pinned to a tag/commit, for a project that depends on it
-pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.1.0
+pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.2.0
 ```
 
 No runtime dependencies: the interpreter is pure Python standard library
@@ -117,6 +117,8 @@ SRFI 197 pipeline, and Python exceptions caught as Lisp conditions via `guard`.
   the honest answer to "what is this good enough to build?" — the parity
   table, the documented gaps in three tiers, and the fitness-for-use verdict
   with the Python escape hatch spelled out.
+- **The release history** — [`CHANGELOG.md`](CHANGELOG.md): what each
+  release changed, honestly.
 
 ## Embed it in your own Python project
 

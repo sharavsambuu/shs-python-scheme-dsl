@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 # way `lisp` eventually would. The CLI stays `shs`: that name is taken on PyPI
 # ("Security Hygiene Scanner"), but the *command* is ours and documented.
 name = "shslisp"
-version = "0.1.0"
+version = "0.2.0"
 description = "shs — a small Scheme-flavored DSL over Python, with SRFIs 1/26/88/89/197/241 and a gosh-like CLI."
 readme = "README.md"
 requires-python = ">=3.11"
