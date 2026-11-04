@@ -2,18 +2,18 @@
 
 These are the S1 tests. The SRFI 1 library is an audit-and-complete task, not
 an alias task: every name here is checked against the SRFI 1 semantics. The
-export list is a checked constant in ``lisp/library.py``; a test asserts every
+export list is a checked constant in ``shslisp/library.py``; a test asserts every
 exported name is bound in the library's own environment.
 """
 from __future__ import annotations
 
 import pytest
 
-from lisp.errors import LispError, LispNameError, LispSyntaxError, LispTypeError
-from lisp.evaluator import evaluate_program
-from lisp.reader import read_all
-from lisp.runtime import make_env
-from lisp.types import intern
+from shslisp.errors import LispError, LispNameError, LispSyntaxError, LispTypeError
+from shslisp.evaluator import evaluate_program
+from shslisp.reader import read_all
+from shslisp.runtime import make_env
+from shslisp.types import intern
 
 
 def run(env, source: str):
@@ -42,12 +42,12 @@ def srfi1():
 # --------------------------------------------------------------------------- #
 
 def test_every_srfi1_export_is_bound_in_the_library_env() -> None:
-    from lisp.library import _SRFI1_EXPORTS, lisp_file_library
+    from shslisp.library import _SRFI1_EXPORTS, lisp_file_library
     from pathlib import Path
 
     env = make_env(install_tetris=False)
     library = lisp_file_library(
-        env, ("srfi", "1"), Path("lisp/srfi1.scm"), _SRFI1_EXPORTS
+        env, ("srfi", "1"), Path("shslisp/srfi1.scm"), _SRFI1_EXPORTS
     )
     lib_env = library.instantiate()
     unbound = [n for n in _SRFI1_EXPORTS if lib_env.find(intern(n)) is None]
@@ -93,7 +93,7 @@ def test_the_documented_import_forms_succeed(form) -> None:
 
 @pytest.mark.parametrize("library,name", MUST_BIND)
 def test_the_documented_names_are_bound(library, name) -> None:
-    from lisp.evaluator import _SPECIAL_FORMS
+    from shslisp.evaluator import _SPECIAL_FORMS
 
     env = make_env(install_tetris=False)
     run(env, f"(import {library})")

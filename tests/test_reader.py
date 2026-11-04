@@ -5,10 +5,10 @@ from fractions import Fraction
 
 import pytest
 
-from lisp.errors import LispSyntaxError
-from lisp.printer import to_string
-from lisp.reader import read_all, read_one
-from lisp.types import NIL, Char, Pair, Vector, intern, is_nil, is_symbol
+from shslisp.errors import LispSyntaxError
+from shslisp.printer import to_string
+from shslisp.reader import read_all, read_one
+from shslisp.types import NIL, Char, Pair, Vector, intern, is_nil, is_symbol
 
 
 def test_reads_numbers() -> None:

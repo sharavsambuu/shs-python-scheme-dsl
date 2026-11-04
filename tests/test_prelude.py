@@ -1,4 +1,4 @@
-"""The standard libraries — ``lisp/prelude.scm`` and ``tetris/prelude.scm``.
+"""The standard libraries — ``shslisp/prelude.scm`` and ``tetris/prelude.scm``.
 
 Everything under test here is written in the DSL itself, so a failure points at
 a Lisp definition rather than at the host.
@@ -9,10 +9,10 @@ import io
 
 import pytest
 
-from lisp.reader import read_all
-from lisp.evaluator import evaluate_program
-from lisp.runtime import make_env
-from lisp.types import NIL, intern, is_nil
+from shslisp.reader import read_all
+from shslisp.evaluator import evaluate_program
+from shslisp.runtime import make_env
+from shslisp.types import NIL, intern, is_nil
 
 
 # --------------------------------------------------------------------------- #

@@ -158,5 +158,5 @@ first line
   — the audit this chapter obeys
 - [P1 — When things go wrong](p1-when-things-go-wrong.md) — what the after-thunk
   survives
-- The manifest of every port name: `lisp/manifest.py`; the behaviour table:
+- The manifest of every port name: `shslisp/manifest.py`; the behaviour table:
   `tests/test_r7rs.py`

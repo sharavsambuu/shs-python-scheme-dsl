@@ -23,7 +23,7 @@ import pytest
 
 from test_docs import _LINK, _PATH_REF, _basenames
 from test_tutorial import _executable_blocks, _normalise
-from lisp.__main__ import run_script
+from shslisp.__main__ import run_script
 
 #: ``shs-python-scheme-dsl/``.
 ROOT = pathlib.Path(__file__).resolve().parents[1]

@@ -14,9 +14,9 @@ from __future__ import annotations
 
 import pytest
 
-from lisp.errors import LispArityError, LispError, LispSyntaxError, LispTypeError
-from lisp.printer import to_string
-from lisp.types import NIL, Tagged, intern, is_nil, make_tagged
+from shslisp.errors import LispArityError, LispError, LispSyntaxError, LispTypeError
+from shslisp.printer import to_string
+from shslisp.types import NIL, Tagged, intern, is_nil, make_tagged
 
 
 def tag(name: str, *fields):

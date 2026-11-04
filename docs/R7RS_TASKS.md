@@ -23,7 +23,7 @@
   `lazy`, `load`, `process-context`, `read`, `repl`, `time`, `write`,
   `case-lambda`), the A0 manifest that machine-checks it, and the library
   system (A13) the SRFI layer is hosted on. The per-task notes are gone; the
-  matrix and `KNOWN_MISSING` in [`lisp/manifest.py`](../lisp/manifest.py) are
+  matrix and `KNOWN_MISSING` in [`shslisp/manifest.py`](../shslisp/manifest.py) are
   the truth.
 - **A6/A7** — the `(scheme r5rs)` library imports whole. What it took, and
   why it was more than the two aliases the plan named:
@@ -95,7 +95,7 @@ is underway:
    behaviours, not the bound-name set.
 7. **Phase C — C1, C2, and C3 landed.** The compatibility table the gate
    required is in [`numeric-tower.md`](numeric-tower.md)'s phase C section.
-   **C1** landed the exact complex pair (`lisp/types.py`'s `Complex`), rows
+   **C1** landed the exact complex pair (`shslisp/types.py`'s `Complex`), rows
    1–3, 5, 9–12: `make-rectangular`, `real-part`, `imag-part`, exact
    arithmetic, inexact contagion, `eqv?`/`equal?`, the real-only family's
    guard, and `p/q`-part printing. **C2** landed the polar half — rows 4,

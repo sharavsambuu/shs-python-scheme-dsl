@@ -27,10 +27,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # the repo root
 
-from lisp import load_file, make_env, run, to_string
-from lisp.errors import LispError
-from lisp.evaluator import apply_procedure
-from lisp.types import NIL, make_list
+from shslisp import load_file, make_env, run, to_string
+from shslisp.errors import LispError
+from shslisp.evaluator import apply_procedure
+from shslisp.types import NIL, make_list
 
 
 # --- the nursery primitive -------------------------------------------------------
@@ -75,7 +75,7 @@ def nursery_run(thunks) -> None:
 def main() -> None:
     env = make_env(install_tetris=False)
     load_file(env, Path(__file__).with_name("structured.scm"))
-    from lisp import install_primitives
+    from shslisp import install_primitives
     install_primitives(env, [
         ("nursery-run", nursery_run),
         ("spin-ms", lambda ms: time.sleep(ms / 1000)),  # stand-in for real I/O

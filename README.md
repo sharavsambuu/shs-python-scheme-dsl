@@ -9,7 +9,7 @@ https://github.com/sharavsambuu/python-lisp-tetris-exp
 # shs — a small Scheme DSL over Python
 
 `shs` is a gosh-shaped command line for a small Scheme-flavored Lisp that runs
-on Python. The language is one pure-standard-library package (`lisp`) you can
+on Python. The language is one pure-standard-library package (`shslisp`) you can
 install, script with, embed in your own Python projects, and read in an
 afternoon.
 
@@ -48,10 +48,10 @@ pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.1.0
 ```
 
 No runtime dependencies: the interpreter is pure Python standard library
-(Python 3.11+). Both the `shs` command and the `import lisp` module are installed.
+(Python 3.11+). Both the `shs` command and the `import shslisp` module are installed.
 
 > **Do not `pip install shs`** — that PyPI name belongs to an unrelated
-> project ("Security Hygiene Scanner"). Ours is `shs-scheme-dsl`; the command
+> project ("Security Hygiene Scanner"). Ours is `shslisp`; the command
 > it installs is still called `shs`.
 
 ## The `shs` command
@@ -121,7 +121,7 @@ SRFI 197 pipeline, and Python exceptions caught as Lisp conditions via `guard`.
 ## Embed it in your own Python project
 
 ```python
-from lisp import install_primitives, make_env, run
+from shslisp import install_primitives, make_env, run
 
 env = make_env()                       # a general Scheme, SRFIs preloaded
 install_primitives(env, [("double", lambda n: n * 2)])

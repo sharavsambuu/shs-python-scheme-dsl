@@ -11,11 +11,11 @@ from fractions import Fraction
 
 import pytest
 
-from lisp.errors import LispError, LispRecursionError, LispTypeError
-from lisp.evaluator import evaluate_program
-from lisp.reader import read_all
-from lisp.runtime import make_env
-from lisp.types import intern
+from shslisp.errors import LispError, LispRecursionError, LispTypeError
+from shslisp.evaluator import evaluate_program
+from shslisp.reader import read_all
+from shslisp.runtime import make_env
+from shslisp.types import intern
 
 
 @pytest.fixture
@@ -161,9 +161,9 @@ def test_tail_loop_beyond_the_budget_raises(env, monkeypatch) -> None:
     # A tail loop costs a few steps per iteration, so the default budget
     # bounds iteration count too. Pinned with a small budget so the shape is
     # cheap to check: the error is a LispBudgetError, not a hang.
-    from lisp.evaluator import STEPS_BUDGET
+    from shslisp.evaluator import STEPS_BUDGET
 
-    monkeypatch.setattr("lisp.evaluator.STEPS_BUDGET", 1_000)
+    monkeypatch.setattr("shslisp.evaluator.STEPS_BUDGET", 1_000)
     with pytest.raises(Exception, match="steps"):
         run(env, "(let loop ((n 100000)) (if (= n 0) 'done (loop (- n 1))))")
     assert STEPS_BUDGET  # the real default is untouched by this test

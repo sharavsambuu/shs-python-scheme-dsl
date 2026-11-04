@@ -1,6 +1,6 @@
 # 07 — Modules: `(load …)`
 
-> **What this chapter teaches.** `lisp/loader.py`: how a program is split across
+> **What this chapter teaches.** `shslisp/loader.py`: how a program is split across
 > files. Three rules, and they are the whole system — resolution, load-once,
 > cycles.
 >
@@ -131,7 +131,7 @@ the same registry:
 
 Unlike `(load …)`, a library does not leak names into the surrounding
 environment — only `import` binds. The two mechanisms compose: the SRFI
-libraries are files under `lisp/` loaded by the registry, while a host's
+libraries are files under `shslisp/` loaded by the registry, while a host's
 scripts are loader modules. Use the loader for programs, `define-library` for
 reusable vocabulary — and see chapter [05](05-standard-library.md) and
 [Appendix A](appendix-a-reference.md) for the SRFI side of it.

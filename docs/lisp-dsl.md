@@ -51,7 +51,7 @@ destructuring domain events.
 
 ### 2. Railway-oriented programming (ROP)
 
-`lisp/rope.scm` defines a closed `Result` variant:
+`shslisp/rope.scm` defines a closed `Result` variant:
 
 ```scheme
 (define-variant result
@@ -135,7 +135,7 @@ not an accident.
 | --- | --- | --- |
 | **R7RS-small subset** | Reader, evaluator, tail calls, closures, the base procedures, `(scheme base)`, `(scheme write)` | `docs/r7rs.md`, [`docs/R7RS_TASKS.md`](R7RS_TASKS.md) |
 | **SRFI layer** | SRFI 1, 26, 88, 89, 197, 241 | `docs/srfi.md`, [`docs/SRFI_TASKS.md`](SRFI_TASKS.md) |
-| **Python seam** | `install_primitives`, `install_extension`, `make_env`, `run`, `load_lisp` | `lisp/embed.py`, chapter [21](lisp_tutorial/27-embedding-in-python.md) |
+| **Python seam** | `install_primitives`, `install_extension`, `make_env`, `run`, `load_lisp` | `shslisp/embed.py`, chapter [21](lisp_tutorial/27-embedding-in-python.md) |
 
 ### R7RS-small: the honest claim
 
@@ -250,10 +250,10 @@ the one to use when you want to know whether a program is portable.
 
 The DSL is designed to be embedded. The Python seam is a peer of the R7RS and
 SRFI layers, not a workaround. The whole host surface is
-[`lisp/embed.py`](../lisp/embed.py):
+[`shslisp/embed.py`](../shslisp/embed.py):
 
 ```python
-from lisp import install_primitives, make_env, run
+from shslisp import install_primitives, make_env, run
 
 def stock_total(rows):
     return sum(row["qty"] for row in rows)
@@ -289,7 +289,7 @@ implemented:
   profile.
 
 The seam is tested by `tests/test_embed.py`. The discipline that keeps
-`lisp/` free of host imports is what makes every Python project a valid host.
+`shslisp/` free of host imports is what makes every Python project a valid host.
 Chapter [21](lisp_tutorial/27-embedding-in-python.md) is the long version.
 
 ## Migration policy

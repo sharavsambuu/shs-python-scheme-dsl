@@ -4,7 +4,7 @@ The interpreter promises a million nested *non-tail* calls. Tail calls are
 flat, so they never touch this; what is tested here is the budget the host
 stack has to back, and the fact that running out is still a Lisp error.
 
-:func:`lisp.stack.run_with_deep_stack` is the mechanism: a worker thread with a
+:func:`shslisp.stack.run_with_deep_stack` is the mechanism: a worker thread with a
 large stack reserved, so the promise does not depend on the host's default
 stack size. These tests check the mechanism itself (thread, exceptions,
 idempotence) and then that a script really gets it end to end.
@@ -16,13 +16,13 @@ import threading
 
 import pytest
 
-from lisp import evaluator
-from lisp.errors import LispBudgetError, LispRecursionError
-from lisp.evaluator import evaluate_program
-from lisp.reader import read_all
-from lisp.runtime import make_env
-from lisp.stack import STACK_BYTES, on_deep_stack, run_with_deep_stack
-from lisp.__main__ import run_script
+from shslisp import evaluator
+from shslisp.errors import LispBudgetError, LispRecursionError
+from shslisp.evaluator import evaluate_program
+from shslisp.reader import read_all
+from shslisp.runtime import make_env
+from shslisp.stack import STACK_BYTES, on_deep_stack, run_with_deep_stack
+from shslisp.__main__ import run_script
 
 SUM_TO = "(define (s n) (if (= n 0) 0 (+ n (s (- n 1)))))"
 

@@ -19,8 +19,8 @@ three rules:
   recursing until the interpreter's stack dies.
 
 The loader belongs to exactly one environment. An
-:class:`~lisp.env.Environment` remembers it, which is why the host's
-:func:`lisp.runtime.load_file` and a program's ``(load ...)`` share one cache
+:class:`~shslisp.env.Environment` remembers it, which is why the host's
+:func:`shslisp.runtime.load_file` and a program's ``(load ...)`` share one cache
 and one resolution rule: loading a script is just loading a module by another
 name.
 """

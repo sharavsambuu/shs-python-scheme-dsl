@@ -70,7 +70,7 @@ from .types import (
 # --------------------------------------------------------------------------- #
 
 #: How many nested evaluations a program may go before the interpreter raises
-#: :class:`~lisp.errors.LispRecursionError`. Tail calls are flat (the
+#: :class:`~shslisp.errors.LispRecursionError`. Tail calls are flat (the
 #: trampoline loops), so this bounds argument-position nesting and non-tail
 #: recursion — and it is exactly one unit per non-tail Lisp call, so it reads
 #: directly as "a million calls deep". Past that a program still gets a clean
@@ -226,10 +226,10 @@ def evaluate(expr: Any, env: Environment) -> Any:
 
     * :data:`DEPTH_LIMIT` — *nested* evaluation: argument lists and non-tail
       recursion. Tail calls cost no host stack, so this reads directly as
-      "how deep"; the raise is a :class:`~lisp.errors.LispRecursionError`.
+      "how deep"; the raise is a :class:`~shslisp.errors.LispRecursionError`.
     * :data:`STEPS_BUDGET` — *work*: every trampoline step each root
       evaluation spends. An infinite tail loop is flat and depth-free but
-      must still end, so the raise is a :class:`~lisp.errors.LispBudgetError`.
+      must still end, so the raise is a :class:`~shslisp.errors.LispBudgetError`.
       The counter is per thread (and per root call): nested evaluations inside
       one walk share its budget, and a fresh root (depth returning to zero)
       resets it, without two threads stepping on each other's count.
@@ -1026,13 +1026,13 @@ def _define_variant_case(env: Environment, union: Symbol, tag: Symbol, fields: L
 def _eval_define_record_type(expr: list, env: Environment) -> Any:
     """``(define-record-type name (ctor field...) pred (field acc [mod])...)``.
 
-    One generic :class:`~lisp.types.Record` carries the type name, so a program
+    One generic :class:`~shslisp.types.Record` carries the type name, so a program
     declares its shape at run time. Fields are ordered by the field clauses,
     not by the constructor's argument list; a field the constructor does not
     mention starts as ``#f`` (the documented "unspecified" value) and can be
     set later only if its clause names a modifier.
 
-    The type name is bound to a :class:`~lisp.types.RecordType` descriptor, as
+    The type name is bound to a :class:`~shslisp.types.RecordType` descriptor, as
     R7RS asks; the constructor, predicate, accessors, and modifiers are bound
     beside it in the current environment.
     """

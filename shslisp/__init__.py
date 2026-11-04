@@ -1,28 +1,28 @@
-"""``lisp`` — a small Scheme-flavored Lisp you can embed in any Python program.
+"""``shslisp`` — a small Scheme-flavored Lisp you can embed in any Python program.
 
 The language is the first-class thing here; a domain (the Tetris game, or one
 of your own) is a library on top of it. Read the modules in this order:
 
-* :mod:`lisp.reader` — text becomes data (and ``'x`` becomes ``(quote x)``);
-* :mod:`lisp.types` — what the values *are*;
-* :mod:`lisp.evaluator` — data becomes behaviour, via a tail-calling loop;
-* :mod:`lisp.stack` — the host stack that loop's non-tail recursion needs;
-* :mod:`lisp.loader` — ``(load …)``: how a program is split across files;
-* :mod:`lisp.builtins` — the primitives;
-* :mod:`lisp.syntax` — ``define-syntax``/``syntax-rules`` (hygienic macros);
-* :mod:`lisp.prelude` (``prelude.scm``) — the standard library, in Lisp;
-* :mod:`lisp.rope` (``rope.scm``) — Result, Kleisli, and ROP, in Lisp.
+* :mod:`shslisp.reader` — text becomes data (and ``'x`` becomes ``(quote x)``);
+* :mod:`shslisp.types` — what the values *are*;
+* :mod:`shslisp.evaluator` — data becomes behaviour, via a tail-calling loop;
+* :mod:`shslisp.stack` — the host stack that loop's non-tail recursion needs;
+* :mod:`shslisp.loader` — ``(load …)``: how a program is split across files;
+* :mod:`shslisp.builtins` — the primitives;
+* :mod:`shslisp.syntax` — ``define-syntax``/``syntax-rules`` (hygienic macros);
+* :mod:`shslisp.prelude` (``prelude.scm``) — the standard library, in Lisp;
+* :mod:`shslisp.rope` (``rope.scm``) — Result, Kleisli, and ROP, in Lisp.
 
 To put your own Python functions in front of a program — the whole point of a
-DSL host — read :mod:`lisp.embed`::
+DSL host — read :mod:`shslisp.embed`::
 
-    from lisp import install_primitives, make_env, run
+    from shslisp import install_primitives, make_env, run
 
     env = make_env()                       # a general Scheme, no game needed
     install_primitives(env, [("double", lambda n: n * 2)])
     run("(double 21)", env)                # -> 42
 
-Then ``tetris/`` for the game edition, and ``python -m lisp repl`` to use it.
+Then ``tetris/`` for the game edition, and ``python -m shslisp repl`` to use it.
 """
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ import sys
 # was vendored in instead, loudly, before a deep recursion can segfault it.
 if sys.version_info < (3, 11):
     raise ImportError(
-        "lisp requires Python 3.11 or newer (the evaluator's recursion "
+        "shslisp requires Python 3.11 or newer (the evaluator's recursion "
         f"ceiling relies on 3.11+ stackless calls); this is "
         f"{sys.version.split()[0]}"
     )

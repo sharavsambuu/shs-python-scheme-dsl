@@ -6,7 +6,7 @@ exports, transcribed from Appendix A of the corrected R7RS report, so that
 "supported", "missing", and "deviation" can be checked instead of asserted in
 prose.
 
-It lives in ``lisp/`` because the library system (:mod:`lisp.library`) derives
+It lives in ``shslisp/`` because the library system (:mod:`shslisp.library`) derives
 every built-in library's export list from it — the export list is *generated*
 from this manifest, never typed twice. ``tests/r7rs_manifest.py`` re-exports
 it so the conformance harness and the library system measure the same data.

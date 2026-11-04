@@ -1,6 +1,6 @@
 # The Language — a guide to the Scheme-based DSL
 
-> **What this is.** The DSL (the package's import name is `lisp`, the project
+> **What this is.** The DSL (the package's import name is `shslisp`, the project
 > name is `lisppy`) is a Scheme-flavoured Lisp with a small, readable Python
 > runtime. It uses **R7RS-small as its base language** — an honest, documented
 > *subset*, not a claim of full conformance — adds a mandatory **SRFI layer**
@@ -28,7 +28,7 @@ pleasant, in files that read like Lisp and run on a Python core:
 The interpreter is deliberately small: a reader, an evaluator with a trampoline
 and a deep-stack runner, a library system, a loader, and a handful of Python
 modules. Everything else — the standard library, ROP, the SRFIs — is written
-in the language itself (`lisp/prelude.scm`, `lisp/rope.scm`, `lisp/srfi*.scm`),
+in the language itself (`shslisp/prelude.scm`, `shslisp/rope.scm`, `shslisp/srfi*.scm`),
 which makes those files the first worked examples.
 
 ## Quick start
@@ -50,7 +50,7 @@ shs --version
 In Python, the same language is two calls away:
 
 ```python
-from lisp import make_env, run
+from shslisp import make_env, run
 
 env = make_env()          # the default DSL profile, no game needed
 run("(fold + 0 '(1 2 3 4))", env)   # -> 10
@@ -103,7 +103,7 @@ rely on the whole report.
 
 ## Reading: the external representations
 
-The reader (`lisp/reader.py`) and printer (`lisp/printer.py`) are a matched
+The reader (`shslisp/reader.py`) and printer (`shslisp/printer.py`) are a matched
 pair: `write` emits text that `read` accepts, and re-writing the result is
 stable. The sugar the reader applies first:
 
@@ -132,7 +132,7 @@ named `host`, and a lone `:`, `:host`, and `foo:bar` are symbols. There is no
 
 ## Core forms
 
-The special forms (`lisp/evaluator.py`):
+The special forms (`shslisp/evaluator.py`):
 
 ```
 quote  quasiquote  if  define  set!  lambda  let  let*  letrec  letrec*
@@ -225,7 +225,7 @@ followed by *multiple* ellipses does not distribute. Both are in
 
 ## Railway-oriented programming: Result
 
-`lisp/rope.scm` defines a closed `Result` variant and builds the whole ROP
+`shslisp/rope.scm` defines a closed `Result` variant and builds the whole ROP
 vocabulary on one primitive, `result-bind`:
 
 ```scheme
@@ -268,7 +268,7 @@ two ideas. The monad laws are pinned by `tests/test_rop.py`.
 
 ## The standard library
 
-**Core primitives** (`lisp/builtins.py`) are the R7RS `(scheme base)` registry
+**Core primitives** (`shslisp/builtins.py`) are the R7RS `(scheme base)` registry
 plus the numeric, char, string, vector, bytevector, port, and file surface —
 see [`r7rs.md`](r7rs.md) for the per-library matrix and
 [Appendix A](lisp_tutorial/appendix-a-reference.md) for the full name list.
@@ -292,7 +292,7 @@ A few shapes worth knowing:
   proper list's tail cannot be mutated in place.
 - **Equality.** `eq?`/`eqv?`/`equal?` per the report, plus `boolean=?`.
 
-**The prelude** (`lisp/prelude.scm`) is ordinary Lisp you could have typed at
+**The prelude** (`shslisp/prelude.scm`) is ordinary Lisp you could have typed at
 the REPL — no Python, no hooks. Its vocabulary:
 
 - combinators: `identity inc dec const compose pipe flip complement partial
@@ -326,11 +326,11 @@ aliased into pretending.
 
 | Library | What it gives you | Where it lives |
 | --- | --- | --- |
-| `(srfi 1)` | the list library: `fold`/`fold-right`/`reduce`, lset operations, `iota`, `count`, `find`, `partition`, `member`/`assoc` with an optional comparator | `lisp/srfi1.scm` (pure Lisp) |
-| `(srfi 26)` | `cut` / `cute` — partial application with placeholders | `lisp/srfi26.scm` (pure Lisp) |
+| `(srfi 1)` | the list library: `fold`/`fold-right`/`reduce`, lset operations, `iota`, `count`, `find`, `partition`, `member`/`assoc` with an optional comparator | `shslisp/srfi1.scm` (pure Lisp) |
+| `(srfi 26)` | `cut` / `cute` — partial application with placeholders | `shslisp/srfi26.scm` (pure Lisp) |
 | `(srfi 88)` | keyword objects, reader-level | core: reader, evaluator, printer |
-| `(srfi 89)` | `define*` / `lambda*`: optional positional and named parameters | `lisp/srfi89.scm` (pure Lisp) |
-| `(srfi 197)` | the `chain` pipeline family | `lisp/srfi197.scm` (pure Lisp) |
+| `(srfi 89)` | `define*` / `lambda*`: optional positional and named parameters | `shslisp/srfi89.scm` (pure Lisp) |
+| `(srfi 197)` | the `chain` pipeline family | `shslisp/srfi197.scm` (pure Lisp) |
 | `(srfi 241)` | `match` — quasiquote-style pattern matching | core: `evaluator.py` |
 | `(srfi 204)` | **withdrawn** — importing it fails, naming SRFI 241 | — |
 
@@ -412,7 +412,7 @@ The Python seam is a first-class feature, not an escape hatch. A host project
 declares its own functions as primitives:
 
 ```python
-from lisp import install_primitives, make_env, run
+from shslisp import install_primitives, make_env, run
 
 env = make_env()                       # a general Scheme, no game needed
 install_primitives(env, [("double", lambda n: n * 2)], source="myproject")
@@ -425,17 +425,17 @@ run("(double 21)", env)                # -> 42
   pass them to `make_env(extensions=[…])`.
 - An extension sees the environment **after** the prelude, so it can build on
   the language's own vocabulary — which is exactly what a host edition does.
-- The package installs with `pip install shs`; the import name is `lisp`.
+- The package installs with `pip install shslisp`; the import name is `shslisp`.
 
-Environment assembly (`lisp/runtime.py`) is the generality story in miniature:
+Environment assembly (`shslisp/runtime.py`) is the generality story in miniature:
 
-1. **core** — `lisp/builtins.py`;
-2. **prelude** — `lisp/prelude.scm`, `lisp/rope.scm`;
+1. **core** — `shslisp/builtins.py`;
+2. **prelude** — `shslisp/prelude.scm`, `shslisp/rope.scm`;
 3. **profile** — the SRFI layer, pre-imported (`profile="dsl"` by default);
 4. **extensions** — whatever the host passed, plus a host edition when one is
    installed (`install_tetris=None` — *auto* — means "include the host only
    if its package is importable", which is why a project that installs or
-   vendor-copies `lisp/` gets the language and nothing else).
+   vendor-copies `shslisp/` gets the language and nothing else).
 
 ## Architecture conventions for hosts
 
@@ -451,7 +451,7 @@ separate project) is the large worked example:
 - The SRFI layer never learns a host word: the profile lint loads every shipped
   `.scm` file in a language-only environment, so the layer stays host-agnostic.
 
-The lint in `lisp/profile.py` keeps the "mandatory SRFI layer" rule with
+The lint in `shslisp/profile.py` keeps the "mandatory SRFI layer" rule with
 teeth: every shipped `.scm` file must load under the default profile, and a
 file that does not turns `tests/test_profile.py` red.
 

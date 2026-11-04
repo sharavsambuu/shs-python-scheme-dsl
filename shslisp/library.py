@@ -4,14 +4,14 @@ A library is three things and nothing more:
 
 * **a name** — ``(scheme base)``, ``(srfi 1)`` — the tuple of its parts;
 * **exports** — the names it makes public, checked against the manifest
-  (:mod:`lisp.manifest`) for the built-in ``(scheme ...)`` libraries;
+  (:mod:`shslisp.manifest`) for the built-in ``(scheme ...)`` libraries;
 * **a private environment** — the scope its definitions live in. A library's
   exports are resolved *through* that scope, so two libraries that re-export
   the same binding hand back the *same object*: importing ``(srfi 1)`` next to
   ``(scheme base)`` does not quietly make ``car`` mean something else.
 
 The registry belongs to an environment tree, exactly the way the loader does:
-:func:`lisp.runtime.make_env` installs it, child scopes inherit it, and a
+:func:`shslisp.runtime.make_env` installs it, child scopes inherit it, and a
 ``define-library`` evaluated anywhere in the tree registers into it. Two
 consequences fall out of that: importing the same library twice is not a
 duplicate-binding error (the second import rebinds the same values), and a

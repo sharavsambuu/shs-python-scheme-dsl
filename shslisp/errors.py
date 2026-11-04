@@ -39,7 +39,7 @@ class LispRecursionError(LispError):
     """A non-tail recursion outran the interpreter's stack budget.
 
     Tail calls cost no host stack, so this is only ever reached by *non-tail*
-    recursion (``(+ 1 (f (- n 1)))``) deeper than :data:`lisp.evaluator.DEPTH_LIMIT`.
+    recursion (``(+ 1 (f (- n 1)))``) deeper than :data:`shslisp.evaluator.DEPTH_LIMIT`.
     Raising a :class:`LispError` here — rather than letting Python's own
     ``RecursionError`` escape — keeps the abstraction whole: a Lisp program
     only ever sees Lisp errors.
@@ -61,7 +61,7 @@ class LispBudgetError(LispError):
     budget cannot see: tail calls are flat, so an infinite tail loop costs no
     depth — but it still spends a real step of Python work each round. Each
     root evaluation counts its trampoline steps against
-    :data:`lisp.evaluator.STEPS_BUDGET` (the MAX_PUMP backstop a self-hosted
+    :data:`shslisp.evaluator.STEPS_BUDGET` (the MAX_PUMP backstop a self-hosted
     runtime owes itself), and past that a clean Lisp error ends the walk
     instead of a hang.
     """

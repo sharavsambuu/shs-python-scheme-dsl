@@ -2,7 +2,7 @@
 
 The evaluator is a tree-walker. A *tail* call loops (the trampoline), but a
 non-tail call nests, and every level of that nesting is a handful of Python
-frames. :data:`lisp.evaluator.DEPTH_LIMIT` therefore promises one million
+frames. :data:`shslisp.evaluator.DEPTH_LIMIT` therefore promises one million
 nested calls, and the host must have room for them.
 
 On CPython 3.11+ that room is free — Python-to-Python calls no longer consume C

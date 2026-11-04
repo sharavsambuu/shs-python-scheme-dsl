@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import pytest
 
-from lisp.errors import LispError, LispNameError
-from lisp.evaluator import evaluate_program
-from lisp.reader import read_all
-from lisp.runtime import make_env
+from shslisp.errors import LispError, LispNameError
+from shslisp.evaluator import evaluate_program
+from shslisp.reader import read_all
+from shslisp.runtime import make_env
 
 
 def run(env, source: str):

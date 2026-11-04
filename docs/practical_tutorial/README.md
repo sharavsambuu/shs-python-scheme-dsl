@@ -6,7 +6,7 @@
 > with the interpreter day to day — developing from the REPL, reading a failure,
 > splitting a program across files, touching files and ports, measuring, shipping
 > a host extension, and testing Lisp code from Python. Everything it will teach
-> already exists in [`lisp/`](../../lisp/) and is already tested; the handbook's
+> already exists in [`shslisp/`](../../shslisp/) and is already tested; the handbook's
 > job is to turn those tools into a path a newcomer can walk.
 
 > **Honesty note.** Every chapter below is *planned, not written*. The chapter
@@ -33,12 +33,12 @@ where they have practical jobs rather than abstract ones.
 
 | Task | Chapter | What it will teach | Where the truth lives |
 | --- | --- | --- | --- |
-| **P0** | [The REPL as a workbench](p0-the-repl-as-a-workbench.md) | The day-one loop: `,help`, `,load`, `,quit`, `-e`, `shs run`, iterate on a definition without leaving the prompt, and why a mistake is an error line, not a crash | [`lisp/repl.py`](../../lisp/repl.py), [`tests/test_repl.py`](../../tests/test_repl.py), the CLI section of [`appendix-a-reference.md`](../lisp_tutorial/appendix-a-reference.md) |
-| **P1** | [When things go wrong](p1-when-things-go-wrong.md) | Reading a failure: the three kinds (read / name / runtime), error objects, `error-object-message` and irritants, what a `guard` can and cannot catch | [`lisp/errors.py`](../../lisp/errors.py), [`lisp/stack.py`](../../lisp/stack.py), [`tests/test_repl.py`](../../tests/test_repl.py) |
-| **P2** | [Programs across files](p2-programs-across-files.md) | `(load ...)` and `loaded?` first, then the real library system: `define-library`, `import`, the four modifiers, collisions, and `(environment ...)` | [`lisp/loader.py`](../../lisp/loader.py), [`lisp/library.py`](../../lisp/library.py), [`lisp/manifest.py`](../../lisp/manifest.py), [`tests/test_library.py`](../../tests/test_library.py) |
-| **P3** | [Files, ports, and the one door](p3-files-ports-and-the-one-door.md) | The `(scheme file)` and `(scheme base)` port procedures, `dynamic-wind` for guaranteed cleanup, and the functional-core rule for where I/O belongs | the manifest in [`lisp/manifest.py`](../../lisp/manifest.py), chapter [25](../lisp_tutorial/25-functional-core-imperative-shell.md) |
-| **P4** | [Features and the walls](p4-features-and-the-walls.md) | `features` and `cond-expand` for one-script-many-runtimes, `procedure-arity`, and the two named ceilings — the depth limit and the step budget. There is no profiler; the chapter says so and points timing at `(scheme time)` and the host | [`lisp/evaluator.py`](../../lisp/evaluator.py) (`DEPTH_LIMIT`, `STEPS_BUDGET`), [`lisp/profile.py`](../../lisp/profile.py) (the feature list, not a profiler), [`tests/test_profile.py`](../../tests/test_profile.py) |
-| **P5** | [Shipping an extension](p5-shipping-an-extension.md) | A worked host primitive: `install_primitives`, extensions as a shippable vocabulary, the three install-time refusals, and the guest side of `*command-line-args*` | [`lisp/embed.py`](../../lisp/embed.py), [`tests/test_embed.py`](../../tests/test_embed.py), chapter [27](../lisp_tutorial/27-embedding-in-python.md) |
+| **P0** | [The REPL as a workbench](p0-the-repl-as-a-workbench.md) | The day-one loop: `,help`, `,load`, `,quit`, `-e`, `shs run`, iterate on a definition without leaving the prompt, and why a mistake is an error line, not a crash | [`shslisp/repl.py`](../../shslisp/repl.py), [`tests/test_repl.py`](../../tests/test_repl.py), the CLI section of [`appendix-a-reference.md`](../lisp_tutorial/appendix-a-reference.md) |
+| **P1** | [When things go wrong](p1-when-things-go-wrong.md) | Reading a failure: the three kinds (read / name / runtime), error objects, `error-object-message` and irritants, what a `guard` can and cannot catch | [`shslisp/errors.py`](../../shslisp/errors.py), [`shslisp/stack.py`](../../shslisp/stack.py), [`tests/test_repl.py`](../../tests/test_repl.py) |
+| **P2** | [Programs across files](p2-programs-across-files.md) | `(load ...)` and `loaded?` first, then the real library system: `define-library`, `import`, the four modifiers, collisions, and `(environment ...)` | [`shslisp/loader.py`](../../shslisp/loader.py), [`shslisp/library.py`](../../shslisp/library.py), [`shslisp/manifest.py`](../../shslisp/manifest.py), [`tests/test_library.py`](../../tests/test_library.py) |
+| **P3** | [Files, ports, and the one door](p3-files-ports-and-the-one-door.md) | The `(scheme file)` and `(scheme base)` port procedures, `dynamic-wind` for guaranteed cleanup, and the functional-core rule for where I/O belongs | the manifest in [`shslisp/manifest.py`](../../shslisp/manifest.py), chapter [25](../lisp_tutorial/25-functional-core-imperative-shell.md) |
+| **P4** | [Features and the walls](p4-features-and-the-walls.md) | `features` and `cond-expand` for one-script-many-runtimes, `procedure-arity`, and the two named ceilings — the depth limit and the step budget. There is no profiler; the chapter says so and points timing at `(scheme time)` and the host | [`shslisp/evaluator.py`](../../shslisp/evaluator.py) (`DEPTH_LIMIT`, `STEPS_BUDGET`), [`shslisp/profile.py`](../../shslisp/profile.py) (the feature list, not a profiler), [`tests/test_profile.py`](../../tests/test_profile.py) |
+| **P5** | [Shipping an extension](p5-shipping-an-extension.md) | A worked host primitive: `install_primitives`, extensions as a shippable vocabulary, the three install-time refusals, and the guest side of `*command-line-args*` | [`shslisp/embed.py`](../../shslisp/embed.py), [`tests/test_embed.py`](../../tests/test_embed.py), chapter [27](../lisp_tutorial/27-embedding-in-python.md) |
 | **P6** | [Testing Lisp from the host](p6-testing-lisp-from-the-host.md) | The pattern this repository runs on: `run_script` from pytest, guest-side `checked` self-checks, and the rule for which side a test belongs on | [`tests/test_exercises.py`](../../tests/test_exercises.py), [`tests/test_tutorial.py`](../../tests/test_tutorial.py), [`tests/test_embed.py`](../../tests/test_embed.py) |
 
 ## The ledger
@@ -52,7 +52,7 @@ landed; the machine-checked ones stay checked by `tests/test_practical.py`.)*
 | P1 | yes | the three failure kinds, error objects in action, the two catchable-by-nothing walls, and two honest warts (a Python signature leaking into a builtin's arity error; no line numbers on read errors) |
 | P2 | yes | `define-library` + `import` in one verified file, all four modifiers, the loud collision, and `(environment ...)` |
 | P3 | yes | a self-contained file round trip, `dynamic-wind`'s after-thunk under an error, and the one-door split |
-| P4 | yes | `cond-expand` on the real feature list, `procedure-arity`'s honest `#f`, and the step-budget message quoted exactly as the CLI prints it. **Correction on landing:** the original plan called this chapter "Measuring" with `lisp/profile.py` as a profiler — that file is the import-profile installer, not a profiler. The chapter is titled for what the runtime actually offers; the plan's claim is corrected here rather than quietly. |
+| P4 | yes | `cond-expand` on the real feature list, `procedure-arity`'s honest `#f`, and the step-budget message quoted exactly as the CLI prints it. **Correction on landing:** the original plan called this chapter "Measuring" with `shslisp/profile.py` as a profiler — that file is the import-profile installer, not a profiler. The chapter is titled for what the runtime actually offers; the plan's claim is corrected here rather than quietly. |
 | P5 | yes | the three install-time refusals as cited tests, extensions running after the prelude, and the guest side of `*command-line-args*` (machine-checked with `script_args=[]`) |
 | P6 | yes | `run_script` from pytest, the `checked` helper, the `FAIL` shape, and the which-side rule |
 
@@ -71,7 +71,7 @@ minus nothing:
 3. **Every file and test it cites exists** — the same three checks
    [`tests/test_docs.py`](../../tests/test_docs.py) runs on the top-level pages.
 4. **It leaves the language claims to the pages that own them.** Behaviour is
-   cited (`lisp/…`, `tests/…`), not re-asserted; where a chapter and a test
+   cited (`shslisp/…`, `tests/…`), not re-asserted; where a chapter and a test
    disagree, the test wins.
 
 ### Order

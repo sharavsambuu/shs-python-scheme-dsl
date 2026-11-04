@@ -76,7 +76,7 @@ Import sets shape what crosses the boundary — the four R7RS modifiers:
 Two libraries exporting the same name collide *loudly* — the import names the
 clash instead of silently choosing (`tests/test_library.py` pins the message).
 Resolve it yourself with `only`/`rename`, the way the DSL profile resolves
-SRFI 1's `map` (`lisp/profile.py`).
+SRFI 1's `map` (`shslisp/profile.py`).
 
 ## `(environment ...)` and `eval`: the escape hatch
 
@@ -156,5 +156,5 @@ the inside:
 - [07 Modules](../lisp_tutorial/07-modules.md) — the loader's story
 - [P5 — Shipping an extension](p5-shipping-an-extension.md) — the same
   boundary discipline, from the host side
-- The library system: `lisp/library.py`, `lisp/manifest.py`;
+- The library system: `shslisp/library.py`, `shslisp/manifest.py`;
   the guarantees: `tests/test_library.py`

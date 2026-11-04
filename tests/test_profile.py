@@ -13,11 +13,11 @@ from pathlib import Path
 
 import pytest
 
-from lisp.errors import LispNameError
-from lisp.evaluator import evaluate_program
-from lisp.reader import read_all
-from lisp.runtime import make_env
-from lisp.types import intern
+from shslisp.errors import LispNameError
+from shslisp.evaluator import evaluate_program
+from shslisp.reader import read_all
+from shslisp.runtime import make_env
+from shslisp.types import intern
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "scripts"
@@ -56,7 +56,7 @@ def test_the_default_env_resolves_the_map_and_for_each_split(dsl) -> None:
     assert run(dsl, "(member 2 '(1 2 3) =)") == [2, 3]
     # (eq? car srfi-1:car) — the shared set is one binding, not two aliases:
     # the profile's import resolved against *env* itself.
-    from lisp.library import get_library
+    from shslisp.library import get_library
 
     lib_env = get_library(dsl, ("srfi", "1")).instantiate()
     assert lib_env.find(intern("member")) is dsl.find(intern("member"))
@@ -83,7 +83,7 @@ def test_the_profile_is_idempotent(dsl) -> None:
     run(dsl, "(import (srfi 1))")
     run(dsl, "(import (srfi 1))")
     env = make_env(install_tetris=False, profile="dsl")
-    from lisp.profile import install as install_profile
+    from shslisp.profile import install as install_profile
 
     install_profile(env, "dsl")
     install_profile(env, "dsl")
@@ -137,7 +137,7 @@ def _shipped_lisp() -> list:
 
 
 def test_every_shipped_lisp_file_loads_under_the_default_profile() -> None:
-    from lisp.profile import lint
+    from shslisp.profile import lint
 
     pairs = _shipped_lisp()
     assert len(pairs) >= 6  # the examples, the exercises
@@ -148,7 +148,7 @@ def test_every_shipped_lisp_file_loads_under_the_default_profile() -> None:
 def test_the_lint_rejects_a_legacy_file(tmp_path: Path) -> None:
     # A file that does not load under the default profile turns the lint red:
     # an undefined name fails in every environment.
-    from lisp.profile import lint
+    from shslisp.profile import lint
 
     legacy = tmp_path / "legacy.scm"
     legacy.write_text("(this-word-does-not-exist 1)\n", encoding="utf-8")
@@ -158,7 +158,7 @@ def test_the_lint_rejects_a_legacy_file(tmp_path: Path) -> None:
 
 
 def test_the_lint_rejects_a_missing_import(tmp_path: Path) -> None:
-    from lisp.profile import lint
+    from shslisp.profile import lint
 
     legacy = tmp_path / "typo.scm"
     legacy.write_text("(srfi-1:zip + '(1) '(2))\n", encoding="utf-8")

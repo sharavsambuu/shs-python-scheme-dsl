@@ -39,7 +39,7 @@ Two Python differences to internalise:
   not a crash one stack deeper. The refusal is the dataclass-with-types
   promise, enforced.
 - **Records compare by identity.** Two points made equal are not `equal?`:
-  R7RS allows this, and the interpreter takes the allowance (`lisp/types.py`
+  R7RS allows this, and the interpreter takes the allowance (`shslisp/types.py`
   documents it). Structural equality is yours to define — usually by
   converting to data: `(equal? (list (p-x a) (p-y a)) (list (p-x b) (p-y b)))`,
   or by keeping the fields in an alist/hash table instead when equality is the
@@ -103,7 +103,7 @@ unknown messages loudly instead of returning `None`. Every call of
 | A thing that *does* something over time — counters, connections, state machines | a closure |
 | Open-ended keyed data, or data that must compare by value | alist / hash table (chapter [12](12-dictionaries-alists-and-hash-tables.md)) |
 
-The shipped code follows this table: `lisp/rope.scm` declares `Result` as a
+The shipped code follows this table: `shslisp/rope.scm` declares `Result` as a
 variant (chapter [21](21-railway-oriented.md)), the prelude builds promises on
 vectors (data that mutates in exactly one slot), and the memoiser is a closure
 over a hash table — all three, each where it fits.

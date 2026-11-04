@@ -28,8 +28,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # the repo root
 
-from lisp import LispError, load_file, make_env, run
-from lisp.types import intern
+from shslisp import LispError, load_file, make_env, run
+from shslisp.types import intern
 
 ACTORS: dict[str, queue.Queue] = {}
 LOCK = threading.Lock()
@@ -90,7 +90,7 @@ def supervise(name: str, behavior: str) -> threading.Thread:
         while True:
             env = make_env(install_tetris=False)  # fresh env = fresh state
             load_file(env, Path(__file__).with_name("actor_loop.scm"))
-            from lisp import install_primitives
+            from shslisp import install_primitives
 
             install_primitives(env, [
                 ("recv!", mailbox.get),

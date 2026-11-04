@@ -140,4 +140,4 @@ unit, every definition it needs:
   you just provoked
 - [P2 — Programs across files](p2-programs-across-files.md) — `,load` and the
   library system behind it
-- The REPL itself: `lisp/repl.py`; its guarantees: `tests/test_repl.py`
+- The REPL itself: `shslisp/repl.py`; its guarantees: `tests/test_repl.py`

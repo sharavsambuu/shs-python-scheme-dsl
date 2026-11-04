@@ -86,7 +86,7 @@ This is the one place the language is *not* Python, and it is worth 60 seconds:
 > list: fine for a board, wrong for a log. The helpers below walk with the
 > primitive traversals (`map`, `filter`, `foldl`, `for-each`), which loop in
 > the host without copying, and so stay linear.*
-> — `lisp/prelude.scm`, the traversal section header
+> — `shslisp/prelude.scm`, the traversal section header
 
 So the rule is not "lists are slow"; it is *walk with the primitives*. In
 exchange, `length`, `list-ref`, and `take`/`drop` are host indexing — O(1) —
@@ -118,7 +118,7 @@ Which one, then? The decision is about *how the data changes*:
 - Grows and shrinks element by element, or is built by transformation —
   **list**, with the fold family.
 - Fixed length, written in place, indexed hot (game boards, buffers, the
-  promise implementation itself — `lisp/prelude.scm` builds promises on a
+  promise implementation itself — `shslisp/prelude.scm` builds promises on a
   two-slot vector) — **vector**.
 
 ## Deletion has two spellings — and lists can mutate after all

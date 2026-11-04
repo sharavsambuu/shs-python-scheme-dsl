@@ -16,11 +16,11 @@
 | --- | --- | --- | --- |
 | `(scheme base)` | supported | Python registry generated from the A0 manifest | `tests/test_library.py` |
 | `(scheme write)` | supported | Python registry generated from the A0 manifest | `tests/test_library.py` |
-| `(srfi 1)` | supported | `lisp/srfi1.scm` (pure Lisp) | `tests/test_srfi.py` |
-| `(srfi 26)` | supported | `lisp/srfi26.scm` (pure Lisp, `defmacro`) | `tests/test_srfi.py` |
+| `(srfi 1)` | supported | `shslisp/srfi1.scm` (pure Lisp) | `tests/test_srfi.py` |
+| `(srfi 26)` | supported | `shslisp/srfi26.scm` (pure Lisp, `defmacro`) | `tests/test_srfi.py` |
 | `(srfi 88)` | supported | core: reader, evaluator, printer, `builtins.py` | `tests/test_srfi.py` |
-| `(srfi 89)` | supported | `lisp/srfi89.scm` (pure Lisp, `defmacro`) | `tests/test_srfi.py` |
-| `(srfi 197)` | supported | `lisp/srfi197.scm` (pure Lisp, `defmacro`) | `tests/test_srfi.py` |
+| `(srfi 89)` | supported | `shslisp/srfi89.scm` (pure Lisp, `defmacro`) | `tests/test_srfi.py` |
+| `(srfi 197)` | supported | `shslisp/srfi197.scm` (pure Lisp, `defmacro`) | `tests/test_srfi.py` |
 | `(srfi 241)` | supported | core: `evaluator.py` (the global `match`) | `tests/test_srfi.py`, `tests/test_rop.py` |
 | `(srfi 204)` | withdrawn | — | importing it fails, naming SRFI 241 |
 
@@ -30,7 +30,7 @@
   list; importing binds exactly those names, and an export that is not bound
   in the library is an error at import time. The export list is a checked
   constant next to the implementation (`_SRFI1_EXPORTS` in
-  `lisp/library.py`), and a test asserts every exported name is bound in the
+  `shslisp/library.py`), and a test asserts every exported name is bound in the
   library's own environment.
 - **Pure-Lisp libraries** (`srfi1.scm`, `srfi26.scm`) load into a private
   scope whose parent is the owning environment. The private scope is
@@ -46,7 +46,7 @@
 
 ## `(srfi 1)` — the list library
 
-Implemented in `lisp/srfi1.scm`; a pure-Lisp audit-and-complete of the SRFI 1
+Implemented in `shslisp/srfi1.scm`; a pure-Lisp audit-and-complete of the SRFI 1
 procedure index. Semantics follow the SRFI, not the prelude's historical
 helpers:
 
@@ -72,7 +72,7 @@ helpers:
 
 ## `(srfi 26)` — `cut` / `cute`
 
-Implemented in `lisp/srfi26.scm` as `defmacro`s (the raw tool): the macro
+Implemented in `shslisp/srfi26.scm` as `defmacro`s (the raw tool): the macro
 scans its form and generates a fresh lambda parameter list, with every
 generated name a `gensym`, so caller variables are safe.
 
@@ -100,7 +100,7 @@ Keywords are a core data type, exposed through the library:
 - **Printer:** a keyword writes back with its colon, so it reads round-trip.
 ## `(srfi 89)` — `define*` / `lambda*`
 
-Implemented in `lisp/srfi89.scm` as `defmacro`s, following SRFI 89's
+Implemented in `shslisp/srfi89.scm` as `defmacro`s, following SRFI 89's
 recommended expansion shape: `lambda*` becomes an ordinary `lambda` over one
 rest parameter, a runtime split of the arguments, and a single `let*` that
 binds every parameter in formals order. `Closure`, `_bind`, `apply`, and
@@ -124,7 +124,7 @@ binds every parameter in formals order. `Closure`, `_bind`, `apply`, and
 
 ## `(srfi 197)` — pipeline operators
 
-Implemented in `lisp/srfi197.scm` as `defmacro`s. Every macro does its work
+Implemented in `shslisp/srfi197.scm` as `defmacro`s. Every macro does its work
 entirely at *expansion* time — the generated code references only core names
 (`apply`, `call-with-values`, `lambda`, `let`, `if`) — so expansions are safe
 in any scope and no library helper has to be embedded as a value.
@@ -158,7 +158,7 @@ in any scope and no library helper has to be embedded as a value.
 
 ## `(srfi 241)` — the standard `match`
 
-Implemented as a Python pattern compiler in `lisp/evaluator.py` — `match` is a
+Implemented as a Python pattern compiler in `shslisp/evaluator.py` — `match` is a
 global special form (like SRFI 88's core-backed primitives, the `(srfi 241)`
 Library entry only scopes the name for the import/collision rules). The
 project's tag-dispatch matcher is renamed **`variant-match`** and keeps its
@@ -272,7 +272,7 @@ appears here with a reason.
 
 ## The generator library: prelude, not an SRFI (S9)
 
-Landing alongside the SRFI layer is **`lisp/generators.scm`** (task S9 in
+Landing alongside the SRFI layer is **`shslisp/generators.scm`** (task S9 in
 [`SRFI_TASKS.md`](SRFI_TASKS.md)): lazy sequences as ordinary closures. A
 generator is a procedure of zero arguments answering the next value, and the
 unique `generator-end` object at exhaustion — no evaluator change, no
@@ -320,7 +320,7 @@ section in the same change.
   machinery.
 
 Host editions are orthogonal: no profile installs host bindings. The
-profile lint (`lisp/profile.lint`) checks that every shipped `.scm` file
+profile lint (`shslisp/profile.lint`) checks that every shipped `.scm` file
 loads under the default profile; `tests/test_profile.py` runs it and proves
 it goes red on a file that does not load.
 

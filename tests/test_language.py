@@ -9,15 +9,15 @@ from __future__ import annotations
 
 import pytest
 
-from lisp.errors import (
+from shslisp.errors import (
     LispError,
     LispRecursionError,
     LispSyntaxError,
     LispTypeError,
 )
-from lisp.printer import to_string
-from lisp.reader import read_one
-from lisp.types import NIL, Char, Pair, Vector, intern, is_nil, is_symbol
+from shslisp.printer import to_string
+from shslisp.reader import read_one
+from shslisp.types import NIL, Char, Pair, Vector, intern, is_nil, is_symbol
 
 
 # --------------------------------------------------------------------------- #
@@ -41,7 +41,7 @@ def test_the_ceiling_is_still_a_clean_lisp_error(ev, monkeypatch) -> None:
     Lowering ``DEPTH_LIMIT`` keeps the test instant; the check itself is the
     same code path a million-deep runaway takes.
     """
-    from lisp import evaluator
+    from shslisp import evaluator
 
     monkeypatch.setattr(evaluator, "DEPTH_LIMIT", 500)
     ev("(define (s n) (if (= n 0) 0 (+ n (s (- n 1)))))")
@@ -56,7 +56,7 @@ def test_tail_recursion_is_unbounded_in_depth_only(ev, monkeypatch) -> None:
     # error, tested in test_recursion.py). With the step budget raised, a
     # two-million-iteration loop completes — nothing about depth was ever
     # the thing that stopped it.
-    monkeypatch.setattr("lisp.evaluator.STEPS_BUDGET", 100_000_000)
+    monkeypatch.setattr("shslisp.evaluator.STEPS_BUDGET", 100_000_000)
     assert ev("(let loop ((i 0)) (if (= i 2000000) i (loop (+ i 1))))") == 2000000
 
 
@@ -68,7 +68,7 @@ def test_a_budget_change_resizes_the_host_stack(ev, monkeypatch) -> None:
     that tuned the budget then got a perfectly legal recursion killed with
     "the host stack ran out".
     """
-    from lisp import evaluator
+    from shslisp import evaluator
 
     monkeypatch.setattr(evaluator, "DEPTH_LIMIT", 500)
     ev("(define (s n) (if (= n 0) 0 (+ n (s (- n 1)))))")
@@ -303,8 +303,8 @@ def test_guard_test_only_clause_runs_the_test_once(buffered_env) -> None:
     # A guard clause with no body yields the test's value; the test must run
     # exactly once (its side effect, once).
     env, buffer = buffered_env
-    from lisp.evaluator import evaluate_program
-    from lisp.reader import read_all
+    from shslisp.evaluator import evaluate_program
+    from shslisp.reader import read_all
 
     result = evaluate_program(
         read_all('(guard (e ((begin (display "g") 1))) (raise \'boom))'), env

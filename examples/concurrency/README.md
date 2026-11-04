@@ -11,7 +11,7 @@ same design rule, which is also this repository's concurrency contract:
 Run any example from the repository root:
 
 ```sh
-python -m lisp run examples/concurrency/01-generator-pipelines/log_pipeline.scm   # pure Scheme
+python -m shslisp run examples/concurrency/01-generator-pipelines/log_pipeline.scm   # pure Scheme
 python examples/concurrency/03-channels/channels.py                              # host examples
 ```
 

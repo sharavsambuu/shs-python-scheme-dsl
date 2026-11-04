@@ -19,8 +19,8 @@ SRFI layer (SRFIs 1, 26, 88, 89, 197, 241) with the documented collision
 resolutions; ``r7rs`` pre-imports only the strict R7RS-small conformance
 subset; ``none`` skips the profile entirely.
 
-This module is composition only. Everything interesting lives in the ``lisp``
-package, and a host project embeds the language directly (``lisp.embed``)
+This module is composition only. Everything interesting lives in the ``shslisp``
+package, and a host project embeds the language directly (``shslisp.embed``)
 without ever coming near this file. Additional script directories can be put
 on the load path with the ``SHS_PATH`` environment variable
 (``os.pathsep``-separated, like ``PATH``).
@@ -76,7 +76,7 @@ def _search_paths() -> List[Path]:
     """Extra load path from ``SHS_PATH``, ``os.pathsep``-separated (``:`` on
     Unix, ``;`` on Windows — the same convention as ``PATH`` itself).
 
-    The working directory is added by :func:`lisp.runtime.make_env` itself;
+    The working directory is added by :func:`shslisp.runtime.make_env` itself;
     a user or host adds more directories here without touching any code.
     """
     return [
@@ -108,7 +108,7 @@ def run_script(
     loading it twice is a no-op. A leading shebang line is accepted.
 
     The program runs on a stack with room for the interpreter's full recursion
-    ceiling (see :mod:`lisp.stack`): a script is not interactive, so it is the
+    ceiling (see :mod:`shslisp.stack`): a script is not interactive, so it is the
     one place where reserving a big stack costs nothing.
 
     *script_args* — when given — become the Scheme list bound to

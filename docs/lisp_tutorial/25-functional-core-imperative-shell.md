@@ -30,7 +30,7 @@ You have been reading this pattern since chapter [01](01-the-pipeline.md)
 without the label:
 
 - **The core:** the reader, the trampoline evaluator, the primitive floor —
-  all pure functions of their arguments. `lisp/builtins.py` states the claim
+  all pure functions of their arguments. `shslisp/builtins.py` states the claim
   as an architecture (chapter [04](04-primitives.md)): everything is pure
   *except a short, named list of host holes* — `display`, `error`, `eval`,
   `read-string`, `load`.

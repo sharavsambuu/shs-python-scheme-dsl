@@ -10,7 +10,7 @@
 
 ## The loop
 
-`lisp/evaluator.py` has one function at its heart, `_run`. Everything else in
+`shslisp/evaluator.py` has one function at its heart, `_run`. Everything else in
 the file is a helper it calls. Here is its shape, trimmed to the load-bearing
 lines:
 
@@ -194,7 +194,7 @@ provides escape continuations. You will use `guard` in chapter
 both because the error messages name them:
 
 - **`DEPTH_LIMIT = 1_000_000`** — *nested* evaluation (argument lists, non-tail
-  recursion). Exceeding it raises `LispRecursionError`. `lisp/stack.py` reserves
+  recursion). Exceeding it raises `LispRecursionError`. `shslisp/stack.py` reserves
   a worker thread with a large stack so this ceiling holds; on CPython 3.11+
   Python-to-Python calls do not consume C stack, so the deep recursion works on
   any thread.

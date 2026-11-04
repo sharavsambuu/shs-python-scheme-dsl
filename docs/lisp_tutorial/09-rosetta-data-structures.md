@@ -29,10 +29,10 @@ and how to move data between them.
 
 Two structural notes the table hides:
 
-- **A proper list is the host's list.** `lisp/types.py` says it plainly:
+- **A proper list is the host's list.** `shslisp/types.py` says it plainly:
   proper lists are Python lists, so `length`, `list-ref`, and the primitive
   traversals are host-speed — but `cdr` *copies the tail* (it must, to stay
-  immutable). `lisp/prelude.scm`'s traversal comment is the rule to copy:
+  immutable). `shslisp/prelude.scm`'s traversal comment is the rule to copy:
   walk with `map`/`filter`/`fold`, not hand-rolled `(cdr xs)` recursion.
 - **Dotted pairs are the exception, not the building block.** `(cons 1 2)` makes
   an improper `Pair` `(1 . 2)`, but the structures you will use daily — lists,

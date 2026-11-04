@@ -1,4 +1,4 @@
-"""The embedding seam: :mod:`lisp.embed` and ``make_env``'s extension points.
+"""The embedding seam: :mod:`shslisp.embed` and ``make_env``'s extension points.
 
 This file is the *contract* a foreign host project relies on, so it is tested
 from the host's side: build a plain Scheme, hand it a declared table of Python
@@ -12,10 +12,10 @@ from pathlib import Path
 
 import pytest
 
-from lisp import install_extension, install_primitives, make_env, run
-from lisp.errors import LispError
-from lisp.runtime import make_env as runtime_make_env
-from lisp.types import intern
+from shslisp import install_extension, install_primitives, make_env, run
+from shslisp.errors import LispError
+from shslisp.runtime import make_env as runtime_make_env
+from shslisp.types import intern
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -153,20 +153,20 @@ def test_on_requires_a_host_that_is_there() -> None:
 def test_auto_is_a_plain_scheme_without_the_game(monkeypatch) -> None:
     # The foreign-project case: `tetris` cannot be imported, so `make_env()`
     # must quietly be a general Scheme rather than failing.
-    monkeypatch.setattr("lisp.runtime._game_available", lambda: False)
+    monkeypatch.setattr("shslisp.runtime._game_available", lambda: False)
     env = make_env()
     assert GAME_NAME not in _names(env)
     assert run("(* 6 7)", env) == 42
 
 
 # --------------------------------------------------------------------------- #
-#  The packaging claim: `import lisp` does not drag the game in                 #
+#  The packaging claim: `import shslisp` does not drag the game in                 #
 # --------------------------------------------------------------------------- #
 
 def test_importing_the_language_does_not_import_the_game() -> None:
     code = (
-        "import sys, lisp; "
-        "assert 'tetris' not in sys.modules, 'lisp imported the game'; "
+        "import sys, shslisp; "
+        "assert 'tetris' not in sys.modules, 'shslisp imported the game'; "
         "print('clean')"
     )
     result = subprocess.run(
@@ -185,9 +185,9 @@ def test_the_packaging_publishes_the_language_and_its_lisp_data() -> None:
     import tomllib
 
     data = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    assert data["tool"]["setuptools"]["packages"] == ["lisp"]
-    assert data["tool"]["setuptools"]["package-data"]["lisp"] == ["*.scm"]
-    assert (ROOT / "lisp" / "prelude.scm").is_file()
-    assert (ROOT / "lisp" / "rope.scm").is_file()
+    assert data["tool"]["setuptools"]["packages"] == ["shslisp"]
+    assert data["tool"]["setuptools"]["package-data"]["shslisp"] == ["*.scm"]
+    assert (ROOT / "shslisp" / "prelude.scm").is_file()
+    assert (ROOT / "shslisp" / "rope.scm").is_file()
     scripts = data["project"]["scripts"]
-    assert any(target == "lisp.__main__:main" for target in scripts.values())
+    assert any(target == "shslisp.__main__:main" for target in scripts.values())

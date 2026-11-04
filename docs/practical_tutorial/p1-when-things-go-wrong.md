@@ -18,7 +18,7 @@ chapter is about turning every failure into a hint.
 | **Name** | a symbol is used before it is bound | `error: unbound symbol: total` |
 | **Runtime** | a form is valid but the values are wrong — type, arity, a failed `error` call | `error: car: expected 1 argument(s), got 0` |
 
-All three are `LispError` subclasses (`lisp/errors.py`) — the reader raises
+All three are `LispError` subclasses (`shslisp/errors.py`) — the reader raises
 `LispSyntaxError`, the evaluator raises `LispNameError`, `LispTypeError`,
 `LispArityError`. That one base class is the whole contract: a REPL, a script,
 or a `guard` can tell "the program is wrong" from "the host is wrong".
@@ -139,4 +139,4 @@ blocked: over-limit
   from the inside
 - [21 Railway-oriented programming](../lisp_tutorial/21-railway-oriented.md) —
   the design pattern built on all of this
-- The error classes: `lisp/errors.py`; the recoveries: `tests/test_repl.py`
+- The error classes: `shslisp/errors.py`; the recoveries: `tests/test_repl.py`

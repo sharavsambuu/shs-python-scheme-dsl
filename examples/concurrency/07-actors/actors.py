@@ -34,8 +34,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # the repo root
 
-from lisp import load_file, make_env, run, to_string
-from lisp.types import intern
+from shslisp import load_file, make_env, run, to_string
+from shslisp.types import intern
 
 # --- the actor runtime ---------------------------------------------------------
 
@@ -68,7 +68,7 @@ def spawn(name: str, behavior: str) -> threading.Thread:
     def life() -> None:
         env = make_env(install_tetris=False)   # one env per actor, always
         load_file(env, Path(__file__).with_name("actors.scm"))
-        from lisp import install_primitives
+        from shslisp import install_primitives
 
         install_primitives(env, [
             ("recv!", mailbox.get),            # blocks: an actor parks here

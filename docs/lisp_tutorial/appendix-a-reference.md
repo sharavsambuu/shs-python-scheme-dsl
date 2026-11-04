@@ -25,7 +25,7 @@ covers every other argument: a script path or a `*command-line-args*` value
 that contains spaces or parentheses needs double quotes too. Inside the REPL
 no shell is involved — `,load` takes the path raw, spaces included.
 
-## Special forms (`lisp/evaluator.py`)
+## Special forms (`shslisp/evaluator.py`)
 
 ```
 quote  quasiquote  if  define  set!  lambda  let  let*  letrec  letrec*
@@ -34,7 +34,7 @@ let-values  let*-values  define-values  define-syntax  let-syntax  letrec-syntax
 match  define-variant  define-record-type
 ```
 
-Sugar the reader applies first (`lisp/reader.py`): `'x` → `(quote x)`, `` `x `` →
+Sugar the reader applies first (`shslisp/reader.py`): `'x` → `(quote x)`, `` `x `` →
 `(quasiquote x)`, `,x` → `(unquote x)`, `,@x` → `(unquote-splicing x)`, `#(…)` a
 vector, `#u8(…)` a bytevector, `#\a` a char, `(a . b)` a dotted pair, `#;form`
 a discarded datum, `#| … |#` a block comment.
@@ -46,7 +46,7 @@ symbols|` (case and spaces preserved), the string escapes `\" \\ \a \b \t \n
 directives (off by default). `write` emits forms the reader accepts; a symbol
 that is not a plain identifier prints between bars (`|1+|`).
 
-## Core primitives (`lisp/builtins.py`)
+## Core primitives (`shslisp/builtins.py`)
 
 - **Numbers** `+ - * /` `modulo quotient remainder` `abs min max expt sqrt`
   `square floor ceiling truncate round` `gcd lcm` `floor/ floor-quotient
@@ -122,7 +122,7 @@ that is not a plain identifier prints between bars (`|1+|`).
   and can be fed to `eval`. Free identifiers in the result appear as their
   hygiene aliases (`list#hN`); that is hygiene made visible, not a bug.
 
-## Standard library (`lisp/prelude.scm`)
+## Standard library (`shslisp/prelude.scm`)
 
 - **Combinators** `identity inc dec const compose pipe flip complement partial
   curry`
@@ -215,9 +215,9 @@ The rule of thumb: a *predicate or key* comes before the collection
 (`filter`, `take-while`, `group-by`, `sort-by`); a *seed* sits in the middle
 (`foldl`); and the collection comes first only for the structural accessors
 (`take`, `drop`, `list-ref`). When in doubt, the definition is three lines in
-`lisp/prelude.scm`.
+`shslisp/prelude.scm`.
 
-## ROP (`lisp/rope.scm`)
+## ROP (`shslisp/rope.scm`)
 
 - **Type** `(define-variant result (ok value) (err reason))` → `ok err ok-value
   err-reason result?`
@@ -240,7 +240,7 @@ that installs its own vocabulary into an environment:
 - `install_primitives(env, table)` binds a declared list of
   `name -> callable`, refusing a duplicate at install time;
 - an **extension** — any object with `install(env)` — can bring its own Lisp
-  prelude, loaded through the same loader as `lisp/prelude.scm`.
+  prelude, loaded through the same loader as `shslisp/prelude.scm`.
 
 The Tetris edition (a separate project) is the worked example: its crossing
 primitives, its Lisp vocabulary, and its design protocol are documented in
@@ -326,20 +326,20 @@ keyword parameter name, an unknown case label, a `match` tag outside
 defaulting. A host edition publishes its own sets the same way (a `clock`
 argument in `install_primitives` can return the host's `(mode-names)`).
 
-## Environment assembly (`lisp/runtime.py`)
+## Environment assembly (`shslisp/runtime.py`)
 
-1. **core** — `lisp/builtins.py`
-2. **prelude** — `lisp/prelude.scm`, `lisp/rope.scm`
+1. **core** — `shslisp/builtins.py`
+2. **prelude** — `shslisp/prelude.scm`, `shslisp/rope.scm`
 3. **the profile** — the pre-imported SRFI layer (`--profile dsl`, the
    default), or none (`--profile r7rs` / `--profile none`)
 4. **extensions** — anything passed in `extensions=[…]`, plus a host edition
    when one is installed (`make_env()` is *auto*: the host is included only
    when its package is importable)
 
-## Embedding in your own Python (`lisp/embed.py`)
+## Embedding in your own Python (`shslisp/embed.py`)
 
 ```python
-from lisp import install_primitives, make_env, run
+from shslisp import install_primitives, make_env, run
 
 env = make_env()                       # a general Scheme, no game needed
 install_primitives(env, [("double", lambda n: n * 2)], source="myproject")
@@ -351,7 +351,7 @@ run("(double 21)", env)                # -> 42
 - An **extension** is any callable `env -> env` or object with `install(env)`;
   pass them to `make_env(extensions=[…])`.
 - The package installs with `pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git`
-  (see `docs/INSTALL.md`); the import name is `lisp`. See
+  (see `docs/INSTALL.md`); the import name is `shslisp`. See
   chapter [27](27-embedding-in-python.md).
 
 ## Budgets and limits
@@ -368,7 +368,7 @@ run("(double 21)", env)                # -> 42
 - The language contract: `docs/srfi.md` (the SRFI layer) and
   `docs/language.md` (the one-stop reference).
 - The language's own voice: the docstring at the top of every module in
-  `lisp/`, and the comment at the top of every `.scm` beside them.
+  `shslisp/`, and the comment at the top of every `.scm` beside them.
 - The tests are documentation with teeth: `tests/test_tutorial.py` (this
   tutorial's examples), `tests/test_exercises.py` (the answer keys), and the
   per-module suites beside them.

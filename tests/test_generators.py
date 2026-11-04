@@ -1,6 +1,6 @@
 """The generator library — lazy sequences as ordinary closures (S9).
 
-``lisp/generators.scm`` is prelude: a generator is a procedure of zero
+``shslisp/generators.scm`` is prelude: a generator is a procedure of zero
 arguments answering the next value, and the unique ``generator-end`` object at
 exhaustion. No evaluator change, no continuations — ``set!`` and a closure are
 the whole mechanism. What is pinned here:
@@ -20,11 +20,11 @@ from __future__ import annotations
 
 import pytest
 
-from lisp.errors import LispError
-from lisp.evaluator import evaluate_program
-from lisp.reader import read_all
-from lisp.runtime import make_env
-from lisp.types import NIL
+from shslisp.errors import LispError
+from shslisp.evaluator import evaluate_program
+from shslisp.reader import read_all
+from shslisp.runtime import make_env
+from shslisp.types import NIL
 
 
 @pytest.fixture

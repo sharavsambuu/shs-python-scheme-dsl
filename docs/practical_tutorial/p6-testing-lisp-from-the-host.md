@@ -20,7 +20,7 @@ your embedded Lisp gets the same safety net your Python does.
 only what the program `display`s, and returns the last value.
 
 ```python
-from lisp.__main__ import run_script
+from shslisp.__main__ import run_script
 
 def test_total(tmp_path):
     program = tmp_path / "total.scm"
@@ -44,7 +44,7 @@ For pure functions, skip the file entirely and evaluate forms in a fresh
 environment:
 
 ```python
-from lisp import make_env, run
+from shslisp import make_env, run
 
 def test_total_pure():
     env = make_env(install_tetris=False)
@@ -102,7 +102,7 @@ collect, then summarize.
 The repository's own split is the example: `tests/test_embed.py` tests the
 crossing from the host's side; the prelude's pure Lisp is tested from Python
 too (`tests/test_language.py`); and a shipped script that misbehaves fails
-when a human runs it, so the scripts get a lint — `lisp/profile.py`'s `lint`
+when a human runs it, so the scripts get a lint — `shslisp/profile.py`'s `lint`
 loads every shipped `.scm` under the default profile.
 
 ## Try it

@@ -2,7 +2,7 @@
 and the strict R7RS profile the conformance harness runs.
 
 A profile is a list of import sets, applied to an environment by the library
-system (:func:`lisp.library.apply_imports`) — the A13 registry does the
+system (:func:`shslisp.library.apply_imports`) — the A13 registry does the
 binding, and the collision rule inside one call is what keeps the profile
 honest. The DSL profile pre-imports every mandatory SRFI with the collision
 resolutions spelled out: the SRFI 1 ``map``/``for-each`` are renamed (they

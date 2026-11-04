@@ -61,7 +61,7 @@ put it over a project of your own.
 | --- | --- | --- |
 | **Part I — the machine** | | |
 | | [00 Lisp in ten minutes](00-lisp-in-ten-minutes.md) | The whole language, fast |
-| | [01 The pipeline](01-the-pipeline.md) | Reader → evaluator → printer, and the map of `lisp/` |
+| | [01 The pipeline](01-the-pipeline.md) | Reader → evaluator → printer, and the map of `shslisp/` |
 | | [02 Values and reading](02-values-and-reading.md) | What a value *is*, and how text becomes one |
 | | [03 Evaluating](03-evaluating.md) | The trampoline: data becomes behaviour |
 | | [04 Primitives](04-primitives.md) | The Python floor, and the named impure doors |

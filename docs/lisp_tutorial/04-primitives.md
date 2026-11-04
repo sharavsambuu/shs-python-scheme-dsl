@@ -1,6 +1,6 @@
 # 04 — Primitives: the Python floor
 
-> **What this chapter teaches.** What `lisp/builtins.py` provides, why it is
+> **What this chapter teaches.** What `shslisp/builtins.py` provides, why it is
 > split into pure functions and a handful of named host holes, and the one rule
 > that keeps it small: if Lisp can define it, it does not belong here.
 >
@@ -76,7 +76,7 @@ The module docstring names the design:
 
 > *Pure functions (`+`, `car`, `map` …) are the language's algebra. A few host
 > hooks (`display`, `error`, `eval` — and `load`, which lives next door in
-> `lisp.loader` because resolution is a policy) are the deliberate holes where a
+> `shslisp.loader` because resolution is a policy) are the deliberate holes where a
 > program touches the outside world. Keeping the holes few and named is what
 > lets the rest of a program be reasoned about as pure.*
 
@@ -146,12 +146,12 @@ See chapter [02](02-values-and-reading.md) on the `write`/`display` split.)
 
 1. **Sort the floor.** Classify each of `car`, `display`, `read-string`, `eval`,
    `map`, and `error` as *pure* or *host hole*, using the table above. Then check
-   your answers against the module docstring in `lisp/builtins.py`.
+   your answers against the module docstring in `shslisp/builtins.py`.
 2. **Chained comparison.** Run `(< 1 2 3)` and `(< 1 3 2)`. The first is `#t` and
    the second is `#f`; a chain is not `(< (< 1 2) 3)`. Why would the second
    spelling be wrong in a language where booleans are not numbers?
 3. **Resist the floor.** Implement `second` in Lisp as `(car (cdr xs))`. Then
-   grep `lisp/prelude.scm` for a function that already does it. The point of
+   grep `shslisp/prelude.scm` for a function that already does it. The point of
    the chapter is that the second version belongs in the library, not in
    `builtins.py`.
 

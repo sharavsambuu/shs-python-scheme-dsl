@@ -23,7 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # the repo root
 
-from lisp import make_env, run, to_string
+from shslisp import make_env, run, to_string
 
 # --- the Scheme side -------------------------------------------------------------
 

@@ -25,8 +25,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # the repo root
 
-from lisp import install_primitives, make_env, run
-from lisp.types import intern
+from shslisp import install_primitives, make_env, run
+from shslisp.types import intern
 
 # --- the channel registry ------------------------------------------------------
 # An integer names a channel; the registry is the only shared mutable thing,

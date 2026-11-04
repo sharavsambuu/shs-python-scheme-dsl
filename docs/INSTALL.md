@@ -42,10 +42,10 @@ shs @ git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.1.0
 
 There **is** a package called `shs` on PyPI, but it is an unrelated project
 ("Security Hygiene Scanner") — `pip install shs` will *not* give you this
-language. Our distribution is published — or will be — as **`shs-scheme-dsl`**:
+language. Our distribution is published — or will be — as **`shslisp`**:
 
 ```sh
-pip install shs-scheme-dsl          # once published; the `shs` command it
+pip install shslisp          # once published; the `shs` command it
                                     # installs is the one this manual documents
 ```
 
@@ -59,7 +59,7 @@ Both the command and the importable module are installed together:
 shs --version                      # shs 0.1.0
 shs -e "(fold + 0 (iota 5 1))"     # 15  (SRFI 1 is pre-imported)
 
-python -c "import lisp; print(lisp.run('(+ 40 2)'))"   # 42
+python -c "import shslisp; print(shslisp.run('(+ 40 2)'))"   # 42
 ```
 
 Then take it for a spin:
@@ -80,7 +80,7 @@ shs run examples/fizzbuzz.scm      # from your clone of the project
 | Name | What it is |
 | --- | --- |
 | `shs` | the command: REPL, `run`, `-e`, `--profile` (an alias `lisppy` also exists) |
-| `lisp` | the Python package a host project imports (`make_env`, `run`, `install_primitives`) |
+| `shslisp` | the Python package a host project imports (`make_env`, `run`, `install_primitives`) |
 | `SHS_PATH` | optional environment variable: extra module directories, `os.pathsep`-separated (`:` on Unix, `;` on Windows) |
 
 The working directory is always on the load path, so `shs run program.scm`
@@ -96,7 +96,7 @@ configuration needed for the common case.
   `git+` prefix. Use `pip install git+https://…`, not `pip install https://…`.
 - **`pip install shs` installed something strange** — that PyPI name belongs
   to an unrelated project ("Security Hygiene Scanner"). Uninstall it
-  (`pip uninstall shs`) and install ours from GitHub or as `shs-scheme-dsl`
+  (`pip uninstall shs`) and install ours from GitHub or as `shslisp`
   (see §1).
 - **`shs: command not found` after installing** — the Scripts/bin directory of
   your Python environment is not on `PATH`. Inside a venv, activate the venv

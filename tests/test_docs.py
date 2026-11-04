@@ -13,7 +13,7 @@ Three checks, each of which can catch a real rot:
 1. **Every local markdown link resolves.** The pages link to each other, to
    the tutorial, and to the tests; a rename breaks prose silently, and a
    broken link is a dead end for a reader.
-2. **Every backticked path exists.** A `` `lisp/builtins.py` `` in prose must
+2. **Every backticked path exists.** A `` `shslisp/builtins.py` `` in prose must
    point at a file that exists somewhere real — pages name files from the
    reader's point of view, so several roots are tried.
 3. **Every cited test file exists.** The matrices measure themselves against
@@ -93,7 +93,7 @@ def test_referenced_paths_exist(path: pathlib.Path) -> None:
         ROOT,
         ROOT / "docs",
         ROOT / "docs" / "lisp_tutorial",
-        ROOT / "lisp",
+        ROOT / "shslisp",
         ROOT / "tests",
         ROOT / "examples",
     )

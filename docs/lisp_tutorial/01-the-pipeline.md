@@ -32,52 +32,52 @@ a library, not a language feature.
    "(+ 1 (* 2 3))"  ──reader──▶  ['+', 1, ['*', 2, 3]]  ──evaluator──▶  7
         ▲                                                        ▲
         │                                                        │
-     lisp/reader.py                                    lisp/evaluator.py
-                                                       (with lisp/env.py)
+     shslisp/reader.py                                    shslisp/evaluator.py
+                                                       (with shslisp/env.py)
 ```
 
 Three stages, three modules:
 
-1. **`lisp/reader.py` — text → data.** It does not care what the text *means*;
+1. **`shslisp/reader.py` — text → data.** It does not care what the text *means*;
    it only knows how to make lists and atoms. `'x` is not special syntax to the
    evaluator — the reader has already turned it into `(quote x)` before anything
    is evaluated. That single decision is what makes macros possible: by the time
    a program runs, code *is* data.
-2. **`lisp/types.py` — what the values are.** A number, a string, a symbol, an
+2. **`shslisp/types.py` — what the values are.** A number, a string, a symbol, an
    empty list, a proper list, an improper pair, a vector, a hash table, a tagged
    value, a closure, a primitive. Every one is an ordinary Python value the host
    can inspect.
-3. **`lisp/evaluator.py` — data → behaviour.** A tail-calling loop: it reads a
+3. **`shslisp/evaluator.py` — data → behaviour.** A tail-calling loop: it reads a
    form, decides what kind of form it is, and either returns a value or rebinds
-   `expr`/`env` and loops. Closures capture an environment (`lisp/env.py`), so
+   `expr`/`env` and loops. Closures capture an environment (`shslisp/env.py`), so
    scope is lexical.
 
-Everything else is a library written on top: `lisp/prelude.scm` (the standard
-library), `lisp/syntax.py` (hygienic macros), `lisp/rope.scm` (railway-oriented
+Everything else is a library written on top: `shslisp/prelude.scm` (the standard
+library), `shslisp/syntax.py` (hygienic macros), `shslisp/rope.scm` (railway-oriented
 programming), and the game.
 
 ## The map
 
-Read the `lisp/` package roughly in this order (the package docstring in
-`lisp/__init__.py` gives the same tour in brief):
+Read the `shslisp/` package roughly in this order (the package docstring in
+`shslisp/__init__.py` gives the same tour in brief):
 
 | Module | Lines | Its one job |
 | --- | --- | --- |
-| `lisp/reader.py` | ~350 | Text → forms. Quote sugar, literals, comments, dotted pairs. |
-| `lisp/types.py` | ~580 | The value universe, and the helpers that build lists and pairs. |
-| `lisp/evaluator.py` | ~1100 | The trampoline, the special forms, closures, `match`, variants. |
-| `lisp/stack.py` | ~90 | A host stack deep enough for the language's own recursion. |
-| `lisp/env.py` | ~64 | A scope: a dict plus a parent pointer. |
-| `lisp/errors.py` | ~95 | `LispError` and its purpose-named subclasses. |
-| `lisp/builtins.py` | ~870 | The Python floor: pure functions, plus a few named host holes. |
-| `lisp/syntax.py` | ~480 | `define-syntax` / `syntax-rules` — hygienic macros. |
-| `lisp/prelude.scm` | ~400 | The standard library. **In Lisp.** |
-| `lisp/rope.scm` | ~160 | `Result`, Kleisli composition, do-notation. **In Lisp.** |
-| `lisp/loader.py` | ~180 | `(load "path")`: resolve, load once, detect cycles. |
-| `lisp/runtime.py` | ~90 | Assemble a ready-to-run environment. |
-| `lisp/repl.py` | ~135 | The read-eval-print loop, and the file runner. |
-| `lisp/printer.py` | ~115 | Writing values back out (the `write`/`display` split). |
-| `lisp/__main__.py` | ~250 | The CLI: `shs` — REPL, `run`, `-e`, profiles. |
+| `shslisp/reader.py` | ~350 | Text → forms. Quote sugar, literals, comments, dotted pairs. |
+| `shslisp/types.py` | ~580 | The value universe, and the helpers that build lists and pairs. |
+| `shslisp/evaluator.py` | ~1100 | The trampoline, the special forms, closures, `match`, variants. |
+| `shslisp/stack.py` | ~90 | A host stack deep enough for the language's own recursion. |
+| `shslisp/env.py` | ~64 | A scope: a dict plus a parent pointer. |
+| `shslisp/errors.py` | ~95 | `LispError` and its purpose-named subclasses. |
+| `shslisp/builtins.py` | ~870 | The Python floor: pure functions, plus a few named host holes. |
+| `shslisp/syntax.py` | ~480 | `define-syntax` / `syntax-rules` — hygienic macros. |
+| `shslisp/prelude.scm` | ~400 | The standard library. **In Lisp.** |
+| `shslisp/rope.scm` | ~160 | `Result`, Kleisli composition, do-notation. **In Lisp.** |
+| `shslisp/loader.py` | ~180 | `(load "path")`: resolve, load once, detect cycles. |
+| `shslisp/runtime.py` | ~90 | Assemble a ready-to-run environment. |
+| `shslisp/repl.py` | ~135 | The read-eval-print loop, and the file runner. |
+| `shslisp/printer.py` | ~115 | Writing values back out (the `write`/`display` split). |
+| `shslisp/__main__.py` | ~250 | The CLI: `shs` — REPL, `run`, `-e`, profiles. |
 
 That is the whole language. A *host edition* — a separate project that embeds
 the language and installs its own vocabulary — adds its own modules beside
@@ -85,9 +85,9 @@ these, never inside them.
 
 ## Three layers of an environment
 
-`lisp/runtime.py` builds an environment in three layers, each optional:
+`shslisp/runtime.py` builds an environment in three layers, each optional:
 
-1. **core** — the primitives from `lisp/builtins.py`;
+1. **core** — the primitives from `shslisp/builtins.py`;
 2. **prelude** — `prelude.scm` and `rope.scm`, evaluated in Lisp itself;
 3. **the SRFI profile and extensions** — the pre-imported SRFI layer
    (`--profile dsl`, the default), then whatever the host passes in
@@ -101,7 +101,7 @@ make_env()                   # auto: a host edition is added only if installed
 
 That last default is the thesis of the whole project: the language never
 learns a host word in its own source, so a project that installs (or
-vendor-copies) `lisp/` gets a plain Scheme. The *shell* — `runtime.py` and
+vendor-copies) `shslisp/` gets a plain Scheme. The *shell* — `runtime.py` and
 `__main__.py` — is the only place a host can be wired in, by name and only at
 the caller's request. Chapter [27](27-embedding-in-python.md) shows a host of
 your own taking that place.
@@ -130,9 +130,9 @@ in a host (Python) that has no tail-call elimination of its own. Chapter
 ```
 your Python project     the host — knows your domain, and Python
   ▲
-  │  lisp.embed: a declared crossing — your functions, named once
+  │  shslisp.embed: a declared crossing — your functions, named once
   ▼
-lisp/                   the language — knows nothing about your domain
+shslisp/                   the language — knows nothing about your domain
 ```
 
 The rest of this tutorial walks that picture from the bottom up: the language
@@ -165,10 +165,10 @@ has already applied the quote sugar. That is the whole trick.
    reader can make, so there is nothing to expand.)
 2. **Break the sugar.** At the REPL, type `'(a b)` and then `(quote (a b))`.
    They are the *same form*, and the reader is why: nothing in the evaluator has
-   a `'` case. Find the line in `lisp/reader.py` that rewrites one into the
+   a `'` case. Find the line in `shslisp/reader.py` that rewrites one into the
    other.
-3. **Find the seam.** Open `lisp/runtime.py` and `lisp/__main__.py` and confirm
-   they are the only two files under `lisp/` that name a host edition. The
+3. **Find the seam.** Open `shslisp/runtime.py` and `shslisp/__main__.py` and confirm
+   they are the only two files under `shslisp/` that name a host edition. The
    language itself never does — that discipline is what makes it embeddable,
    and chapter [27](27-embedding-in-python.md) shows the other side of the
    seam.

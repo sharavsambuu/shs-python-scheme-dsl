@@ -16,7 +16,7 @@ from .types import Symbol
 class Environment:
     """A frame of bindings with an optional parent.
 
-    ``loader`` is the module loader this scope was created in (:class:`lisp.loader.Loader`).
+    ``loader`` is the module loader this scope was created in (:class:`shslisp.loader.Loader`).
     It is inherited from the parent, so any scope can ask ``(load ...)`` and get
     the same cache; the value is host state, not a binding a program can read.
     """
@@ -33,18 +33,18 @@ class Environment:
         self.parent = parent
         self.loader = loader if loader is not None or parent is None else parent.loader
         #: The library registry this scope was created in
-        #: (:mod:`lisp.library`), inherited from the parent like ``loader``.
+        #: (:mod:`shslisp.library`), inherited from the parent like ``loader``.
         #: ``None`` only for a root scope nobody installed a registry into.
         self.libraries = None if parent is None else parent.libraries
         #: The profile's additional feature identifiers (``dsl-profile`` and the
-        #: SRFI names), set on the root by :func:`lisp.runtime.make_env` and
+        #: SRFI names), set on the root by :func:`shslisp.runtime.make_env` and
         #: inherited from the parent like ``loader`` — this is what keeps
         #: ``cond-expand`` and ``(features)`` answering the same question.
         self.feature_extra = () if parent is None else parent.feature_extra
         #: The names the core floor itself defined
-        #: (:func:`lisp.builtins.install_core`), set on the root and inherited
+        #: (:func:`shslisp.builtins.install_core`), set on the root and inherited
         #: like ``loader`` — the library system refuses to let an import
-        #: silently replace any of them (see :func:`lisp.library.apply_imports`).
+        #: silently replace any of them (see :func:`shslisp.library.apply_imports`).
         self.core_names = frozenset() if parent is None else parent.core_names
 
 

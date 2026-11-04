@@ -18,10 +18,10 @@ import pathlib
 
 import pytest
 
-from lisp.__main__ import run_script
-from lisp.evaluator import apply_procedure
-from lisp.runtime import make_env
-from lisp.types import intern
+from shslisp.__main__ import run_script
+from shslisp.evaluator import apply_procedure
+from shslisp.runtime import make_env
+from shslisp.types import intern
 
 #: Where the worked answers live.
 ROOT = pathlib.Path(__file__).resolve().parents[1]

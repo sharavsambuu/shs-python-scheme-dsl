@@ -1,6 +1,6 @@
 # 21 — Railway-oriented programming
 
-> **What this chapter teaches.** `lisp/rope.scm`: writing a fallible computation
+> **What this chapter teaches.** `shslisp/rope.scm`: writing a fallible computation
 > as a *chain* instead of a nest of checks, using the `Result` variant from
 > chapter [20](20-typed-control-flow.md).
 >
@@ -368,7 +368,7 @@ failure — a caught `car` of `()` — once raw, once with its message rewritten
    rename a string, and confirm an early `(err …)` skips the rest, and that
    `(result-bind (ok x) f)` equals `(f x)`. A worked file ships at
    `exercises/rename-pipeline.scm`.
-2. **One short-circuit.** Grep `lisp/rope.scm` for where the pipeline stops.
+2. **One short-circuit.** Grep `shslisp/rope.scm` for where the pipeline stops.
    Count the places that decide "this is a failure, stop". The chapter's claim
    is that there is exactly one.
 3. **Lift a domain.** Write `as-result` (the lift from the "host's rails"

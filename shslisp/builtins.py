@@ -4,7 +4,7 @@ Split in two on purpose:
 
 * **Pure functions** (``+``, ``car``, ``map`` …) are the language's algebra.
 * **A few host hooks** (``display``, ``error``, ``eval`` — and ``load``,
-  which lives next door in :mod:`lisp.loader` because resolution is a policy)
+  which lives next door in :mod:`shslisp.loader` because resolution is a policy)
   are the deliberate holes where a program touches the outside world. Keeping
   the holes few and named is what lets the rest of a program be reasoned about
   as pure.
@@ -535,7 +535,7 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     define("gensym", _gensym())
 
     # The floor's own names, remembered once: this is the set the library
-    # system protects from silent replacement (see lisp/library.py). Prelude
+    # system protects from silent replacement (see shslisp/library.py). Prelude
     # aliases of these objects (`fold = foldl`, `reduce = foldl`) are *not*
     # in the set — the SRFI layer is documented to replace those.
     env.core_names = frozenset(env.vars)
@@ -1548,7 +1548,7 @@ def _set_cdr(pair: Any, value: Any) -> Any:
     """``(set-cdr! pair value)`` — mutate a Pair cell's tail.
 
     A proper list is a Python ``list``, whose tail *type* cannot change in
-    place, so ``set-cdr!`` is supported on :class:`~lisp.types.Pair` cells
+    place, so ``set-cdr!`` is supported on :class:`~shslisp.types.Pair` cells
     only; a proper list's tail type change is a documented limitation
     (``docs/srfi.md``).
     """
@@ -2149,7 +2149,7 @@ def _expect_environment(value: Any, who: str) -> Environment:
 def _environment(base: Environment, specs: tuple) -> Environment:
     """``(environment import-spec ...)`` — a fresh env with the imports bound.
 
-    Backed by the real library system (:mod:`lisp.library`): each named
+    Backed by the real library system (:mod:`shslisp.library`): each named
     library is resolved through the registry and its exports bound into a
     fresh child of *base*. A name that is not in the registry is a clear
     "no such library", and one that is declared but not implemented says so.

@@ -16,8 +16,8 @@ import time
 
 import pytest
 
-from lisp.errors import LispError, LispTypeError
-from lisp.types import NIL, is_nil
+from shslisp.errors import LispError, LispTypeError
+from shslisp.types import NIL, is_nil
 
 
 # --------------------------------------------------------------------------- #

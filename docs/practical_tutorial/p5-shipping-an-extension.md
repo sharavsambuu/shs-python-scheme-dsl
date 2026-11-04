@@ -8,7 +8,7 @@ tutorial is the big picture.
 calls like primitives, ship a vocabulary as a reusable extension, and know the
 three rules the crossing enforces.
 
-The embedding seam is `lisp/embed.py` — three functions and a discipline. The
+The embedding seam is `shslisp/embed.py` — three functions and a discipline. The
 guest side needs no changes at all: a host-provided primitive is called exactly
 like a builtin. The contract is pinned by `tests/test_embed.py`, which tests it
 from the host's side on purpose — that file is this chapter's source of truth.
@@ -16,7 +16,7 @@ from the host's side on purpose — that file is this chapter's source of truth.
 ## `install_primitives`: the declared crossing
 
 ```python
-from lisp import install_primitives, make_env, run
+from shslisp import install_primitives, make_env, run
 
 env = make_env(install_tetris=False)
 install_primitives(
@@ -53,10 +53,10 @@ can reuse — a plain function taking `env`, or any object with an `install(env)
 method:
 
 ```python
-from lisp import install_extension, make_env, run
+from shslisp import install_extension, make_env, run
 
 def clock_extension(env):
-    from lisp import install_primitives
+    from shslisp import install_primitives
     install_primitives(env, [("now", lambda: __import__("time").time())],
                        source="clock.py")
 
@@ -137,4 +137,4 @@ args: 0
   full value-crossing table
 - [P6 — Testing Lisp from the host](p6-testing-lisp-from-the-host.md) — the
   same seam, from the test's side
-- The seam itself: `lisp/embed.py`; the contract: `tests/test_embed.py`
+- The seam itself: `shslisp/embed.py`; the contract: `tests/test_embed.py`

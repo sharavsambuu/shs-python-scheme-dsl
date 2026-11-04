@@ -27,11 +27,11 @@ from typing import Any
 
 import pytest
 
-from lisp.evaluator import _SPECIAL_FORMS, evaluate_program
-from lisp.printer import to_string
-from lisp.reader import read_all
-from lisp.runtime import make_env
-from lisp.types import Macro, Symbol, SyntaxRules
+from shslisp.evaluator import _SPECIAL_FORMS, evaluate_program
+from shslisp.printer import to_string
+from shslisp.reader import read_all
+from shslisp.runtime import make_env
+from shslisp.types import Macro, Symbol, SyntaxRules
 
 from r7rs_manifest import KNOWN_MISSING, MANIFEST
 
@@ -306,7 +306,7 @@ def test_record_type_field_missing_from_constructor_starts_false(ev) -> None:
 
 
 def test_record_type_constructor_arity_is_checked(ev) -> None:
-    from lisp.errors import LispArityError
+    from shslisp.errors import LispArityError
 
     ev(POINT)
     with pytest.raises(LispArityError):
@@ -314,7 +314,7 @@ def test_record_type_constructor_arity_is_checked(ev) -> None:
 
 
 def test_record_type_accessor_refuses_the_wrong_record(ev) -> None:
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     ev(POINT)
     ev(BOX)
@@ -347,7 +347,7 @@ def test_record_type_works_inside_a_local_body(ev) -> None:
 
 
 def test_record_type_name_is_bound_to_a_descriptor(ev) -> None:
-    from lisp.types import RecordType
+    from shslisp.types import RecordType
 
     ev(POINT)
     descriptor = ev("point")
@@ -379,7 +379,7 @@ def test_bytevector_construction_and_access(ev) -> None:
 
 
 def test_bytevector_mutation_and_bounds(ev) -> None:
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     assert (
         to_string(
@@ -426,7 +426,7 @@ def test_bytevector_utf8_round_trip(ev) -> None:
 
 
 def test_bytevector_reader_printer_round_trip(ev) -> None:
-    from lisp.types import ByteVector
+    from shslisp.types import ByteVector
 
     value = ev("#u8(0 255 7)")
     assert isinstance(value, ByteVector)
@@ -436,8 +436,8 @@ def test_bytevector_reader_printer_round_trip(ev) -> None:
 
 
 def test_bytevector_reader_rejects_bad_elements() -> None:
-    from lisp.errors import LispSyntaxError
-    from lisp.reader import read_all
+    from shslisp.errors import LispSyntaxError
+    from shslisp.reader import read_all
 
     for source in ("#u8(1 256)", "#u8(1 -1)", '#u8("x")'):
         with pytest.raises(LispSyntaxError):
@@ -501,7 +501,7 @@ ROUND_TRIP = [
 @pytest.mark.parametrize("source", ROUND_TRIP, ids=ROUND_TRIP)
 def test_written_form_reads_back(source: str) -> None:
     """``write`` produces text the reader accepts, and re-writing is stable."""
-    from lisp.reader import read_one
+    from shslisp.reader import read_one
 
     first = read_one(source)
     written = to_string(first, write=True)
@@ -510,7 +510,7 @@ def test_written_form_reads_back(source: str) -> None:
 
 
 def test_radix_and_exactness_prefixes() -> None:
-    from lisp.reader import read_one
+    from shslisp.reader import read_one
 
     assert read_one("#b101") == 5
     assert read_one("#o17") == 15
@@ -547,7 +547,7 @@ def test_quoted_symbols_preserve_case_and_spaces(ev) -> None:
 
 
 def test_fold_case_directive_folds_following_identifiers() -> None:
-    from lisp.reader import read_all
+    from shslisp.reader import read_all
 
     forms = read_all("#!fold-case Foo BAR")
     assert [str(form) for form in forms] == ["foo", "bar"]
@@ -564,13 +564,13 @@ def test_fold_case_directive_folds_following_identifiers() -> None:
 
 
 def test_fold_case_is_off_by_default() -> None:
-    from lisp.reader import read_one
+    from shslisp.reader import read_one
 
     assert str(read_one("Foo")) == "Foo"
 
 
 def test_string_escapes_and_line_continuation() -> None:
-    from lisp.reader import read_one
+    from shslisp.reader import read_one
 
     assert read_one(r'"a\bb"') == "a\bb"
     assert read_one(r'"a\|b"') == "a|b"
@@ -581,8 +581,8 @@ def test_string_escapes_and_line_continuation() -> None:
 
 
 def test_char_names_are_strict() -> None:
-    from lisp.errors import LispSyntaxError
-    from lisp.reader import read_one
+    from shslisp.errors import LispSyntaxError
+    from shslisp.reader import read_one
 
     assert read_one("#\\x41").value == "A"
     assert read_one("#\\escape").value == "\x1b"
@@ -613,7 +613,7 @@ def test_exact_converts_an_inexact_value_to_its_exact_equal(ev) -> None:
     assert type(ev("(exact 2.0)")) is int
     assert ev("(exact 0.1)") == Fraction(0.1)  # the binary double, not 1/10
     assert ev("(exact (/ 3 4))") == Fraction(3, 4)  # an exact value passes through
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     with pytest.raises(LispTypeError, match="no exact equal"):
         ev("(exact +inf.0)")
@@ -638,7 +638,7 @@ def test_scheme_r5rs_imports_whole(ev) -> None:
 
 
 def test_the_r5rs_environment_procedures(ev) -> None:
-    from lisp.errors import LispError
+    from shslisp.errors import LispError
 
     # A6/A7 grew one pair of hands: the import could not resolve until the
     # report's two environment procedures existed either.
@@ -708,7 +708,7 @@ def test_division_by_inexact_zero_answers_ieee(ev) -> None:
     assert ev("(/ -1 0.0)") == float("-inf")
     assert ev("(/ 1.0 0.0)") == float("inf")
     assert math.isnan(ev("(/ 0 0.0)"))
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     with pytest.raises(LispTypeError, match="division by zero"):
         ev("(/ 1 0)")
@@ -756,7 +756,7 @@ def test_exactness_prefix_denotes_the_rational(ev) -> None:
 
 
 def test_division_by_zero_is_a_lisp_error(ev) -> None:
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     with pytest.raises(LispTypeError, match="division by zero"):
         ev("(/ 1 0)")
@@ -803,7 +803,7 @@ def test_rationalize_answers_the_simplest_rational(ev) -> None:
     assert type(ev("(rationalize 3.5 0.1)")) is float
     assert ev("(rationalize 3 0.1)") == 3.0
     assert type(ev("(rationalize 3 0.1)")) is float
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     with pytest.raises(LispTypeError, match="finite"):
         ev("(rationalize +inf.0 0.1)")
@@ -824,7 +824,7 @@ def test_expt_exact_negative_exponent_answers_a_rational(ev) -> None:
     # A non-integral exact exponent is generally irrational: inexact.
     assert ev("(expt 2 (/ 1 2))") == pytest.approx(2 ** 0.5)
     assert ev("(expt 4 (/ 1 2))") == 2.0
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     with pytest.raises(LispTypeError, match="division by zero"):
         ev("(expt 0 -1)")
@@ -866,7 +866,7 @@ def test_the_division_family_preserves_inexactness(ev) -> None:
 def test_the_division_family_refuses_a_zero_divisor_loudly(ev) -> None:
     # A hazard closed while in the family: `modulo`/`quotient` by exact zero
     # used to leak a raw Python ZeroDivisionError.
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     for source in (
         "(modulo 1 0)",
@@ -891,7 +891,7 @@ def test_gcd_and_lcm_take_rationals_and_integral_inexact_integers(ev) -> None:
     assert ev("(lcm 4.0 6)") == 12.0
     assert ev("(gcd)") == 0
     assert ev("(lcm)") == 1
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     with pytest.raises(LispTypeError, match="non-integral float"):
         ev("(gcd 2.5 4)")
@@ -980,7 +980,7 @@ def test_transcendental_functions(ev) -> None:
 def test_log_zero_is_an_error_in_both_towers(ev) -> None:
     """C2 made the transcendentals complex-aware, but ``(log 0)`` has no
     answer in any tower; ``(asin 2)`` gained one (the C2 block pins it)."""
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     with pytest.raises(LispTypeError, match="log"):
         ev("(log 0)")
@@ -1047,7 +1047,7 @@ def test_vector_copy_bang_and_overlap(ev) -> None:
         )
         == "#(7 8 0)"
     )
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     with pytest.raises(LispTypeError):
         ev("(vector-copy! (vector 1) 0 (vector 1 2))")
@@ -1064,7 +1064,7 @@ def test_make_string_is_mutable(ev) -> None:
 
 
 def test_string_set_on_a_literal_is_an_error(ev) -> None:
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     with pytest.raises(LispTypeError, match="immutable"):
         ev('(string-set! "abc" 0 #\\z)')
@@ -1073,7 +1073,7 @@ def test_string_set_on_a_literal_is_an_error(ev) -> None:
 
 
 def test_string_set_bounds(ev) -> None:
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     with pytest.raises(LispTypeError, match="out of range"):
         ev("(string-set! (make-string 2) 5 #\\z)")
@@ -1220,7 +1220,7 @@ def test_read_bytevector_and_read_bytevector_bang(ev) -> None:
 
 
 def test_file_exists_delete_and_file_error(ev, tmp_path) -> None:
-    target = tmp_path / "made-by-lisp.txt"
+    target = tmp_path / "made-by-shslisp.txt"
     assert ev(f'(file-exists? "{target}")') is False
     target.write_text("hi", encoding="utf-8")
     assert ev(f'(file-exists? "{target}")') is True
@@ -1304,7 +1304,7 @@ def test_cond_expand_can_define(ev) -> None:
 
 
 def test_cond_expand_without_a_match_is_an_error(ev) -> None:
-    from lisp.errors import LispSyntaxError
+    from shslisp.errors import LispSyntaxError
 
     with pytest.raises(LispSyntaxError, match="no clause matched"):
         ev("(cond-expand (no-such-feature 1))")
@@ -1325,7 +1325,7 @@ def test_include_ci_folds_case(env, ev, tmp_path) -> None:
 
 
 def test_include_reports_a_cycle(env, ev, tmp_path) -> None:
-    from lisp.errors import LispError
+    from shslisp.errors import LispError
 
     (tmp_path / "loop.scm").write_text('(include "loop")\n', encoding="utf-8")
     env.loader.add_search_paths([tmp_path])
@@ -1340,15 +1340,15 @@ def test_eval_accepts_an_environment(ev) -> None:
 
 def test_environment_isolates_definitions(ev) -> None:
     ev("(eval '(define *local* 1) (environment '(scheme base)))")
-    from lisp.errors import LispNameError
+    from shslisp.errors import LispNameError
 
     with pytest.raises(LispNameError):
         ev("*local*")
 
 
 def test_environment_rejects_an_unknown_library(ev) -> None:
-    from lisp.errors import LispError
-    from lisp.types import Complex
+    from shslisp.errors import LispError
+    from shslisp.types import Complex
 
     with pytest.raises(LispError, match="no such library"):
         ev("(environment '(scheme no-such))")
@@ -1359,7 +1359,7 @@ def test_environment_rejects_an_unknown_library(ev) -> None:
 
 
 def test_environment_rejects_a_non_library_spec(ev) -> None:
-    from lisp.errors import LispTypeError
+    from shslisp.errors import LispTypeError
 
     with pytest.raises(LispTypeError, match="library name"):
         ev("(environment 3)")
@@ -1372,7 +1372,7 @@ def test_environment_rejects_a_non_library_spec(ev) -> None:
 
 def test_the_exact_complex_pair_is_a_tower_citizen(ev) -> None:
     """Rows 1–3 and 12: the pair exists, collapses, and answers honestly."""
-    from lisp.types import Complex
+    from shslisp.types import Complex
 
     assert ev("(make-rectangular 1 2)") == Complex(1, 2)
     # Row 2: an exact zero imaginary part *is* the real.
@@ -1408,7 +1408,7 @@ def test_the_rectangular_accessors_keep_their_parts_exact(ev) -> None:
 
 def test_exact_complex_arithmetic_is_schoolbook(ev) -> None:
     """Row 9's exact half: the field operations, exactly."""
-    from lisp.types import Complex
+    from shslisp.types import Complex
 
     assert ev("(+ (make-rectangular 1 2) (make-rectangular 3 4))") == Complex(4, 6)
     assert ev("(- (make-rectangular 1 2))") == Complex(-1, -2)
@@ -1438,7 +1438,7 @@ def test_exact_complex_arithmetic_is_schoolbook(ev) -> None:
 
 def test_inexact_contagion_reaches_the_complex_pair(ev) -> None:
     """Row 9's inexact half: any float contaminates the whole, everywhere."""
-    from lisp.types import Complex
+    from shslisp.types import Complex
 
     result = ev("(+ (make-rectangular 1 2) 0.5)")
     assert result == complex(1.5, 2.0) and isinstance(result, complex)
@@ -1479,7 +1479,7 @@ def test_eqv_and_equal_distinguish_complex_exactness(ev) -> None:
 
 def test_the_real_only_family_refuses_complex_loudly(ev) -> None:
     """Row 10: the error stays; the reason changes to a Lisp error."""
-    from lisp.errors import LispError
+    from shslisp.errors import LispError
 
     for src in (
         "(floor (make-rectangular 1 2))",
@@ -1507,8 +1507,8 @@ def test_the_real_only_family_refuses_complex_loudly(ev) -> None:
 
 def test_exact_and_inexact_convert_complex_honestly(ev) -> None:
     """The corners: exactness conversions round-trip through the pair."""
-    from lisp.errors import LispError
-    from lisp.types import Complex
+    from shslisp.errors import LispError
+    from shslisp.types import Complex
 
     assert ev("(inexact (make-rectangular 1 2))") == complex(1.0, 2.0)
     assert ev("(exact (inexact (make-rectangular 1 2)))") == Complex(1, 2)
@@ -1521,7 +1521,7 @@ def test_exact_and_inexact_convert_complex_honestly(ev) -> None:
 
 def test_inexact_complex_zero_division_stays_ieee(ev) -> None:
     """Row 1's other half, extended to the complex plane."""
-    from lisp.errors import LispError
+    from shslisp.errors import LispError
 
     # The pure-real answers are unchanged from R1:
     assert ev("(/ 1.0 0.0)") == float("inf")
@@ -1550,7 +1550,7 @@ def test_finite_infinite_and_nan_reach_the_complex_plane(ev) -> None:
 
 def test_complex_values_hash_across_the_exactness_boundary(ev) -> None:
     """The same promise hash(1) == hash(1.0) makes, one dimension up."""
-    from lisp.types import Complex
+    from shslisp.types import Complex
 
     assert hash(Complex(1, 2)) == hash(complex(1.0, 2.0))
     # And through the host bridge: an equal?-keyed table finds the value.
@@ -1611,7 +1611,7 @@ def test_make_polar_round_trips_through_rectangular(ev) -> None:
 
 def test_sqrt_of_negatives_answers_the_principal_root(ev) -> None:
     """Row 8: exact when the magnitude's root is a perfect rational square."""
-    from lisp.types import Complex
+    from shslisp.types import Complex
 
     assert ev("(sqrt -1)") == Complex(0, 1)
     assert ev("(exact? (sqrt -1))") is True
@@ -1631,7 +1631,7 @@ def test_sqrt_of_negatives_answers_the_principal_root(ev) -> None:
 
 def test_log_of_negatives_answers_the_complex_logarithm(ev) -> None:
     """Row 8's other half: ``(log -1)`` is ``+iπ``, inexact."""
-    from lisp.errors import LispError
+    from shslisp.errors import LispError
 
     result = ev("(log -1)")
     assert result == pytest.approx(complex(0, math.pi))
@@ -1648,7 +1648,7 @@ def test_log_of_negatives_answers_the_complex_logarithm(ev) -> None:
 
 def test_the_transcendentals_reach_the_complex_plane(ev) -> None:
     """exp/sin/cos/tan and the arc-functions take complex arguments now."""
-    from lisp.errors import LispError
+    from shslisp.errors import LispError
 
     assert ev("(exp (make-rectangular 0 1))") == pytest.approx(
         complex(math.cos(1), math.sin(1))
@@ -1677,7 +1677,7 @@ def test_the_transcendentals_reach_the_complex_plane(ev) -> None:
 
 def test_expt_with_complex_parts_stays_exact_where_it_can(ev) -> None:
     """Row 9's friends: exact complex base, exact integer exponent."""
-    from lisp.types import Complex
+    from shslisp.types import Complex
 
     # (1+i)² = 2i — the schoolbook square, exactly.
     assert ev("(expt (make-rectangular 1 1) 2)") == Complex(0, 2)
@@ -1710,7 +1710,7 @@ def test_the_polar_names_left_known_missing(ev) -> None:
 
 def test_complex_literals_read(ev) -> None:
     """Row 13: the R7RS rectangular spellings, exact parts exact."""
-    from lisp.types import Complex
+    from shslisp.types import Complex
 
     assert ev("1+2i") == Complex(1, 2)
     assert ev("1/2+1/3i") == Complex(Fraction(1, 2), Fraction(1, 3))
@@ -1743,7 +1743,7 @@ def test_inexact_complex_literals_read(ev) -> None:
 
 def test_exactness_prefixes_apply_to_complex_literals(ev) -> None:
     """``#e``/``#i`` govern the whole literal, every component."""
-    from lisp.types import Complex
+    from shslisp.types import Complex
 
     assert ev("#e1.5+0.5i") == Complex(Fraction(3, 2), Fraction(1, 2))
     assert ev("#e0.1+0.2i") == Complex(Fraction(1, 10), Fraction(1, 5))
@@ -1770,12 +1770,12 @@ def test_polar_literals_read(ev) -> None:
 def test_complex_literal_near_misses_stay_symbols(ev) -> None:
     """The grammar is exact: an unsigned imaginary, a ``j`` suffix, a bare
     ``i`` — none of them is a number, so none of them silently becomes one."""
-    from lisp.reader import read_one
-    from lisp.types import Symbol
+    from shslisp.reader import read_one
+    from shslisp.types import Symbol
 
     for token in ("2i", "i", "1+2j", "foo+bari", "1e3i", "a+i", "1+", "xI"):
         assert isinstance(read_one(token), Symbol), token
-    from lisp.errors import LispSyntaxError
+    from shslisp.errors import LispSyntaxError
 
     with pytest.raises(LispSyntaxError):
         ev("1+1/0i")  # row 20: a zero denominator is a read error, anywhere
@@ -1783,7 +1783,7 @@ def test_complex_literal_near_misses_stay_symbols(ev) -> None:
 
 def test_string_to_number_takes_complex(ev) -> None:
     """Row 14: the reader's twin, one parser two entrances; garbage stays #f."""
-    from lisp.types import Complex
+    from shslisp.types import Complex
 
     assert ev('(string->number "1+2i")') == Complex(1, 2)
     assert ev('(string->number "+i")') == Complex(0, 1)
@@ -1805,7 +1805,7 @@ def test_string_to_number_takes_complex(ev) -> None:
 def test_complex_number_string_round_trip(ev) -> None:
     """Row 13's printer half, closed: what the printer writes, the reader
     reads back to the same number — exact stays exact, bits stay bits."""
-    from lisp.types import Complex
+    from shslisp.types import Complex
 
     for source in (
         "(make-rectangular 1 2)",

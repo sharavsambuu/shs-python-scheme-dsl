@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from lisp.errors import LispBudgetError, LispSyntaxError, LispTypeError
-from lisp.printer import to_string
-from lisp.types import NIL, Vector, intern
+from shslisp.errors import LispBudgetError, LispSyntaxError, LispTypeError
+from shslisp.printer import to_string
+from shslisp.types import NIL, Vector, intern
 
 
 def _head_text(printed: str) -> str:

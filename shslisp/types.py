@@ -257,7 +257,7 @@ def from_cells(cells: Iterable[Any], tail: Any = NIL) -> Any:
 def _structurally_equal(a: Any, b: Any) -> bool:
     """``equal?`` for the Python-level ``==`` of :class:`Pair`/:class:`Vector`.
 
-    The language's own ``equal`` lives in :mod:`lisp.evaluator`; importing it
+    The language's own ``equal`` lives in :mod:`shslisp.evaluator`; importing it
     here would be a cycle, so it is fetched lazily. The two agree by design.
     """
     from .evaluator import equal
@@ -335,7 +335,7 @@ class MutableString:
     Literals and most procedures keep returning Python ``str``; ``make-string``
     and ``string-copy`` return this wrapper because R7RS allows a freshly
     allocated string to be mutable. Every string primitive accepts it through
-    :func:`lisp.builtins._expect_string`, which reads ``.text``; only the
+    :func:`shslisp.builtins._expect_string`, which reads ``.text``; only the
     mutators insist on the wrapper, so a literal raises a clear "immutable"
     error instead of failing somewhere stranger.
     """
@@ -513,7 +513,7 @@ def tag_cells(value: Any) -> Optional[list]:
 def to_repr(value: Any) -> str:
     """A short, dependency-free spelling of *value* for error messages.
 
-    A local helper (rather than ``printer.to_string``) so :mod:`lisp.types` stays
+    A local helper (rather than ``printer.to_string``) so :mod:`shslisp.types` stays
     the bottom of the import graph: errors raised in the value layer must not
     drag the printer in.
     """
@@ -553,7 +553,7 @@ class Complex:
     the constructor answers that real directly). Inexact complex values are
     plain ``complex``; any float in an operation contaminates the result.
 
-    Only :mod:`lisp.builtins` builds these from program input (gated through
+    Only :mod:`shslisp.builtins` builds these from program input (gated through
     ``_expect_number``/``_expect_real``); the class itself stays at the bottom
     of the import graph, dependency-free.
     """

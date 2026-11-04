@@ -3,10 +3,12 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-# The distribution name on PyPI. The command stays `shs`, but the *package*
-# name cannot be `shs`: that name on PyPI belongs to an unrelated project
-# ("Security Hygiene Scanner"). The distribution name matches the repository.
-name = "shs-scheme-dsl"
+# One name everywhere: the distribution on PyPI and the import package are
+# both `shslisp` — distinctive, free on PyPI (verified 2026-11), and it cannot
+# collide with a generic top-level module in someone else's distribution the
+# way `lisp` eventually would. The CLI stays `shs`: that name is taken on PyPI
+# ("Security Hygiene Scanner"), but the *command* is ours and documented.
+name = "shslisp"
 version = "0.1.0"
 description = "shs — a small Scheme-flavored DSL over Python, with SRFIs 1/26/88/89/197/241 and a gosh-like CLI."
 readme = "README.md"
@@ -14,7 +16,7 @@ requires-python = ">=3.11"
 license = { text = "MIT" }
 keywords = ["scheme", "lisp", "dsl", "r7rs", "srfi", "interpreter"]
 # The language itself is pure standard library: no runtime dependencies. A
-# *host* project brings its own vocabulary (see lisp/embed.py).
+# *host* project brings its own vocabulary (see shslisp/embed.py).
 dependencies = []
 
 classifiers = [
@@ -37,8 +39,8 @@ dev = ["pytest"]
 
 [project.scripts]
 # The gosh-shaped CLI. `shs` is the name; `lisppy` is kept as an alias.
-shs = "lisp.__main__:main"
-lisppy = "lisp.__main__:main"
+shs = "shslisp.__main__:main"
+lisppy = "shslisp.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/sharavsambuu/shs-python-scheme-dsl"
@@ -46,9 +48,9 @@ Issues = "https://github.com/sharavsambuu/shs-python-scheme-dsl/issues"
 
 [tool.setuptools]
 # Only the language package is published. A host edition (a game, a tool)
-# lives in its own project and installs its vocabulary via lisp.embed.
-packages = ["lisp"]
+# lives in its own project and installs its vocabulary via shslisp.embed.
+packages = ["shslisp"]
 
 [tool.setuptools.package-data]
 # The standard library and the ROP library are Lisp, and ship as data.
-lisp = ["*.scm"]
+shslisp = ["*.scm"]

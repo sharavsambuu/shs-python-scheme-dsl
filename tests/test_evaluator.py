@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from lisp.errors import LispError, LispNameError, LispTypeError
-from lisp.types import NIL, intern, is_nil
+from shslisp.errors import LispError, LispNameError, LispTypeError
+from shslisp.types import NIL, intern, is_nil
 
 
 # --------------------------------------------------------------------------- #
@@ -121,7 +121,7 @@ def test_tail_calls_do_not_grow_the_stack(ev, monkeypatch) -> None:
     # matters here — the trampoline's depth is flat over every one of the
     # million steps, which is why a failure would have been a LispBudgetError
     # and never a stack error.
-    monkeypatch.setattr("lisp.evaluator.STEPS_BUDGET", 50_000_000)
+    monkeypatch.setattr("shslisp.evaluator.STEPS_BUDGET", 50_000_000)
     assert ev("(let loop ((i 0)) (if (= i 1000000) i (loop (+ i 1))))") == 1000000
     ev("(define (count-down n acc) (if (= n 0) acc (count-down (- n 1) (+ acc 1))))")
     assert ev("(count-down 200000 0)") == 200000
@@ -174,8 +174,8 @@ def test_cond_case_when_unless(ev) -> None:
 def test_cond_test_only_clause_runs_the_test_once(buffered_env) -> None:
     # A clause with no body yields the test's own value — and must evaluate
     # the test exactly once, side effects included.
-    from lisp.evaluator import evaluate_program
-    from lisp.reader import read_all
+    from shslisp.evaluator import evaluate_program
+    from shslisp.reader import read_all
 
     env, buffer = buffered_env
     result = evaluate_program(
@@ -186,8 +186,8 @@ def test_cond_test_only_clause_runs_the_test_once(buffered_env) -> None:
 
 
 def test_cond_test_only_clause_falls_through_when_false(buffered_env) -> None:
-    from lisp.evaluator import evaluate_program
-    from lisp.reader import read_all
+    from shslisp.evaluator import evaluate_program
+    from shslisp.reader import read_all
 
     env, buffer = buffered_env
     result = evaluate_program(
@@ -281,8 +281,8 @@ def test_eval_reads_forms(ev) -> None:
 
 def test_display_writes_to_the_output_port(buffered_env) -> None:
     env, buffer = buffered_env
-    from lisp.evaluator import evaluate_program
-    from lisp.reader import read_all
+    from shslisp.evaluator import evaluate_program
+    from shslisp.reader import read_all
 
     evaluate_program(read_all('(display "hi") (newline) (display 42)'), env)
     assert buffer.getvalue() == "hi\n42"

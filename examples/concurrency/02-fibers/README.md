@@ -1,7 +1,7 @@
 # 02 · fibers — cooperative multitasking over the generator protocol
 
 ```sh
-python -m lisp run examples/concurrency/02-fibers/fibers.scm
+python -m shslisp run examples/concurrency/02-fibers/fibers.scm
 ```
 
 A fiber is a **generator**: call it and it runs to its next yield point,

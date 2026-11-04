@@ -13,7 +13,7 @@
 
 An alist is a list of two-element lists — `((host "localhost") (port 8080))`.
 That is the whole representation, which is why the prelude can define its
-helpers in three lines of Lisp (`lisp/prelude.scm`):
+helpers in three lines of Lisp (`shslisp/prelude.scm`):
 
 ```scheme
 (define settings '((host "localhost") (port 8080)))
@@ -83,8 +83,8 @@ one procedure here, because "read, transform, write back" is one operation:
   '("the" "cat" "the" "hat" "the"))
 ```
 
-Two documented gotchas, both visible in the code (`lisp/builtins.py`,
-`lisp/prelude.scm`):
+Two documented gotchas, both visible in the code (`shslisp/builtins.py`,
+`shslisp/prelude.scm`):
 
 - **The default is a value, not a thunk.** SRFI 69 spells this call with a
   lambda for the default; here the default is the value itself —

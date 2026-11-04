@@ -11,7 +11,7 @@ A host project does three things:
 
 .. code-block:: python
 
-    from lisp import make_env, install_primitives
+    from shslisp import make_env, install_primitives
 
     def cart_total(cart): ...
     def cart_add(cart, sku, qty): ...
@@ -22,7 +22,7 @@ A host project does three things:
         ("cart-add!", cart_add),
     ])
 
-    from lisp import run
+    from shslisp import run
     run("(cart-total (cart-add! (make-cart) \"abc\" 2))", env)
 
 Three rules make that safe to reason about:
@@ -34,7 +34,7 @@ Three rules make that safe to reason about:
    raises at install time, naming the offender — never a silent shadow.
 3. **Composable.** An *extension* is any callable ``env -> env`` (or an object
    with an ``install(env)`` method), so a host ships its vocabulary as a value
-   and passes it to :func:`lisp.runtime.make_env` via ``extensions=[...]``.
+   and passes it to :func:`shslisp.runtime.make_env` via ``extensions=[...]``.
 """
 from __future__ import annotations
 
@@ -117,7 +117,7 @@ def install_extension(env: Environment, extension: Any) -> Environment:
 def load_lisp(env: Environment, path: Any) -> Any:
     """Load a ``.scm`` file through *env*'s loader; return its last value.
 
-    Thin convenience so an embedder never has to import :mod:`lisp.runtime`
+    Thin convenience so an embedder never has to import :mod:`shslisp.runtime`
     just to run a file. Falls back to a plain read-and-evaluate when the
     environment has no loader attached.
     """

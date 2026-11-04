@@ -1,6 +1,6 @@
 # 05 — The standard library, in Lisp
 
-> **What this chapter teaches.** `lisp/prelude.scm`: what "adding a feature to
+> **What this chapter teaches.** `shslisp/prelude.scm`: what "adding a feature to
 > the language" looks like when the language can define its own features. Every
 > name here is ordinary Lisp you could have typed at the REPL.
 >
@@ -167,7 +167,7 @@ diff to this file rather than a change to the interpreter.
 
 ## Exercises
 
-1. **Read one function.** Open `lisp/prelude.scm` and find `take-while`. It is
+1. **Read one function.** Open `shslisp/prelude.scm` and find `take-while`. It is
    four lines. Which primitive does the recursion bottom out in, and what does
    it return when the predicate is false on the very first element?
 2. **Add a function.** Write `count-where` — `(count-where pred xs)` returns how

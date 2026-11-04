@@ -1,6 +1,6 @@
 # 27 — Embedding this language in your own Python
 
-> **What this chapter teaches.** The host-facing seam, `lisp/embed.py`: how a
+> **What this chapter teaches.** The host-facing seam, `shslisp/embed.py`: how a
 > *different* Python project exposes its own functions to this language in one
 > declared list, and how the language stays a language while it does. The Tetris
 > edition is the worked example, not the special case.
@@ -14,13 +14,13 @@ repository away.
 
 The claim the tutorial has been making all along is that the language is the
 first-class thing and the domain is a library. This is where that claim is cashed:
-`lisp/embed.py` is the whole of the surface a host needs, and the Tetris edition
+`shslisp/embed.py` is the whole of the surface a host needs, and the Tetris edition
 (a separate project) is just one caller of it.
 
 ## The seam is three functions
 
 ```python
-from lisp import install_primitives, install_extension, load_lisp, make_env, run
+from shslisp import install_primitives, install_extension, load_lisp, make_env, run
 ```
 
 - **`install_primitives(env, table, source=…)`** binds a *declared* list (or map)
@@ -53,7 +53,7 @@ Imagine a small inventory project. Its Python functions are the "primitives"; th
 DSL is how a shopkeeper writes rules about them:
 
 ```python
-from lisp import install_primitives, make_env, run
+from shslisp import install_primitives, make_env, run
 
 def stock_total(rows):
     return sum(row["qty"] for row in rows)
@@ -147,7 +147,7 @@ pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git
 # (once published, plain `pip install shs` will work too — see docs/INSTALL.md)
 ```
 
-`pyproject.toml` publishes exactly the `lisp` package — pure standard library,
+`pyproject.toml` publishes exactly the `shslisp` package — pure standard library,
 no runtime dependencies. A host edition is a separate project that depends on
 this one and installs its own vocabulary through the seam above. When
 `make_env()` is called somewhere no host is installed, it is simply a general
@@ -169,8 +169,8 @@ Scheme — the default is *auto*.
    it write through `(current-output-port)`, exactly as `display` does. Prove it
    with a string port and `parameterize`.
 
-4. **Find the fence.** Search `lisp/` for any module other than `runtime.py`
-   and `__main__.py` that names a host edition. Explain why `lisp/embed.py`
+4. **Find the fence.** Search `shslisp/` for any module other than `runtime.py`
+   and `__main__.py` that names a host edition. Explain why `shslisp/embed.py`
    must come up empty — and what a "convenient" `import yourhost` shortcut
    inside `embed.py` would cost the next embedder.
 

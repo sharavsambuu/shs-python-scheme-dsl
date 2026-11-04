@@ -2,24 +2,24 @@
 
 Two layers are the *language*, and they always come:
 
-1. **core** — the primitives (:mod:`lisp.builtins`);
+1. **core** — the primitives (:mod:`shslisp.builtins`);
 2. **prelude** — the standard library, the ROP library, and the generator
-   library, written in Lisp itself (``lisp/prelude.scm``, ``lisp/rope.scm``,
-   ``lisp/generators.scm``).
+   library, written in Lisp itself (``shslisp/prelude.scm``, ``shslisp/rope.scm``,
+   ``shslisp/generators.scm``).
 
 Everything after that is an **extension**, and each can be left out:
 
-3. whatever the host passes in ``extensions=[...]`` (see :mod:`lisp.embed`);
+3. whatever the host passes in ``extensions=[...]`` (see :mod:`shslisp.embed`);
 4. the Tetris edition, when this project is present — wired by the game's own
    :func:`tetris.env.install`, not by anything here.
 
 That is the whole generality story: ``make_env()`` is a perfectly good
 general-purpose Scheme, and the game is one extension of it. A foreign project
-that vendor-copies ``lisp/`` gets the first two layers and nothing else, because
+that vendor-copies ``shslisp/`` gets the first two layers and nothing else, because
 ``install_tetris`` defaults to ``None`` — *auto* — meaning "include the game
 only if the ``tetris`` package is importable."
 
-Every environment also gets a :class:`~lisp.loader.Loader`, so a program can be
+Every environment also gets a :class:`~shslisp.loader.Loader`, so a program can be
 split across files from the very first form it reads. ``make_env`` only decides
 *where* a bare module name is looked up; the rules of resolution, load-once, and
 cycle detection live in the loader.
@@ -64,7 +64,7 @@ GENERATORS_PRELUDE = Path(__file__).with_name("generators.scm")
 Extension = Any
 
 #: The game package, named once. Present only in this repository's tree; a
-#: foreign project that vendor-copies ``lisp/`` simply never has it. We probe
+#: foreign project that vendor-copies ``shslisp/`` simply never has it. We probe
 #: for the *edition* (``tetris.env``) rather than the bare package name, so an
 #: unrelated module that happens to be called ``tetris`` is not mistaken for it.
 _GAME_PACKAGE = "tetris.env"
@@ -106,17 +106,17 @@ def make_env(
     *search_paths* are tried **before** the working directory, so an embedder
     can put its own library first. *extensions* are run after the prelude, in
     order; each is a callable ``env -> env`` or an object with ``install(env)``
-    (see :func:`lisp.embed.install_extension`).
+    (see :func:`shslisp.embed.install_extension`).
 
     *install_tetris* selects the Tetris edition — ``True`` to require it,
     ``False`` to omit it, and the default ``None`` for *auto*: include it when
     the ``tetris`` package can be imported. Auto is what makes ``make_env()``
     just work both in this repository (the game is installed) and in a foreign
-    project that copied ``lisp/`` (it is not).
+    project that copied ``shslisp/`` (it is not).
 
     *profile* selects which SRFI layer is pre-imported: ``"dsl"`` (the
     default) installs every mandatory SRFI with the collision resolutions
-    applied (:mod:`lisp.profile`), ``"r7rs"`` installs only the strict subset
+    applied (:mod:`shslisp.profile`), ``"r7rs"`` installs only the strict subset
     the conformance harness runs, and ``None`` skips the profile entirely for
     tests that need the bare core + prelude. Orthogonal to *install_tetris*:
     no profile installs game bindings.

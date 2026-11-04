@@ -10,14 +10,14 @@ from pathlib import Path
 
 import pytest
 
-from lisp.env import Environment
-from lisp.errors import LispArityError, LispError, LispTypeError
-from lisp.evaluator import evaluate
-from lisp.loader import Loader
-from lisp.printer import to_string
-from lisp.reader import read_all
-from lisp.runtime import load_file, make_env
-from lisp.types import intern
+from shslisp.env import Environment
+from shslisp.errors import LispArityError, LispError, LispTypeError
+from shslisp.evaluator import evaluate
+from shslisp.loader import Loader
+from shslisp.printer import to_string
+from shslisp.reader import read_all
+from shslisp.runtime import load_file, make_env
+from shslisp.types import intern
 
 
 def write(path: Path, text: str) -> Path:

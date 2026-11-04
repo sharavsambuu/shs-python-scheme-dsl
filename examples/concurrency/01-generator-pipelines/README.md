@@ -1,7 +1,7 @@
 # 01 · generator pipelines — independent activities joined by lazy flow
 
 ```sh
-python -m lisp run examples/concurrency/01-generator-pipelines/log_pipeline.scm
+python -m shslisp run examples/concurrency/01-generator-pipelines/log_pipeline.scm
 ```
 
 Two pipelines over web-server logs, built entirely from the S9 generator

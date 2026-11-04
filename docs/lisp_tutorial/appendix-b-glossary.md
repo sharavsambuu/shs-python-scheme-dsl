@@ -4,7 +4,7 @@
 
 ## The language
 
-**Reader** — `lisp/reader.py`. Turns text into forms. Expands quote sugar; knows
+**Reader** — `shslisp/reader.py`. Turns text into forms. Expands quote sugar; knows
 nothing of meaning.
 
 **Form / datum** — a value the reader produced. Because code is data, a form is
@@ -14,35 +14,35 @@ also a datum: a list, a symbol, or a literal.
 `match`, … (the literal `_SPECIAL_FORMS` set). Not a primitive and not a macro.
 
 **Macro** — a procedure from forms to a form, run at expansion time. Raw
-(`defmacro`) or hygienic (`define-syntax`/`syntax-rules`). `lisp/syntax.py`.
+(`defmacro`) or hygienic (`define-syntax`/`syntax-rules`). `shslisp/syntax.py`.
 
 **Hygiene** — a macro's template binders are renamed and its free identifiers are
 captured by resolution, so a macro cannot capture a caller's names and vice
 versa. Chapter [06](06-macros.md).
 
 **Closure** — a `lambda`'s value: code plus the environment it captured.
-`lisp/types.py`.
+`shslisp/types.py`.
 
-**Environment / scope** — `lisp/env.py`. A dict plus a parent pointer; captures
+**Environment / scope** — `shslisp/env.py`. A dict plus a parent pointer; captures
 lexically.
 
 **Tail call** — an application in last position. The evaluator rebounds `expr` and
 `env` and loops instead of recursing, so it costs no host stack.
 
-**Trampoline** — the `while True` in `_run`. `lisp/evaluator.py`.
+**Trampoline** — the `while True` in `_run`. `shslisp/evaluator.py`.
 
 **Budget** — two bounds on runaway: `DEPTH_LIMIT` (nested evaluation →
 `LispRecursionError`) and `STEPS_BUDGET` (trampoline steps → `LispBudgetError`).
 
-**Primitive** — a Python function exposed as a Lisp value. `lisp/builtins.py`.
+**Primitive** — a Python function exposed as a Lisp value. `shslisp/builtins.py`.
 
 **Host hole** — the few primitives that touch the outside world (`display`,
 `error`, `eval`, `read-string`, `load`, `quit!`, `sound!`). Chapter
 [04](04-primitives.md).
 
-**Prelude** — the standard library, written in Lisp. `lisp/prelude.scm`.
+**Prelude** — the standard library, written in Lisp. `shslisp/prelude.scm`.
 
-**Loader** — `lisp/loader.py`. `(load …)` with three rules: resolution, load-once,
+**Loader** — `shslisp/loader.py`. `(load …)` with three rules: resolution, load-once,
 cycle error.
 
 **Variant** — a closed union of tagged cases, declared with `define-variant`.
@@ -64,7 +64,7 @@ or none. `(features)` and `cond-expand` report it.
 self-evaluating, interned, distinct from symbols. SRFI 89's named parameters
 are supplied with them.
 
-**Result** — the closed variant `(ok value) | (err reason)`. `lisp/rope.scm`.
+**Result** — the closed variant `(ok value) | (err reason)`. `shslisp/rope.scm`.
 
 **Monad / Kleisli arrow** — `result-bind` is the monad; `>=>` composes arrows
 (`A -> Result`). `pipe-results`, `result-do`. Chapter
@@ -82,8 +82,8 @@ that short-circuits on the first refusal.
 **Value object** — frozen data describing something.
 
 **Anti-corruption layer** — the boundary that keeps two vocabularies apart.
-In this project: the seam itself. `lisp/embed.py` is the whole crossing
-surface, and nothing inside `lisp/` reaches into a host.
+In this project: the seam itself. `shslisp/embed.py` is the whole crossing
+surface, and nothing inside `shslisp/` reaches into a host.
 
 **Domain** — the *rule* layer: pure, host-independent.
 
@@ -115,7 +115,7 @@ declared name.
 ## Refusals and rails
 
 **Rail** — a value that carries success or failure instead of raising; the
-language's own is the `Result` variant (`ok`/`err`), in `lisp/rope.scm`.
+language's own is the `Result` variant (`ok`/`err`), in `shslisp/rope.scm`.
 
 **Refusal** — a failure *as data*: a value a program can branch on, name, and
 compose, rather than an exception it must remember to catch.

@@ -35,7 +35,7 @@ round-trip.
 
 | Axis | What the DSL has | Where it is pinned |
 | --- | --- | --- |
-| Functional core | first-class functions, closures, lexical scope, HOFs, tail calls (trampoline + deep-stack runner), recursion budgets | `tests/test_r7rs.py`, `lisp/stack.py` |
+| Functional core | first-class functions, closures, lexical scope, HOFs, tail calls (trampoline + deep-stack runner), recursion budgets | `tests/test_r7rs.py`, `shslisp/stack.py` |
 | Metaprogramming | hygienic `syntax-rules` *and* classic `defmacro`, `macroexpand` — most mainstream languages have nothing here | `tests/test_r7rs.py`, ch. [06](lisp_tutorial/06-macros.md) |
 | Data modeling | `define-variant` (closed ADTs), records, pattern matching twice over (SRFI 241 + `variant-match`), alists, hash tables, vectors, bytevectors | `tests/test_rop.py`, ch. [09](lisp_tutorial/20-typed-control-flow.md) |
 | Error handling | conditions (`guard`/`raise`/error objects) plus ROP as a library — better than plain exceptions | `tests/test_rop.py`, ch. [10](lisp_tutorial/21-railway-oriented.md) |
@@ -82,12 +82,12 @@ This tier is where the "90%" claim earns itself, because the language's own
 extension mechanisms (macros, the prelude, the Python seam) are exactly the
 tools for closing it:
 
-- **Generators / lazy sequences** — **landed as S9** (`lisp/generators.scm`,
+- **Generators / lazy sequences** — **landed as S9** (`shslisp/generators.scm`,
   chapter [28](lisp_tutorial/18-generators.md)): closures and `set!`, no
   continuation re-entry, shipped in both profiles. The sketch below was the
   pre-S9 shape, kept for the record:
 
-  ```lisp
+  ```scheme
   (define (make-generator lst)
     (let ((rest lst) (done #f))
       (lambda ()
@@ -147,7 +147,7 @@ The percentages are a judgement about *feature surface*, not a measurement.
 The defensible statements are the specific ones: every name in the parity
 table is pinned by a test; every gap in Tiers 1–2 is listed in a matrix that
 a test keeps honest (`KNOWN_MISSING` in `tests/r7rs_manifest.py`, the
-withdrawn `(srfi 204)` handler in `lisp/library.py`). The tier-3 items are
+withdrawn `(srfi 204)` handler in `shslisp/library.py`). The tier-3 items are
 neither claimed nor tested — they are the roadmap.
 
 ## Fitness for use: what to build with it
@@ -194,7 +194,7 @@ hatch the question assumes is not a workaround; it is the design.
 
 Three layers, all already in the repo. **Primitives** — `install_primitives`
 or `Primitive(...)` in `make_env` — expose a Python capability as a
-first-class Scheme procedure. **The prelude** (`lisp/prelude.scm`) is
+first-class Scheme procedure. **The prelude** (`shslisp/prelude.scm`) is
 library code written *in Scheme* over those primitives — 86 defines, the
 pattern every host edition follows. **Embedding** — `make_env` →
 `run`/`evaluate`, output redirection, host exceptions surfacing as catchable
@@ -214,7 +214,7 @@ a `memoize` cache holding its own closure).
 
 The practical consequences, stated plainly:
 
-- **No GC to write, tune, or debug.** This is one reason `lisp/` is small
+- **No GC to write, tune, or debug.** This is one reason `shslisp/` is small
   enough to hold in your head, and why the prelude never mentions memory.
 - **Cycles are reclaimed when the cyclic collector runs**, not
   deterministically — the same contract Python gives. Fine for scripts,
@@ -252,7 +252,7 @@ would build new machinery rather than fight the interpreter.
   makes every regulation path a railway with explicit refusals.
 - **The IDE host → the seam was built for embedding.** The REPL accepts
   injectable `out`/`env`/`in_stream` and exposes `eval_source`
-  (`lisp/repl.py`); `make_env(out=...)` redirects all output;
+  (`shslisp/repl.py`); `make_env(out=...)` redirects all output;
   `install_primitives` is declared and loud; host exceptions surface as
   catchable Lisp errors. `eval`, `interaction-environment`,
   `macroexpand`/`macroexpand-1`, the `write`/`read` round-trip,
@@ -263,7 +263,7 @@ would build new machinery rather than fight the interpreter.
 requiring a fork of the evaluator):
 
 1. **Source locations.** The reader attaches no line/column spans
-   (verified: no position tracking in `lisp/reader.py`), and errors carry no
+   (verified: no position tracking in `shslisp/reader.py`), and errors carry no
    coordinates. Squiggles, go-to-definition, and precise error markers need
    this; it is a contained but real change to reader, printer, and error
    paths.
@@ -299,7 +299,7 @@ ontology layer.
 ## The recommendation
 
 The S9 recommendation below has **landed**: generators are a prelude library
-(`lisp/generators.scm`), with tests, a chapter ([28](lisp_tutorial/18-generators.md)),
+(`shslisp/generators.scm`), with tests, a chapter ([28](lisp_tutorial/18-generators.md)),
 and a matrix row in [`srfi.md`](srfi.md). The next Tier-3 item by the same
 logic — user value, no interpreter change — is **source locations** for the
 IDE, which is the first step of the numeric/IDE sequence in

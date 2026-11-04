@@ -1,6 +1,6 @@
 """Which R7RS library names this interpreter can honestly provide.
 
-The real library system lives next door in :mod:`lisp.library`
+The real library system lives next door in :mod:`shslisp.library`
 (``define-library``/``import`` and the per-environment registry). This module
 keeps the two small helpers everything shares: parsing a library-name value
 into its parts, and recognising a plain feature identifier.

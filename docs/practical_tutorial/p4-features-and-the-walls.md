@@ -90,7 +90,7 @@ shs: one evaluation spent more than 5,000,000 steps — an endless loop?
 and the form would be space-split into several arguments.)*
 
 Neither is catchable by `guard` — see [P1](p1-when-things-go-wrong.md) for why
-that is a feature. The constants live in `lisp/evaluator.py`
+that is a feature. The constants live in `shslisp/evaluator.py`
 (`DEPTH_LIMIT`, `STEPS_BUDGET`).
 
 ## Measuring time, honestly
@@ -161,5 +161,5 @@ Arity as a debugging tool — the fixed case answers, the open case declines:
   makes the walls necessary
 - [P1 — When things go wrong](p1-when-things-go-wrong.md) — what the walls
   look like from a `guard`
-- The budgets: `lisp/evaluator.py` (`DEPTH_LIMIT`, `STEPS_BUDGET`); the
-  profile's feature list: `lisp/profile.py`
+- The budgets: `shslisp/evaluator.py` (`DEPTH_LIMIT`, `STEPS_BUDGET`); the
+  profile's feature list: `shslisp/profile.py`

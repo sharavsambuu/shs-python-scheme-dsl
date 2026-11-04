@@ -7,7 +7,7 @@ Shows the three things a random Python project needs from the DSL:
 2. Python exceptions crossing the seam and being caught as Lisp data;
 3. the SRFI layer (1, 197, guard) working over host facts.
 """
-from lisp import install_primitives, make_env, run
+from shslisp import install_primitives, make_env, run
 
 
 class Inventory:

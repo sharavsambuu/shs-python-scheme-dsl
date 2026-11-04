@@ -13,14 +13,14 @@ from pathlib import Path
 
 import pytest
 
-# Make ``lisp`` and ``tetris`` importable no matter where pytest is invoked.
+# Make ``shslisp`` and ``tetris`` importable no matter where pytest is invoked.
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from lisp.evaluator import evaluate_program  # noqa: E402
-from lisp.reader import read_all  # noqa: E402
-from lisp.runtime import make_env  # noqa: E402
+from shslisp.evaluator import evaluate_program  # noqa: E402
+from shslisp.reader import read_all  # noqa: E402
+from shslisp.runtime import make_env  # noqa: E402
 
 
 def evaluate_source(env, source: str):

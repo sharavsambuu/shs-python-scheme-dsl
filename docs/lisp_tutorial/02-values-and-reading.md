@@ -11,7 +11,7 @@
 ## The value universe
 
 Chapter 01 said a Lisp has almost no syntax. It also has almost no types. The
-table below is the whole language; `lisp/types.py` opens with this mapping
+table below is the whole language; `shslisp/types.py` opens with this mapping
 (plus one extra row for opaque host values), and it is worth knowing by heart
 because *everything* you read in the code is one of these.
 
@@ -132,7 +132,7 @@ the declared-tag spelling `(ok v)` or the explicit-quote spelling `('ok v)`.
 
 ## The reader: how text becomes a form
 
-`lisp/reader.py` is small because the syntax *is* the data. `tokenize` splits
+`shslisp/reader.py` is small because the syntax *is* the data. `tokenize` splits
 text into tokens (parentheses and the delimiters `()'`,",; \t\r\n` are special);
 `Reader` assembles tokens into forms. It understands this sugar, and nothing
 else:
@@ -163,7 +163,7 @@ the middle of a form.
 
 ## Printing: `write` vs `display`
 
-`lisp/printer.py` has one formatter, `to_string(value, write=False)`. The two
+`shslisp/printer.py` has one formatter, `to_string(value, write=False)`. The two
 modes are the Scheme split:
 
 ```scheme

@@ -8,7 +8,7 @@ many lines as it takes, which is what makes a Lisp REPL worth having.
 It is also hostile-input safe: a form typed with mistakes — an unterminated
 string, a stray ``)``, a character literal the reader rejects — comes back as
 an ``error:`` line, and the loop goes on. A crash is a bug the error classes
-in :mod:`lisp.errors` exist to prevent.
+in :mod:`shslisp.errors` exist to prevent.
 """
 from __future__ import annotations
 
@@ -182,7 +182,7 @@ def run_repl(
     game when a host edition is installed and is a plain Scheme anywhere else.
     *search_paths* let a host put its own library directory in front of the
     working directory. *profile* selects the pre-imported SRFI layer (see
-    :func:`lisp.runtime.make_env`).
+    :func:`shslisp.runtime.make_env`).
     """
     env = make_env(
         install_tetris=install_tetris,

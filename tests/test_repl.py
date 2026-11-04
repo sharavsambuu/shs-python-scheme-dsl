@@ -2,7 +2,7 @@
 
 A REPL's whole job is to survive its user: every form typed with a mistake in
 it must come back as an ``error:`` line with the loop still standing. These
-tests drive :class:`lisp.repl.Repl` with the inputs that once crashed it — an
+tests drive :class:`shslisp.repl.Repl` with the inputs that once crashed it — an
 unterminated string escaping the balance check, a terminal reader error
 reaching the loop unguarded, a continuation invoked after its ``call/cc`` was
 gone — and pin the recoveries: multi-line strings complete, bad input is
@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import io
 
-from lisp.repl import Repl, _complete
-from lisp.runtime import make_env
+from shslisp.repl import Repl, _complete
+from shslisp.runtime import make_env
 
 
 def drive(*lines: str) -> tuple[int, str]:

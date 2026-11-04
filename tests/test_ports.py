@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from lisp import run
-from lisp.errors import LispError, LispTypeError
+from shslisp import run
+from shslisp.errors import LispError, LispTypeError
 
 
 # --------------------------------------------------------------------------- #

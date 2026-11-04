@@ -5,7 +5,7 @@
 its example and watch it work, and until the example is checked by a test that
 fails when the code moves". The tutorial was written by hand and then verified
 by hand once; nothing stopped it from rotting on the next commit to
-``lisp/prelude.scm`` or ``tetris/registry.py``. This file is the machine that
+``shslisp/prelude.scm`` or ``tetris/registry.py``. This file is the machine that
 does.
 
 Five checks, each of which can catch a real drift:
@@ -41,7 +41,7 @@ from functools import lru_cache
 
 import pytest
 
-from lisp.__main__ import run_script
+from shslisp.__main__ import run_script
 
 #: ``shs-python-scheme-dsl/`` — the tutorial is written from inside it.
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -316,7 +316,7 @@ def test_referenced_paths_exist(path: pathlib.Path) -> None:
     """A `` `dir/file.ext` `` must point at a file that exists somewhere real.
 
     Roots are tried from the reader's point of view — the chapter's own
-    directory, ``python_tetris_lisp/``, and the repository root — and a bare
+    directory, ``python_tetris_shslisp/``, and the repository root — and a bare
     filename is accepted if it exists anywhere under the project, because the
     tutorial names files both ways on purpose.
     """

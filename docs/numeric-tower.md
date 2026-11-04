@@ -7,7 +7,7 @@
 > fixed in the ledger — write the semantics down first, then change what the
 > table says changes, deliberately, in the change that lands rationals.
 >
-> **What this is not.** It is not an implementation. Nothing in `lisp/`
+> **What this is not.** It is not an implementation. Nothing in `shslisp/`
 > changes until the R-phase tasks below land, each with its tests updated in
 > the same change — the house rule.
 >
@@ -20,7 +20,7 @@
 > `min`/`max` contaminate, and `integer?` is the mathematical property.
 > **Every CHANGE row of the table is live.** The KEEP rows held throughout.
 > **C1–C4 have landed — phase C is complete.** The exact complex pair of the
-> phase C section exists (`lisp/types.py`'s `Complex`), with **rows 1–14 all
+> phase C section exists (`shslisp/types.py`'s `Complex`), with **rows 1–14 all
 > live** — `make-rectangular`, `real-part`, `imag-part`, the polar half
 > (`magnitude`, `angle`, `make-polar`), exact arithmetic, exact `sqrt` of
 > negative perfect squares, `(log -1)` → `+iπ`, the complex transcendentals,
@@ -129,14 +129,14 @@ same change, and each is R7RS-correct — that is the whole point of the phase.
 
 ## Mechanics, one layer at a time
 
-- **Reader** (`lisp/reader.py`): `p/q` with optional sign, both parts decimal
+- **Reader** (`shslisp/reader.py`): `p/q` with optional sign, both parts decimal
   digits, `q ≠ 0` → `Fraction`; `q = 0` → read error; anything else with a
   slash stays a symbol. `#e` before any numeric literal converts the value to
   exact (rational when needed); `#i` forces inexact.
-- **Printer** (`lisp/printer.py`): a `Fraction` prints `p/q` — and the reader
+- **Printer** (`shslisp/printer.py`): a `Fraction` prints `p/q` — and the reader
   must read it back to the same value. The round-trip is a test, not a hope
   (`tests/test_reader.py`).
-- **Predicates** (`lisp/builtins.py`): `exact?` accepts `int`/`Fraction`;
+- **Predicates** (`shslisp/builtins.py`): `exact?` accepts `int`/`Fraction`;
   `inexact?` stays `isinstance(float)`; `rational?`/`real?`/`complex?` extend
   to `Fraction`; `integer?` becomes the mathematical property (row 12);
   `exact-integer?` stays strict.

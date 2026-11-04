@@ -95,7 +95,7 @@ error: match: no clause matched (win 1); this outcome is one of win lose
 ```
 
 (The REPL echoes a failure as `error: …`; the file runner prints the same
-message as `lisp: …`.)
+message as `shs: …`.)
 
 That message is the whole point. Compare it to a `cond` that returns `()`: here
 you are told the value, that nothing matched, and exactly which cases exist. `else`
@@ -134,7 +134,7 @@ fields, a list of fixed length, a refusal record).
 
 ## Where you meet this in the language
 
-- `lisp/rope.scm` declares the `Result` variant: `(define-variant result (ok value) (err reason))`
+- `shslisp/rope.scm` declares the `Result` variant: `(define-variant result (ok value) (err reason))`
   (chapter [21](21-railway-oriented.md)) — two rails, and no arm that swallows a
   third kind of value by accident.
 - A host edition declares its own variants the same way, and matches *by name*
