@@ -20,7 +20,10 @@ The examples quote `-e` expressions with **double quotes** on purpose: on
 Windows, cmd and PowerShell treat single quotes as ordinary characters, so
 `shs -e '(+ 1 2)'` would reach the interpreter as several arguments — the
 space-split pieces of the form — and fail with an argparse `invalid choice`.
-Double quotes work in cmd, PowerShell, and every Unix shell.
+Double quotes work in cmd, PowerShell, and every Unix shell. The same rule
+covers every other argument: a script path or a `*command-line-args*` value
+that contains spaces or parentheses needs double quotes too. Inside the REPL
+no shell is involved — `,load` takes the path raw, spaces included.
 
 ## Special forms (`lisp/evaluator.py`)
 

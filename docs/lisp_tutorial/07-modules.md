@@ -101,7 +101,11 @@ so `shs run` still loads plain-Lisp modules from any directory on the path:
 
 ```python
 def _search_paths():
-    return [Path(part) for part in os.environ.get("SHS_PATH", "").split(":") if part]
+    return [
+        Path(part)
+        for part in os.environ.get("SHS_PATH", "").split(os.pathsep)
+        if part
+    ]   # os.pathsep: ":" on Unix, ";" on Windows
 ```
 
 so an embedder can put its own library first, ahead of the working directory.
