@@ -1,4 +1,4 @@
-# 28 — Generators: lazy sequences
+# 18 — Generators: lazy sequences
 
 > **What this chapter teaches.** The prelude's generator library: a generator
 > is an ordinary procedure of zero arguments that answers the next value, and
@@ -26,7 +26,7 @@ consumer cannot fall off the end by over-reading.
 
 ## Constructors
 
-```lisp
+```scheme
 (generator 1 2 3)                       ; the values themselves
 (list->generator '(a b c))              ; a list, left to right
 (vector->generator (vector 7 8))        ; a vector, left to right
@@ -46,7 +46,7 @@ than looping forever.
 `gmap`, `gfilter`, `gtake`, and `gdrop` all answer **generators**, so they
 compose into pipelines that do no work until drained:
 
-```lisp
+```scheme
 (define odds (gfilter odd? (make-range-generator 0)))   ; no work yet
 (generator->list (gtake odds 5))                        ;=> (1 3 5 7 9)
 ```
@@ -80,8 +80,7 @@ answer generators, exactly SRFI 158's shape — but "comfortable" is not
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (display (generator->list (generator 1 2 3))) (newline)
 (display (generator->list (gtake (gfilter odd? (make-range-generator 0)) 5))) (newline)
 (display (generator->list (gtake (make-cycle-generator '(hit miss)) 6))) (newline)
@@ -91,7 +90,6 @@ shs run /dev/stdin <<'EOF'
 (define g (generator 'a 'b))
 (g) (g)
 (display (generator-end? (g))) (newline)
-EOF
 ```
 
 ```text
@@ -123,4 +121,4 @@ EOF
 > another closure over that. Laziness is not a language feature here — it is
 > what first-class procedures were always for.
 
-Next: [Appendix A — Reference](appendix-a-reference.md).
+Next: [19 SRFI 197 — chain and nest](19-srfi-197-chain-and-nest.md).

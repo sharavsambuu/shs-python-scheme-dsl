@@ -1,10 +1,10 @@
-# 25 — SRFI 89: optional and named parameters
+# 17 — SRFI 89: optional and named parameters
 
 > **What this chapter teaches.** `define*` and `lambda*`: a formals list with
 > three sections — positional, named, rest — and the keyword-prefixed call
 > syntax that fills the named ones.
 >
-> **Before this:** 24 (keywords), 08. · **Time:** ~12 min.
+> **Before this:** 16 (keywords), 08. · **Time:** ~12 min.
 > **After this you can:** write a procedure whose callers name their
 > arguments, and read its errors when a call is wrong.
 
@@ -17,7 +17,7 @@ An ordinary `define` formals list is one section: required positionals. A
 - named: required `(keyword: v)`, then optional `(keyword: v default)`;
 - rest: `. r` last.
 
-```lisp
+```scheme
 (define* (greet name (greeting: g "hello"))
   (string-append g ", " name))
 ```
@@ -32,7 +32,7 @@ writes; the variable is what the body reads.
 Positional arguments go by place, as always. Named arguments are written as
 a keyword followed by its value, and may appear **in any order**:
 
-```lisp
+```scheme
 (greet "ada")                  ;=> hello, ada
 (greet "ada" greeting: "hi")   ;=> hi, ada
 ```
@@ -51,7 +51,7 @@ All three fail loudly, the way this library does everything.
 The `(v default)` section gives positional arguments defaults, so a
 small-arity call site stays short:
 
-```lisp
+```scheme
 (define* (point (x: x 0) (y: y 0))
   (list 'point x y))
 
@@ -68,7 +68,7 @@ parameter.
 The rest section collects whatever is left — positionals beyond the required
 ones, and any arguments that were not keyword-value pairs:
 
-```lisp
+```scheme
 (define* (at-least? floor . xs)
   (every (lambda (x) (>= x floor)) xs))
 
@@ -83,12 +83,11 @@ ordinary `lambda` over a single rest parameter plus a runtime binder — the
 shape SRFI 89 recommends. `procedure-arity` and `apply` are untouched, so a
 `define*` procedure is an ordinary closure everywhere else in the language:
 it can be `map`ped, stored in an alist, and partially applied with `cut`
-(chapter [23](23-srfi-26-cut-and-cute.md)).
+(chapter [15](15-srfi-26-cut-and-cute.md)).
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (define* (greet name (greeting: g "hello"))
   (string-append g ", " name))
 (display (greet "ada")) (newline)
@@ -101,7 +100,6 @@ shs run /dev/stdin <<'EOF'
   (every (lambda (x) (>= x floor)) xs))
 (display (at-least? 3 4 5)) (newline)
 (display (at-least? 3 4 2)) (newline)
-EOF
 ```
 
 ```text
@@ -131,4 +129,4 @@ hi, ada
 > positional — name it. `define*` keeps short calls short and long calls
 > self-documenting, and the keyword in the call site is the documentation.
 
-Next: [26 SRFI 197 — chain and nest](26-srfi-197-chain-and-nest.md).
+Next: [18 Generators](18-generators.md).

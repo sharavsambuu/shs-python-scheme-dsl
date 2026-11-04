@@ -1,10 +1,10 @@
-# 10 — Railway-oriented programming
+# 21 — Railway-oriented programming
 
 > **What this chapter teaches.** `lisp/rope.scm`: writing a fallible computation
 > as a *chain* instead of a nest of checks, using the `Result` variant from
-> chapter [09](09-typed-control-flow.md).
+> chapter [20](20-typed-control-flow.md).
 >
-> **Before this:** 09. · **Time:** ~20 min.
+> **Before this:** 20. · **Time:** ~20 min.
 > **After this you can:** write a fallible step as a Kleisli arrow and compose a
 > pipeline that short-circuits in exactly one place.
 >
@@ -40,7 +40,7 @@ flow.
 
 ## The type
 
-```lisp
+```scheme
 (define-variant result
   (ok value)
   (err reason))
@@ -54,7 +54,7 @@ the domain's `Success`, not for this library's `ok`.
 
 ## The functor and the monad
 
-```lisp
+```scheme
 ;; map touches the success rail and leaves a refusal alone
 (define (result-map r f)
   (if (result-ok? r) (ok (f (ok-value r))) r))
@@ -72,7 +72,7 @@ The full set: `result-map`, `result-map-err`, `result-map2`, `result-bind`,
 `result-bimap` (both rails), `result-fold` (collapse to a plain value, naming both
 rails), `result-pure` (lift a plain value).
 
-```lisp
+```scheme
 (result-map (ok 21) (lambda (x) (* x 2)))      ;=> (ok 42)
 (result-map (err "nope") (lambda (x) (* x 2))) ;=> (err "nope")
 (result-bind (ok 41) (lambda (x) (ok (+ x 1)))) ;=> (ok 42)
@@ -84,7 +84,7 @@ rails), `result-pure` (lift a plain value).
 Sometimes you must read the value back out. The library gives you a ladder of
 ways, each naming what happens on a refusal:
 
-```lisp
+```scheme
 (result-unwrap        (ok 1))          ;=> 1
 (result-unwrap        (err "e"))       ;=> error
 (result-unwrap-or     (err "e") 0)     ;=> 0
@@ -95,14 +95,14 @@ ways, each naming what happens on a refusal:
 ```
 
 `result-tags` returns the declared, closed tag set as data — the same
-`variant-tags` you met in chapter [09](09-typed-control-flow.md).
+`variant-tags` you met in chapter [20](20-typed-control-flow.md).
 
 ## Kleisli composition
 
 A *Kleisli arrow* is a function `A -> Result`. Two arrows compose left to right,
 short-circuiting in between:
 
-```lisp
+```scheme
 (define (>=> f g)
   (lambda (x) (result-bind (f x) g)))
 
@@ -116,7 +116,7 @@ short-circuiting in between:
 lifted with `ok` first, so the first arrow sees a plain value and every later one
 sees the previous success — or nobody sees anything after the first refusal:
 
-```lisp
+```scheme
 (pipe-results 1
   (lambda (x) (ok (+ x 1)))
   (lambda (x) (ok (* x 10)))
@@ -135,7 +135,7 @@ fallible function and collects. And when short-circuiting is *not* what you want
 
 ## `attempt`: a raising computation joins the rails
 
-```lisp
+```scheme
 (define (attempt thunk)
   (guard (e (#t (err e)))
     (ok (thunk))))
@@ -144,7 +144,7 @@ fallible function and collects. And when short-circuiting is *not* what you want
 A procedure, not a macro, so it cannot capture a name in the caller's expression.
 It turns any `error`/`raise` into a value on the failure rail:
 
-```lisp
+```scheme
 (attempt (lambda () (+ 1 1)))       ;=> (ok 2)
 (attempt (lambda () (car '())))     ;=> (err #<error "car: expected a non-empty list">)
 ```
@@ -154,7 +154,7 @@ It turns any `error`/`raise` into a value on the failure rail:
 The largest macro in the library reads like imperative code but is `result-bind`
 all the way down:
 
-```lisp
+```scheme
 (define-syntax result-do
   (syntax-rules (<-)
     ((_ (name <- expr) rest ...)
@@ -163,7 +163,7 @@ all the way down:
     ((_) (ok (void)))))
 ```
 
-```lisp
+```scheme
 (result-do
   (a <- (ok 2))
   (b <- (ok 3))
@@ -182,7 +182,7 @@ A host edition can lift its own success/failure values onto these rails, so a
 *sequence of commands* can be one pipeline. That lift is a few lines of Lisp,
 and it is exactly the shape you will write for your own domain:
 
-```lisp
+```scheme
 (define (as-result result)
   (if (host-ok? result) (ok (host-value result)) (err (host-error result))))
 
@@ -195,7 +195,7 @@ and it is exactly the shape you will write for your own domain:
 
 It is just as easy to keep a variant that reports *how far* the train got:
 
-```lisp
+```scheme
 (define (advance state commands)
   (let loop ((cs commands) (st state) (landed '()))
     (if (null? cs)
@@ -210,6 +210,103 @@ You will see `(ok 17)`, `(err empty)`, and the do-notation's `(ok 5)` in the
 Try-it below — the same rails doing the work a custom exception hierarchy
 would, without unwinding the stack.
 
+## The rest of the shelf
+
+The library has more than bind and a pipeline, and the extra names each answer
+a question you will actually ask. Verify them at the REPL — every line below
+is real:
+
+**Combining two independent results.** `pipe-results` is sequential — each
+step needs the previous value. `result-map2` is *parallel*: two results that
+both must hold, one function to combine them (a refusal on either rail refuses):
+
+```scheme
+(result-map2 (ok 2) (ok 3) +)       ;=> (ok 5)
+(result-map2 (ok 2) (err "no second") +)  ;=> (err no second)
+```
+
+This is the validation shape: gather independent checks, combine at the end.
+
+**Collections of Results.** A list of fallible computations — parse these
+five strings — is not one pipeline but a list on rails, and the library gives
+it two postures. `sequence-results` is all-or-nothing: every value, or the
+*first* refusal is the whole answer. `traverse-results` maps a fallible
+function and collects the same way:
+
+```scheme
+(sequence-results (list (ok 1) (ok 2) (ok 3)))          ;=> (ok (1 2 3))
+(sequence-results (list (ok 1) (err "boom") (ok 3)))    ;=> (err boom)
+(traverse-results (lambda (n) (if (even? n) (ok n) (err n))) '(2 4 5))
+;=> (err 5)
+```
+
+When all-or-nothing is the wrong posture, read the list directly —
+`ok-values` keeps the successes, `count-errs` counts the failures,
+`first-err` names the first one:
+
+```scheme
+(ok-values (list (ok 1) (err "x") (ok 3)))   ;=> (1 3)
+(count-errs (list (ok 1) (err "x") (err "y"))) ;=> 2
+(first-err (list (ok 1) (err "x") (err "y")))  ;=> (err x)
+```
+
+**Collapsing to a plain value.** `result-fold` names both rails and answers
+one value — the end of every pipeline, where the Result has to become a
+number, a string, or a decision:
+
+```scheme
+(result-fold (ok 5) (lambda (v) v) (lambda (e) 'failed))  ;=> 5
+(result-fold (err "e") (lambda (v) v) (lambda (e) 'failed)) ;=> failed
+```
+
+**Leaving the rails gently.** The unwrap ladder from earlier in the chapter
+has a step for every tolerance: `result-unwrap-or` for a default,
+`result-unwrap-or-else` for a computed recovery:
+
+```scheme
+(result-unwrap-or (err "e") 0)                    ;=> 0
+(result-unwrap-or-else (err "e") (lambda (r) r))  ;=> e
+```
+
+## A worked pipeline: three arrows, two failure points
+
+Everything above in one realistic chain — parse, validate, transform — where
+each arrow can refuse for its own reason, and the pipeline's answer tells you
+which one did:
+
+```scheme
+(define (parse-int s)
+  (if (string->number s)
+      (ok (string->number s))
+      (err (string-append "not a number: " s))))
+(define (check-positive n) (if (> n 0) (ok n) (err "must be positive")))
+(define (with-tax n) (ok (* 11/10 n)))
+
+(pipe-results "42"  parse-int check-positive with-tax)  ;=> (ok 231/5)
+(pipe-results "-5"  parse-int check-positive with-tax)  ;=> (err must be positive)
+(pipe-results "abc" parse-int check-positive with-tax)  ;=> (err not a number: abc)
+```
+
+Three things to notice. The happy path never mentions failure — no `if err`
+checks anywhere. The exact rational survives the whole pipeline (`231/5` is
+`42 × 11/10`, exact — the numeric tower is working for you, chapter
+[08](08-lisp-by-example.md)). And each failure names its stage's reason, so
+the caller's recovery can be as precise as the refusal.
+
+`attempt` slots a *raising* step into the same chain — wrap the risky call,
+not its result, and the exception becomes a refusal like any other:
+
+```scheme
+(pipe-results "10" parse-int
+              (lambda (n) (attempt (lambda () (/ 100 n))))
+              with-tax)
+;=> (ok 11)
+```
+
+(The wrap matters: `attempt` lifts the thunk's *return value*, so the thunk
+should produce a plain value — wrapping `(ok ...)` inside it would put an
+`(ok …)` inside an `(ok …)`, and the next arrow would multiply a Tagged.)
+
 ## Why a *library* and not built-in syntax
 
 `Result` and `>=>` are written in Lisp, on top of `define-variant`, `match`,
@@ -220,8 +317,7 @@ file you can read and change.
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (define parse-int
   (lambda (s) (if (string=? s "") (err "empty") (ok (string-length s)))))
 (define with-tax (lambda (n) (ok (+ n 10))))
@@ -232,7 +328,19 @@ shs run /dev/stdin <<'EOF'
 (display (attempt (lambda () (car '()))))     (newline)
 (display (result-map-err (attempt (lambda () (car '())))
                          (lambda (e) "car of () refused")))  (newline)
-EOF
+;; the rest of the shelf
+(display (result-map2 (ok 2) (ok 3) +))  (newline)
+(display (sequence-results (list (ok 1) (err "boom") (ok 3))))  (newline)
+(display (ok-values (list (ok 1) (err "x") (ok 3))))  (newline)
+(display (count-errs (list (ok 1) (err "x") (err "y"))))  (newline)
+(display (result-fold (err "e") (lambda (v) v) (lambda (e) 'failed)))  (newline)
+;; a three-arrow pipeline with two failure points
+(define (parse-int2 s)
+  (if (string->number s) (ok (string->number s)) (err (string-append "not a number: " s))))
+(define (check-positive n) (if (> n 0) (ok n) (err "must be positive")))
+(define (tax n) (ok (* 11/10 n)))
+(display (pipe-results "42" parse-int2 check-positive tax))  (newline)
+(display (pipe-results "abc" parse-int2 check-positive tax))  (newline)
 ```
 
 ```text
@@ -241,6 +349,13 @@ EOF
 (ok 6)
 (err #<error "car: expected a non-empty list">)
 (err car of () refused)
+(ok 5)
+(err boom)
+(1 3)
+2
+failed
+(ok 231/5)
+(err not a number: abc)
 ```
 
 Display form, so the strings are unquoted. The last two lines are the same
@@ -270,4 +385,4 @@ failure — a caught `car` of `()` — once raw, once with its message rewritten
 > pipeline, and a refusal is data you can inspect instead of an exception you must
 > remember to catch.
 
-Next: [21 Embedding in Python](21-embedding-in-python.md).
+Next: [22 Functional programming: foundations](22-functional-foundations.md).

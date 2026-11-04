@@ -19,7 +19,7 @@ time. Because the reader already turned code into lists (chapter
 
 ## `defmacro`: the raw tool
 
-```lisp
+```scheme
 (defmacro (while test . body)
   `(let loop ()
      (when ,test
@@ -34,7 +34,7 @@ test passes, and a function call cannot promise that.
 
 The same shape gives the tiny helpers:
 
-```lisp
+```scheme
 (defmacro (++ place) `(set! ,place (+ ,place 1)))
 ```
 
@@ -47,7 +47,7 @@ introduces can collide with a name in the caller's expression. `while` binds
 
 ## `define-syntax` / `syntax-rules`: the hygienic tool
 
-```lisp
+```scheme
 (define-syntax push!
   (syntax-rules ()
     ((_ place value) (set! place (cons value place)))))
@@ -76,7 +76,7 @@ The first element of each pattern — `_` above — matches the macro's own name
 Here is the difference in one session. Two macros compute "a or b", one raw and
 one hygienic, both binding a temporary named `t`; the caller also has a `t`:
 
-```lisp
+```scheme
 (define-syntax hy-or
   (syntax-rules ()
     ((_ a b) (let ((t a)) (if t t b)))))   ; template's t is renamed
@@ -116,7 +116,7 @@ write `'rest` for the tail as data and `rest ...` to splice it back into code.
 The strongest macros *derive* what they offer from what the language already has,
 so they cost nothing at run time. `do` is the classic:
 
-```lisp
+```scheme
 (define-syntax do
   (syntax-rules ()
     ((_ ((var init step) ...) (test result ...) body ...)
@@ -128,7 +128,7 @@ so they cost nothing at run time. `do` is the classic:
 
 and `dotimes` is `do`:
 
-```lisp
+```scheme
 (define-syntax dotimes
   (syntax-rules ()
     ((_ (var n) body ...)
@@ -139,14 +139,14 @@ The threading macros `->` and `->>` (chapter [05](05-standard-library.md)) are t
 same idea: ordinary calls, written in the order the data flows, expanded at
 compile time.
 
-You will meet one more, the largest, in chapter [10](10-railway-oriented.md):
+You will meet one more, the largest, in chapter [21](21-railway-oriented.md):
 `result-do`, a do-notation for the `Result` monad, built on `result-bind`.
 
 ## Two shapes of ellipsis
 
 A pattern may nest, and a template may meet it nested or flat:
 
-```lisp
+```scheme
 (define-syntax grid                     ; (grid (1 2) (3 4)) => ((1 2) (3 4))
   (syntax-rules () ((_ (x ...) ...) (list (list x ...) ...))))
 
@@ -161,7 +161,7 @@ not a silent truncation.
 A **vector** is a pattern and a template too, so a macro can destructure `#(1 2)`
 as readily as `(1 2)`:
 
-```lisp
+```scheme
 (define-syntax vec-second
   (syntax-rules () ((_ #(a b)) b)))
 (vec-second #(10 20))   ;=> 20
@@ -173,7 +173,7 @@ as readily as `(1 2)`:
 for a single expression — to shadow a function of the same name, or to keep a
 helper out of the global namespace — use `let-syntax`:
 
-```lisp
+```scheme
 (define (twice x) (* x 10))
 (let-syntax ((twice (syntax-rules () ((_ x) (* x 2)))))
   (twice 21))          ;=> 42  — the macro, for the body's extent
@@ -189,7 +189,7 @@ A macro that "did nothing" is usually a template that did something else. The
 microscope is `macroexpand-1` — one step — and `macroexpand`, which keeps going
 while the head still names a macro:
 
-```lisp
+```scheme
 (define-syntax with-list (syntax-rules () ((_ x) (list x))))
 (macroexpand-1 '(with-list 7))                 ;=> (list#hN 7)
 (display (eval (macroexpand '(with-list 7))))  ;=> (7)
@@ -218,8 +218,7 @@ what `macroexpand` is for, and it is cheaper than any amount of staring.
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (define-syntax my-list
   (syntax-rules ()
     ((_ x ...) (list x ...))))
@@ -253,7 +252,6 @@ shs run /dev/stdin <<'EOF'
 ;; The microscope: the expansion, handed to eval.
 (define-syntax with-list (syntax-rules () ((_ x) (list x))))
 (display (eval (macroexpand '(with-list 7))))  (newline)
-EOF
 ```
 
 ```text

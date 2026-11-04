@@ -242,7 +242,7 @@ holds with no host installed at all.
 
 **Truthiness.** Only `#f` and `'()` are false. `0` and `""` are true.
 
-```lisp
+```scheme
 (if 0 'yes 'no)     ;=> yes
 (if '() 'yes 'no)   ;=> no
 ```
@@ -271,7 +271,7 @@ use `begin` to sequence side effects.
 
 **`let` is parallel, `let*` is sequential.**
 
-```lisp
+```scheme
 (let* ((x 1) (y (+ x 1))) y)          ;=> 2
 (let  ((x 1) (y (+ x 1))) y)          ; raises: x is unbound in its own let
 ```
@@ -291,7 +291,7 @@ matches the symbols `a` and `b`; `(variant-match x ((circle r) …))` binds `r`.
 
 **`cons` prepends; `append` joins.**
 
-```lisp
+```scheme
 (cons 1 '(2 3))       ;=> (1 2 3)
 (append '(1) '(2))    ;=> (1 2)
 ```
@@ -343,7 +343,7 @@ run("(double 21)", env)                # -> 42
   pass them to `make_env(extensions=[…])`.
 - The package installs with `pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git`
   (see `docs/INSTALL.md`); the import name is `lisp`. See
-  chapter [21](21-embedding-in-python.md).
+  chapter [27](27-embedding-in-python.md).
 
 ## Budgets and limits
 

@@ -32,17 +32,28 @@ first part; after that everything is Lisp.
 ## How to read it
 
 Read Part I in order — each chapter builds the vocabulary the next one uses.
-Part II is the language you will actually write day to day. Chapter
-[21](21-embedding-in-python.md) is the way out: how to take this language and put
-it over a project of your own. Chapters [22–27](22-srfi-1-the-list-library.md)
-are the SRFI layer — the standard batteries that ship pre-imported — one
-chapter per SRFI; chapter [28](28-generators.md) is the generator library that
-ships beside them in the prelude.
-
-Every numbered chapter opens with **Before this / Time / After this you can**,
-and ends with **Try it** (a program you can paste and run) and **Exercises**.
-Worked answers live in [`exercises/`](exercises/), and the test suite runs them
-(see below). **The shape you copy** is the one idea to keep.
+Part II is the language you will actually write day to day, arranged from the
+mechanical to the expressive: chapter [08](08-lisp-by-example.md) is programs
+worth stealing; chapters [09–13](09-rosetta-data-structures.md) are the
+data-structures track — Python's list, tuple, dict, set, and class, rebuilt in
+this Lisp; chapters [14–19](14-srfi-241-match.md) are the rest of the
+language — the SRFIs this dialect ships in its prelude (match, cut, keywords,
+optional and named parameters), the generator library, and chain/nest — one
+chapter per feature, each placed right after the topic it deepens. Part III
+is the design track, and it assumes all of that: chapters
+[20–21](20-typed-control-flow.md) teach typed control flow and
+railway-oriented programming, chapters [22–23](22-functional-foundations.md)
+the functional-programming foundations and the FP answers to the classic
+design patterns, chapter [24](24-bounded-contexts.md) applies them to
+domain-driven design — bounded contexts, aggregates over events, and the
+context map — and chapter [25](25-functional-core-imperative-shell.md) names
+the architecture the whole series has been building toward: a functional core
+inside an imperative shell. Chapter [26](26-the-gala-checkout.md) is the
+capstone: one checkout pipeline where typed control flow, pattern matching,
+contracts, monadic pipelines, railway-oriented programming, bounded contexts,
+and the core/shell split all run in a single program. Chapter
+[27](27-embedding-in-python.md) is the way out: how to take this language and
+put it over a project of your own.
 
 ## The chapters
 
@@ -57,19 +68,29 @@ Worked answers live in [`exercises/`](exercises/), and the test suite runs them
 | | [05 The standard library](05-standard-library.md) | `prelude.scm`: the batteries, in Lisp |
 | | [06 Macros](06-macros.md) | `define-syntax` / `syntax-rules`, hygienic |
 | | [07 Modules](07-modules.md) | `(load ...)`: programs across files |
-| **Part II — the language you write** | | |
+| **Part II — the language, step by step** | | |
 | | [08 Lisp by example](08-lisp-by-example.md) | Programs worth stealing |
-| | [09 Typed control flow](09-typed-control-flow.md) | `define-variant` and `match` |
-| | [10 Railway-oriented programming](10-railway-oriented.md) | `Result`, Kleisli arrows, do-notation |
-| **Part III — out of the repository** | | |
-| | [21 Embedding in Python](21-embedding-in-python.md) | The host seam: `install_primitives`, extensions, packaging |
-| | [22 SRFI 1 — the list library](22-srfi-1-the-list-library.md) | Folds, constructors, searching, set ops |
-| | [23 SRFI 26 — cut and cute](23-srfi-26-cut-and-cute.md) | Specialized calls without the lambda boilerplate |
-| | [24 SRFI 88 — keywords](24-srfi-88-keywords.md) | `host:` — the self-evaluating name |
-| | [25 SRFI 89 — optional and named parameters](25-srfi-89-optional-and-named-parameters.md) | `define*`/`lambda*` and the keyword call syntax |
-| | [26 SRFI 197 — chain and nest](26-srfi-197-chain-and-nest.md) | Pipelines, early exit, and lexical substitution |
-| | [27 SRFI 241 — match](27-srfi-241-match.md) | Quasiquote patterns, guards, ellipsis, catamorphism |
-| | [28 Generators](28-generators.md) | Lazy sequences: infinite ranges, `gmap`/`gfilter`/`gtake`/`gdrop`, the drains |
+| | [09 Rosetta: Python's data structures](09-rosetta-data-structures.md) | The list/tuple/dict/set/class map, truthiness, equality |
+| | [10 Lists and vectors in depth](10-lists-and-vectors.md) | The comprehension moves, sort/group, and the mutable sequence |
+| | [11 SRFI 1 — the list library](11-srfi-1-the-list-library.md) | Folds, constructors, searching, set ops |
+| | [12 Dictionaries: alists and hash tables](12-dictionaries-alists-and-hash-tables.md) | The two dictionary shapes, and the counting/grouping recipes |
+| | [13 Modeling data](13-records-variants-and-objects.md) | Records, variants, and closures as the three "custom classes" |
+| | [14 SRFI 241 — match](14-srfi-241-match.md) | Quasiquote patterns, guards, ellipsis, catamorphism |
+| | [15 SRFI 26 — cut and cute](15-srfi-26-cut-and-cute.md) | Specialized calls without the lambda boilerplate |
+| | [16 SRFI 88 — keywords](16-srfi-88-keywords.md) | `host:` — the self-evaluating name |
+| | [17 SRFI 89 — optional and named parameters](17-srfi-89-optional-and-named-parameters.md) | `define*`/`lambda*` and the keyword call syntax |
+| | [18 Generators](18-generators.md) | Lazy sequences: infinite ranges, `gmap`/`gfilter`/`gtake`/`gdrop`, the drains |
+| | [19 SRFI 197 — chain and nest](19-srfi-197-chain-and-nest.md) | Pipelines, early exit, and lexical substitution |
+| **Part III — the design track** | | |
+| | [20 Typed control flow](20-typed-control-flow.md) | `define-variant` and `match` |
+| | [21 Railway-oriented programming](21-railway-oriented.md) | `Result`, Kleisli arrows, do-notation |
+| | [22 Functional programming: foundations](22-functional-foundations.md) | Purity, folds as recursion schemes, point-free style, currying |
+| | [23 FP design patterns](23-fp-design-patterns.md) | The strategy, closures as modules, memoisation, lazy pipelines, bind |
+| | [24 Bounded contexts](24-bounded-contexts.md) | DDD: ubiquitous language, aggregates over events, context maps, repositories |
+| | [25 Functional core, imperative shell](25-functional-core-imperative-shell.md) | Decisions as data, one door for every effect, the countable impurity audit |
+| | [26 The gala: one checkout, eight ideas](26-the-gala-checkout.md) | The capstone: typed lifecycle, contracts, ROP, matched failures, contexts — one program |
+| **Part IV — out of the repository** | | |
+| | [27 Embedding in Python](27-embedding-in-python.md) | The host seam: `install_primitives`, extensions, packaging |
 | **Appendix** | [A Reference](appendix-a-reference.md) | Signatures, common mistakes, CLI |
 | | [B Glossary](appendix-b-glossary.md) | The terms, and where each one lives |
 

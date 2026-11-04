@@ -50,7 +50,7 @@ closure is applied in tail position, `env` becomes the closure's captured scope
 extended with the arguments, `expr` becomes the body, and the loop runs the body
 in place. No new Python frame. That is what lets this work:
 
-```lisp
+```scheme
 (define (count-up n)
   (let loop ((i 0) (s 0))
     (if (= i n) s (loop (+ i 1) (+ s 1)))))
@@ -126,7 +126,7 @@ A few worth knowing before we meet them properly:
   family; each has a tail position that the trampoline honours.
 - **`guard`** is the condition system's catcher (below).
 - **`match`** and **`define-variant`** are the typed control flow of chapter
-  [09](09-typed-control-flow.md).
+  [20](20-typed-control-flow.md).
 
 ## Closures and lexical scope
 
@@ -134,7 +134,7 @@ A few worth knowing before we meet them properly:
 pointer. A `Closure` stores the environment it was created in, so it keeps
 seeing that scope's bindings *after* the `define` that made them returned:
 
-```lisp
+```scheme
 (define (make-counter)
   (let ((n 0))
     (lambda ()
@@ -163,7 +163,7 @@ lexically-scoped language.
 (unquote) evaluates the enclosed form, and `,@x` (unquote-splicing) splices a
 list. It is how you build a list-shaped template:
 
-```lisp
+```scheme
 (display `(1 ,(+ 1 1) ,@(list 3 4)))   ;=> (1 2 3 4)
 ```
 
@@ -176,7 +176,7 @@ nesting depth, so a quoted quasiquote inside a quasiquote behaves. Macros (chapt
 `error` raises a `LispError`; `raise` raises any value; `guard` catches and binds
 a condition:
 
-```lisp
+```scheme
 (guard (e (#t (error-object-message e)))
   (car '()))
 ;=> "car: expected a non-empty list"
@@ -186,7 +186,7 @@ a condition:
 the clauses. `with-exception-handler` and `dynamic-wind` are the lower-level
 versions; `let-values` / `call-with-values` handle multiple values; `call/cc`
 provides escape continuations. You will use `guard` in chapter
-[10](10-railway-oriented.md) to fold a *raising* computation onto a result rail.
+[21](21-railway-oriented.md) to fold a *raising* computation onto a result rail.
 
 ## The two budgets
 
@@ -213,7 +213,7 @@ budget, and a fresh root resets it, without two threads sharing a counter. So a
 program that loops a million times *before* returning to the top will trip the
 step budget even though it never nests:
 
-```lisp
+```scheme
 (define (count-up n) (let loop ((i 0) (s 0)) (if (= i n) s (loop (+ i 1) (+ s 1)))))
 (count-up 100000)   ;=> 100000
 (count-up 5000000)  ;=> LispBudgetError: one evaluation spent more than 5,000,000 steps
@@ -224,8 +224,7 @@ depth, so only this budget can see it)".
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))
 (display (fact 10))                                   (newline)
 
@@ -237,7 +236,6 @@ shs run /dev/stdin <<'EOF'
 (display (f 1 2 3))                                   (newline)
 
 (display `(1 ,(+ 1 1) ,@(list 3 4)))                  (newline)
-EOF
 ```
 
 ```text

@@ -1,11 +1,11 @@
-# 27 — SRFI 241: `match`
+# 14 — SRFI 241: `match`
 
 > **What this chapter teaches.** The standard pattern matcher: quasiquote
 > patterns, guards, ellipsis, vector and dotted patterns, the catamorphism —
 > and the deliberate split between this `match` and the project's
 > `variant-match`.
 >
-> **Before this:** 09 (variants), 08. · **Time:** ~15 min.
+> **Before this:** 13 (records and variants), 08. · **Time:** ~15 min.
 > **After this you can:** destructure any value by shape, and know which
 > matcher a case calls for.
 
@@ -13,7 +13,7 @@
 
 This dialect has two matchers, and the split is deliberate:
 
-- **`variant-match`** (chapter [09](09-typed-control-flow.md)) dispatches on
+- **`variant-match`** (chapter [20](20-typed-control-flow.md)) dispatches on
   a `define-variant` value's *tag*: bare-symbol patterns bind, the tag names
   the case, and a forgotten case is refused because the set is closed.
 - **`match`** (this chapter, SRFI 241) is the general pattern matcher:
@@ -35,7 +35,7 @@ The pattern grammar reads like `quasiquote`:
 - `,x` matches anything and binds it;
 - a **list pattern** matches a list of the same length, element by element.
 
-```lisp
+```scheme
 (match 42 [,x x])                        ;=> 42
 (match '(1 2 3) [(,a ,b ,c) (+ a b c)])  ;=> 6
 (match '(ok 5) [(ok ,v) v])              ;=> 5
@@ -52,7 +52,7 @@ A clause may carry a **guard** — a third element that must be true for the
 clause to match; a failed guard moves on to the next clause, and its
 bindings do not leak:
 
-```lisp
+```scheme
 (match 5
   [,i (guard (integer? i)) i]
   [,x 'no])                            ;=> 5
@@ -69,14 +69,14 @@ falls through, the same discipline as `variant-match`.
 
 `,x* ...` binds the remaining elements as a list:
 
-```lisp
+```scheme
 (match '(a 17 37)
   [(a ,x* ...) x*])                    ;=> (17 37)
 ```
 
 Ellipses nest, which is how you flatten two levels at once:
 
-```lisp
+```scheme
 (match '(begin (1 5) (2 6))
   [(begin (,x* ,y*) ...) (append x* y*)])   ;=> (1 2 5 6)
 ```
@@ -85,14 +85,14 @@ Ellipses nest, which is how you flatten two levels at once:
 
 Vector patterns match vectors with `#(...)`:
 
-```lisp
+```scheme
 (match (vector 1 2 3) [#(1 ,a ,b) (+ a b)])       ;=> 5
 (match (vector 1 2 3 4) [#(1 ,a* ...) a*])        ;=> (2 3 4)
 ```
 
 And a dotted pattern matches a list's tail:
 
-```lisp
+```scheme
 (match '(1 2 3) [(,a . ,rest) (list a rest)])     ;=> (1 (2 3))
 (match '() [() 'empty])                           ;=> empty
 ```
@@ -106,7 +106,7 @@ A repeated variable is an equality *constraint*: `(match '(1 1) [(,a ,a)
 sub-pattern's match — the idiom that writes a recursive walk in one clause
 list:
 
-```lisp
+```scheme
 (define (len lst)
   (match lst
     [() 0]
@@ -125,17 +125,16 @@ ellipses does not distribute.
 
 No matching clause and no matching guard is an error that names the value:
 
-```lisp
+```scheme
 (match '(1 2 3) [(,a ,b) 1])     ;=> error: match: no clause matched (1 2 3)
 ```
 
-That is the exhaustiveness discipline from chapter [09](09-typed-control-flow.md),
+That is the exhaustiveness discipline from chapter [20](20-typed-control-flow.md),
 carried over to general patterns: `match` refuses to guess.
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (define (area s)
   (match s
     [(circle ,r) (* 3.14 r r)]
@@ -148,7 +147,6 @@ shs run /dev/stdin <<'EOF'
 (display (match '(begin (1 5) (2 6)) [(begin (,x* ,y*) ...) (append x* y*)])) (newline)
 (display (match (vector 1 2 3) [#(1 ,a ,b) (+ a b)])) (newline)
 (display (match '(1 1) [(,a ,a) 'same])) (newline)
-EOF
 ```
 
 ```text
@@ -164,7 +162,7 @@ same
 
 ## Exercises
 
-1. **Tag vs shape.** Rewrite chapter [09](09-typed-control-flow.md)'s `area`
+1. **Tag vs shape.** Rewrite chapter [20](20-typed-control-flow.md)'s `area`
    with `variant-match` and with `match`. Which one refuses a case you
    forgot, and why does the SRFI's version need the `else`-style refusal
    written differently?
@@ -182,4 +180,4 @@ same
 > when it is a list's structure. Either way, the matcher names the value that
 > fits nothing — a silent default is the bug.
 
-Next: [28 — Generators](28-generators.md).
+Next: [15 SRFI 26 — cut and cute](15-srfi-26-cut-and-cute.md).

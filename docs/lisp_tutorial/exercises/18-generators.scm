@@ -1,9 +1,9 @@
-;; Exercise, chapter 28 — generators, lazily.
+;; Exercise, chapter 18 — generators, lazily.
 ;;
 ;; The chapter asks for an infinite squares generator drained two ways, and a
 ;; one-line window over a generator. All three answers are here.
 ;;
-;;   python -m lisp run docs/lisp_tutorial/exercises/28-generators.scm --no-tetris
+;;   python -m lisp run docs/lisp_tutorial/exercises/18-generators.scm --no-tetris
 
 ;; 1. Squares, lazily: `gmap` over an infinite range, drained with `gtake`.
 ;;    (Each display uses a *fresh* generator — `squares` is stateful.)

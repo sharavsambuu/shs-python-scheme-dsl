@@ -1,4 +1,4 @@
-# 24 — SRFI 88: keyword objects
+# 16 — SRFI 88: keyword objects
 
 > **What this chapter teaches.** What a keyword *is* in this dialect: how the
 > reader makes one, how it differs from a symbol, and why a language needs a
@@ -13,7 +13,7 @@
 A token that looks like a symbol but ends with a **colon** reads as a
 *keyword object*:
 
-```lisp
+```scheme
 host:          ; the keyword named "host"
 port:          ; the keyword named "port"
 ```
@@ -28,7 +28,7 @@ compute one.
 `Keyword` is a `str` subclass — like `Symbol` — but a *sibling* class, so the
 two predicates are disjoint:
 
-```lisp
+```scheme
 (keyword? host:)        ;=> #t
 (keyword? 'host)        ;=> #f
 (keyword? ':host)       ;=> #f — a *leading* colon is just a symbol
@@ -38,7 +38,7 @@ two predicates are disjoint:
 
 The three conversions are the library's whole surface:
 
-```lisp
+```scheme
 (keyword->string host:)                 ;=> host
 (string->keyword "port")                ;=> port:
 (keyword->string (string->keyword "port"))  ;=> port
@@ -57,7 +57,7 @@ back as itself. `types.py` says it in one line:
 Keywords are interned — every `host:` in your program is the same object —
 and two keywords with the same name are `equal?` however they were made:
 
-```lisp
+```scheme
 (eq? host: host:)                       ;=> #t
 (equal? host: (string->keyword "host")) ;=> #t
 ```
@@ -81,7 +81,7 @@ Their one job is to survive to the call site as a *name*. SRFI 89's
 `define*`/`lambda*` use them for optional and named parameters — the subject
 of the next chapter:
 
-```lisp
+```scheme
 (greet "ada" greeting: "hi")    ; greeting: names the argument
 ```
 
@@ -90,8 +90,7 @@ other key — but their home turf is the argument list.
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (display (keyword? host:)) (newline)
 (display (keyword? 'host)) (newline)
 (display (keyword? ':host)) (newline)
@@ -100,7 +99,6 @@ shs run /dev/stdin <<'EOF'
 (display (eq? host: host:)) (newline)
 (write host:) (newline)
 (display (list 'mode host:)) (newline)
-EOF
 ```
 
 ```text
@@ -131,4 +129,4 @@ host:
 > say *which* argument without computing anything. Suffix colon is the whole
 > syntax; everything else is the three conversion procedures.
 
-Next: [25 SRFI 89 — optional and named parameters](25-srfi-89-optional-and-named-parameters.md).
+Next: [17 SRFI 89 — optional and named parameters](17-srfi-89-optional-and-named-parameters.md).

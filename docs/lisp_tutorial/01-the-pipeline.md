@@ -103,7 +103,7 @@ That last default is the thesis of the whole project: the language never
 learns a host word in its own source, so a project that installs (or
 vendor-copies) `lisp/` gets a plain Scheme. The *shell* — `runtime.py` and
 `__main__.py` — is the only place a host can be wired in, by name and only at
-the caller's request. Chapter [21](21-embedding-in-python.md) shows a host of
+the caller's request. Chapter [27](27-embedding-in-python.md) shows a host of
 your own taking that place.
 
 ## A trace: what happens to `(square 5)`
@@ -140,15 +140,13 @@ first, then the crossing, then the program you write in Lisp.
 
 ## Try it
 
-```sh
-# What does the reader see? Ask it directly.
-shs run /dev/stdin <<'EOF'
+```scheme
+;; What does the reader see? Ask it directly.
 (display (read-string "(+ 1 2)"))
 (newline)
 (display (read-string "'(a b)"))
 (newline)
 (display (read-string "(a b . c)"))
-EOF
 ```
 
 ```text
@@ -172,7 +170,7 @@ has already applied the quote sugar. That is the whole trick.
 3. **Find the seam.** Open `lisp/runtime.py` and `lisp/__main__.py` and confirm
    they are the only two files under `lisp/` that name a host edition. The
    language itself never does — that discipline is what makes it embeddable,
-   and chapter [21](21-embedding-in-python.md) shows the other side of the
+   and chapter [27](27-embedding-in-python.md) shows the other side of the
    seam.
 
 ## The shape you copy

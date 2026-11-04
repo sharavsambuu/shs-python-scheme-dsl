@@ -1,4 +1,4 @@
-# 09 — Typed control flow: `define-variant` and `match`
+# 20 — Typed control flow: `define-variant` and `match`
 
 > **What this chapter teaches.** How to declare a *closed set* and dispatch on it
 > so the compiler (well, the interpreter) refuses to guess when you have forgotten
@@ -26,7 +26,7 @@ make the dispatcher **name the cases you forgot**.
 
 `define-variant` declares a closed union of tagged cases in one form:
 
-```lisp
+```scheme
 (define-variant outcome
   (win  score)
   (lose reason))
@@ -45,7 +45,7 @@ registry is global:
 > *The registry is global (like the edge's closed screen set) because a tag's
 > meaning is not lexical: `result?` must answer the same way in any scope.*
 
-```lisp
+```scheme
 (display (win 42))                 ;=> (win 42)
 (display (win-score (win 42)))     ;=> 42
 (display (outcome? (win 1)))       ;=> #t
@@ -59,7 +59,7 @@ primitives, and note that a *list* of the same shape matches the same patterns.
 
 `match` tries each clause in order; the first whose pattern matches wins:
 
-```lisp
+```scheme
 (define (describe o)
   (variant-match o
     ((win s)  (string-append "you win, score " (number->string s)))
@@ -89,7 +89,7 @@ primitives, and note that a *list* of the same shape matches the same patterns.
 And the crucial part — **no matching clause and no `else` is an error that names
 the possibilities**:
 
-```lisp
+```scheme
 > (variant-match (win 1) (('lose r) r))
 error: match: no clause matched (win 1); this outcome is one of win lose
 ```
@@ -121,7 +121,7 @@ the same discipline as refusing a fall-through.
 `case` is the older, simpler dispatcher: it compares a value against literal
 datum lists with `eqv?`-style equality and does not destructure.
 
-```lisp
+```scheme
 (case 2
   ((1) (display "one"))
   ((2) (display "two"))
@@ -135,7 +135,7 @@ fields, a list of fixed length, a refusal record).
 ## Where you meet this in the language
 
 - `lisp/rope.scm` declares the `Result` variant: `(define-variant result (ok value) (err reason))`
-  (chapter [10](10-railway-oriented.md)) — two rails, and no arm that swallows a
+  (chapter [21](21-railway-oriented.md)) — two rails, and no arm that swallows a
   third kind of value by accident.
 - A host edition declares its own variants the same way, and matches *by name*
   with no wildcard, so "a new rail would fall off the end rather than be silently
@@ -143,10 +143,89 @@ fields, a list of fixed length, a refusal record).
 
 The *discipline* is the one to copy: closed set, named arms, no silent default.
 
+## The pattern grammar, exercised
+
+The docstring above lists the pattern kinds; here is each one doing real work,
+because reading them in a list and choosing them under pressure are different
+skills.
+
+**Literal patterns** pin an exact value — the arm fires only for that one
+datum. This is how you give a common case its own fast arm before the general
+one:
+
+```scheme
+(define-variant drawing (poly points) (circle r))
+
+(variant-match (circle 2)
+  ((circle 2) 'unit)          ; the literal radius 2, not a binder
+  ((circle r) (list 'r r)))   ; every other circle
+;=> unit
+```
+
+The order matters, and the order *means* something: a literal arm before a
+binding arm is a special case, the same move a Python `match` makes with
+`case 2:` before `case x:`. With the value `(circle 3)` the first arm does not
+match, and the second binds `r` to `3`.
+
+**Fall-through binding arms** — the same shape, more general — are how one
+`variant-match` reports "and everything else of this tag":
+
+```scheme
+(variant-match (step 'west 2)
+  ((step 'north d) (list 'due-north d))
+  ((step dir d)    (list 'other dir d))
+  ((turn dir)      dir))
+;=> (other west 2)
+```
+
+**Nested list patterns** destructure a field *inside* the tag in one shot —
+no intermediate `let`:
+
+```scheme
+(variant-match (poly (list 1 2 3))
+  ((poly (a b c)) (list 'triangle a b c))
+  ((poly pts)     (list 'many (length pts))))
+;=> (triangle 1 2 3)
+```
+
+A field that holds exactly three points takes the first arm and binds all
+three; any other count falls to `pts`. The nest can go as deep as the data.
+
+**Plain lists match the same list patterns.** A tagged value views as
+`(tag . fields)`, so a bare list is just a tag with no name — and the same
+grammar takes it apart:
+
+```scheme
+(variant-match (list 1 2 3) ((a b c) (+ a b c)))   ;=> 6
+```
+
+That is why chapter [21](21-railway-oriented.md) can pattern-match `Result`
+values and chapter [24](24-bounded-contexts.md) can match event variants with
+the same syntax — one matcher, one grammar, any tagged shape.
+
+## The raw layer under the sugar
+
+`define-variant` is sugar over three primitives you can use directly —
+useful for probing, logging, and writing generic code that does not know
+which variant it holds:
+
+```scheme
+(tag-of (circle 1))        ;=> circle — the tag as a symbol
+(tag-fields (rect 3 4))    ;=> (3 4)  — the fields as a list
+(tagged? 'nope)            ;=> #f
+(tag 'mystery 1 2)         ;=> (mystery 1 2) — a tag no variant declared
+(variant-of 'circle)       ;=> shape — which variant declared this tag
+```
+
+`tag` builds a tagged value with *no* declaration — handy for ad-hoc marks
+in tests, and worth using sparingly in a domain, precisely because
+`variant-tags` will not know it. The generic-code idiom is `(tag-of ev)`:
+chapter [24](24-bounded-contexts.md) uses it to sort a mixed event log by
+which context produced it.
+
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (define-variant shape
   (circle radius)
   (rect   w h))
@@ -165,7 +244,14 @@ shs run /dev/stdin <<'EOF'
 (display (guard (e (#t (error-object-message e)))
            (variant-match (circle 1) (('rect w h) w))))
 (newline)
-EOF
+;; literals, fall-through arms, plain lists, and the raw layer
+(display (variant-match (circle 2) ((circle 2) 'unit) ((circle r) (list 'r r)) (else 'other))) (newline)
+(display (variant-match (rect 3 4) ((rect w h) (* w h)) (else 'other))) (newline)
+(display (variant-match (list 1 2 3) ((a b c) (+ a b c)))) (newline)
+(display (tag-of (circle 1))) (newline)
+(display (tag-fields (rect 3 4))) (newline)
+(display (tagged? 'nope)) (newline)
+(display (variant-of 'circle)) (newline)
 ```
 
 ```text
@@ -173,6 +259,13 @@ EOF
 12
 (circle rect)
 match: no clause matched (circle 1); this shape is one of circle rect
+unit
+12
+6
+circle
+(3 4)
+#f
+shape
 ```
 
 ## Exercises
@@ -186,8 +279,8 @@ match: no clause matched (circle 1); this shape is one of circle rect
    matched. Which arm would you add to make the refusal impossible, and what
    does adding it cost you in the exhaustiveness guarantee?
 3. **Against the Python side.** Python has its own structural `match`
-   (chapter [21](21-embedding-in-python.md) crosses the languages). Write one
-   Python `match` for the same shapes chapter 09's Lisp examples use, and
+   (chapter [27](27-embedding-in-python.md) crosses the languages). Write one
+   Python `match` for the same shapes chapter 20's Lisp examples use, and
    compare what each refuses.
 
 ## The shape you copy
@@ -196,4 +289,4 @@ match: no clause matched (circle 1); this shape is one of circle rect
 > not in it. A closed set plus a named refusal is how you get exhaustiveness
 > without a compiler to enforce it.
 
-Next: [10 Railway-oriented programming](10-railway-oriented.md).
+Next: [21 Railway-oriented programming](21-railway-oriented.md).

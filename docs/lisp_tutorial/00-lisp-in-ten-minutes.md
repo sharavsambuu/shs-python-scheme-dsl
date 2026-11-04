@@ -15,7 +15,7 @@ Lisp has almost no syntax. A program is text; the **reader** turns it into
 values; the **evaluator** turns those values into behaviour. A *form* is one
 value the evaluator knows how to run. There are only three shapes:
 
-```lisp
+```scheme
 42              ; a literal — evaluates to itself
 name            ; a symbol — evaluates to what `name` is bound to
 (+ 1 2)         ; a list — call the first thing with the rest
@@ -30,7 +30,7 @@ chapter [03](03-evaluating.md) shows you the code that recognises them.
 `define` binds a name. `lambda` makes a function. The `(define (f x) …)`
 spelling is sugar for `(define f (lambda (x) …))`:
 
-```lisp
+```scheme
 (define answer 42)
 (define (square x) (* x x))
 (define add (lambda (a b) (+ a b)))
@@ -48,7 +48,7 @@ function is just another list, so `(square 5)` reads the same way as `(+ 1 2)`.
 `let` binds names for the extent of one body. A **named** `let` is also the
 language's loop — it is a function that calls itself with new arguments:
 
-```lisp
+```scheme
 (let ((x 2) (y 3))
   (* x y))                     ;=> 6
 
@@ -67,7 +67,7 @@ for millions of steps.
 `if` takes two or three forms. `cond` takes clauses. Only `#f` is false;
 `0`, `""`, and even the empty list `'()` are true — R7RS truthiness:
 
-```lisp
+```scheme
 (if (> 3 2) 'yes 'no)                 ;=> yes
 (cond ((= 1 2) 'one)
       (else 'other))                  ;=> other
@@ -78,7 +78,7 @@ for millions of steps.
 A list is either `'()` or a pair. `quote` stops evaluation, so `'(a b c)` is a
 list of three symbols rather than a call to `a`:
 
-```lisp
+```scheme
 '(a b c)                  ;=> (a b c)
 (car '(a b c))            ;=> a
 (cdr '(a b c))            ;=> (b c)
@@ -101,8 +101,7 @@ every example in `examples/`. The rest of the language — variants and
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (display (+ 1 (* 2 3))) (newline)
 
 (define (square x) (* x x))
@@ -119,7 +118,6 @@ shs run /dev/stdin <<'EOF'
 (display (map square '(1 2 3))) (newline)
 (display (let loop ((i 0) (acc '()))
   (if (= i 3) (reverse acc) (loop (+ i 1) (cons i acc))))) (newline)
-EOF
 ```
 
 ```text

@@ -1,4 +1,4 @@
-# 21 — Embedding this language in your own Python
+# 27 — Embedding this language in your own Python
 
 > **What this chapter teaches.** The host-facing seam, `lisp/embed.py`: how a
 > *different* Python project exposes its own functions to this language in one
@@ -82,8 +82,7 @@ own features, a foreign project gets **parameters, promises, and ports** — wri
 in Lisp, no host required. This program uses all three, and never mentions the
 game:
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 ;; A parameter is a dynamic cell; `parameterize` is the only way to rebind it.
 (define depth (make-parameter 0))
 (define (label tag) (parameterize ((depth (+ (depth) 1))) (list tag (depth))))
@@ -102,7 +101,6 @@ shs run /dev/stdin <<'EOF'
   (display "into ")
   (write 42))
 (display (get-output-string sink)) (newline)
-EOF
 ```
 
 ```text
@@ -176,5 +174,6 @@ Scheme — the default is *auto*.
    must come up empty — and what a "convenient" `import yourhost` shortcut
    inside `embed.py` would cost the next embedder.
 
-Next: [22 SRFI 1 — the list library](22-srfi-1-the-list-library.md). The
-tutorial continues with a six-chapter tour of the SRFI layer.
+Next: [Appendix A — Reference](appendix-a-reference.md). The
+tutorial ends here — the chapters before this one already covered the
+language, the SRFI layer it ships, and the design track it enables.

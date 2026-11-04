@@ -56,6 +56,11 @@ _FENCE = re.compile(r"^```([^\n]*)\n(.*?)^```[ \t]*$", re.MULTILINE | re.DOTALL)
 #: The heredoc body of an executable ``Try it`` block.
 _HEREDOC = re.compile(r"<<'EOF'\n(.*?)\n[ \t]*EOF[ \t]*$", re.DOTALL)
 
+#: A ``## Try it`` heading, and any ``##`` heading that closes its span.
+_TRY_IT = re.compile(r"^##\s+Try it", re.MULTILINE)
+_ANY_H2 = re.compile(r"^##\s+", re.MULTILINE)
+
+
 #: A ``test_snake_case`` in prose.
 _TEST_NAME = re.compile(r"`(test_[a-z0-9_]+)`")
 
@@ -87,26 +92,57 @@ def _blocks(path: pathlib.Path) -> list[tuple[str, str, int]]:
     ]
 
 
-def _executable_blocks(path: pathlib.Path):
-    """Every ``## Try it`` heredoc, as ``(line, source, expected, tetris)``.
+def _try_it_spans(text: str) -> list[tuple[int, int]]:
+    """The ``(start_line, end_line)`` spans of every ``## Try it`` section."""
+    lines = text.splitlines()
+    spans: list[tuple[int, int]] = []
+    start: int | None = None
+    for number, line in enumerate(lines, 1):
+        if _TRY_IT.match(line):
+            start = number
+        elif start is not None and _ANY_H2.match(line):
+            spans.append((start, number - 1))
+            start = None
+    if start is not None:
+        spans.append((start, len(lines)))
+    return spans
 
-    The expected text is the *next* fenced block, and it must be tagged
-    ``text``: the pairing is the whole output contract — the page shows the
-    program, then the block a reader should see. ``tetris`` is false when the
-    block says ``--no-tetris``, so a language-only example is run without the
-    game.
+
+def _executable_blocks(path: pathlib.Path):
+    """Every executable ``Try it`` example, as ``(line, source, expected, tetris)``.
+
+    Two shapes carry a program, and both are held to the same output contract —
+    the expected text is the *next* fenced block, and it must be tagged
+    ``text``: the page shows the program, then the block a reader should see.
+
+    * A ``sh`` block running the program from stdin through a heredoc — kept
+      for examples whose *point* is the command line itself.
+    * A bare ``scheme`` block inside a ``## Try it`` section — the common
+      case: the program itself, syntax-highlighted, runnable by pasting it
+      into a file or the REPL.
+
+    ``tetris`` is false when the block says ``--no-tetris``, so a
+    language-only example is run without the game.
     """
+    text = path.read_text(encoding="utf-8")
     found = _blocks(path)
+    spans = _try_it_spans(text)
+
+    def in_try_it(line: int) -> bool:
+        return any(a <= line <= b for a, b in spans)
+
     for index, (info, body, line) in enumerate(found):
-        if info != "sh" or "run /dev/stdin" not in body:
-            continue
-        heredoc = _HEREDOC.search(body)
-        if heredoc is None:
-            continue
         expected = None
         if index + 1 < len(found) and found[index + 1][0] == "text":
             expected = found[index + 1][1]
-        yield line, heredoc.group(1), expected, "--no-tetris" not in body
+        if info == "sh" and "run /dev/stdin" in body:
+            heredoc = _HEREDOC.search(body)
+            if heredoc is None:
+                continue
+            yield line, heredoc.group(1), expected, "--no-tetris" not in body
+        elif info == "scheme" and in_try_it(line):
+            yield line, body, expected, "--no-tetris" not in body
+
 
 
 def _normalise(text: str) -> str:

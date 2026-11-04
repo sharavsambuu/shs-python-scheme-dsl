@@ -53,7 +53,7 @@ destructuring domain events.
 
 `lisp/rope.scm` defines a closed `Result` variant:
 
-```lisp
+```scheme
 (define-variant result
   (ok value)
   (err reason))
@@ -62,7 +62,7 @@ destructuring domain events.
 and builds the functor, monad, and Kleisli composition on one primitive,
 `result-bind`:
 
-```lisp
+```scheme
 (result-map (ok 21) (lambda (x) (* x 2)))       ;=> (ok 42)
 (result-bind (ok 41) (lambda (x) (ok (+ x 1)))) ;=> (ok 42)
 (result-bind (err "halt") (lambda (x) (ok (+ x 1)))) ;=> (err "halt")
@@ -78,7 +78,7 @@ laws are pinned by `tests/test_rop.py`.
 Kleisli arrows are functions `A -> Result`. `>=>` composes two of them;
 `pipe-results` threads a value through any number of them:
 
-```lisp
+```scheme
 (define (>=> f g)
   (lambda (x) (result-bind (f x) g)))
 
@@ -101,7 +101,7 @@ Two matchers, two jobs:
 - **`variant-match`** is the project’s exhaustive dispatcher. It is tied to
   `define-variant`, uses bare-symbol binders and tag patterns, and refuses to
   guess when a case is missing:
-  ```lisp
+  ```scheme
   (define-variant outcome
     (win  score)
     (lose reason))
@@ -135,7 +135,7 @@ not an accident.
 | --- | --- | --- |
 | **R7RS-small subset** | Reader, evaluator, tail calls, closures, the base procedures, `(scheme base)`, `(scheme write)` | `docs/r7rs.md`, [`docs/R7RS_TASKS.md`](R7RS_TASKS.md) |
 | **SRFI layer** | SRFI 1, 26, 88, 89, 197, 241 | `docs/srfi.md`, [`docs/SRFI_TASKS.md`](SRFI_TASKS.md) |
-| **Python seam** | `install_primitives`, `install_extension`, `make_env`, `run`, `load_lisp` | `lisp/embed.py`, chapter [21](lisp_tutorial/21-embedding-in-python.md) |
+| **Python seam** | `install_primitives`, `install_extension`, `make_env`, `run`, `load_lisp` | `lisp/embed.py`, chapter [21](lisp_tutorial/27-embedding-in-python.md) |
 
 ### R7RS-small: the honest claim
 
@@ -290,7 +290,7 @@ implemented:
 
 The seam is tested by `tests/test_embed.py`. The discipline that keeps
 `lisp/` free of host imports is what makes every Python project a valid host.
-Chapter [21](lisp_tutorial/21-embedding-in-python.md) is the long version.
+Chapter [21](lisp_tutorial/27-embedding-in-python.md) is the long version.
 
 ## Migration policy
 
@@ -364,9 +364,9 @@ Update the page in the same change.
   examples.
 - [The capability assessment](capabilities.md) — where the DSL stands against
   the modern-language checklist, and what is cheap to close.
-- [Chapter 09 — typed control flow](lisp_tutorial/09-typed-control-flow.md)
-- [Chapter 10 — railway-oriented programming](lisp_tutorial/10-railway-oriented.md)
-- [Chapter 21 — embedding in Python](lisp_tutorial/21-embedding-in-python.md)
+- [Chapter 09 — typed control flow](lisp_tutorial/20-typed-control-flow.md)
+- [Chapter 10 — railway-oriented programming](lisp_tutorial/21-railway-oriented.md)
+- [Chapter 21 — embedding in Python](lisp_tutorial/27-embedding-in-python.md)
 - [Appendix A — reference](lisp_tutorial/appendix-a-reference.md)
 - [`docs/R7RS_TASKS.md`](R7RS_TASKS.md)
 - [`docs/SRFI_TASKS.md`](SRFI_TASKS.md)

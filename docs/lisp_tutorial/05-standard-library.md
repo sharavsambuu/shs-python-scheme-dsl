@@ -36,7 +36,7 @@ the language.
 **Small combinators.** `identity`, `inc`, `dec`, `const`, then the four
 higher-order workhorses:
 
-```lisp
+```scheme
 (define (compose . fs)                       ; right-to-left; (compose f g) = f∘g
   (cond ((null? fs) identity)
         ((null? (cdr fs)) (car fs))
@@ -57,7 +57,7 @@ list-head`. These exist so a line reads like the shape it manipulates.
 pairs, and it is *the* record in this language. `assoc` (a primitive) finds an
 entry; the prelude's readers are the friendly spelling:
 
-```lisp
+```scheme
 (define (alist-ref alist key)
   (let ((entry (assoc key alist)))
     (if entry (cadr entry) #f)))             ; a miss is #f, which is false
@@ -71,7 +71,7 @@ unify, and why an absent field reads as a decision.
 **Repetition.** `repeat`/`times` are named-let loops. There is no `for`; a named
 `let` *is* the loop:
 
-```lisp
+```scheme
 (define (repeat n thunk)
   (let loop ((i 0))
     (if (>= i n) '() (begin (thunk) (loop (+ i 1))))))
@@ -83,7 +83,7 @@ kind). Chapter [06](06-macros.md) takes these apart; for now notice that the
 threading macros are *only* a way to write nested calls in the order the data
 flows, and cost nothing at run time:
 
-```lisp
+```scheme
 (define-syntax ->
   (syntax-rules ()
     ((_ x) x)
@@ -101,7 +101,7 @@ and `reduce = foldl` — but under the default profile SRFI 1's `fold` and
 
 **By a key.** `sort-by max-by min-by group-by`:
 
-```lisp
+```scheme
 (define (sort-by key less xs)
   (sort xs (lambda (a b) (less (key a) (key b)))))
 ```
@@ -115,7 +115,7 @@ primitives. And `hash-table-for-each`.
 
 **Memoisation.** The one piece of performance machinery in the library:
 
-```lisp
+```scheme
 (define (memoize f)
   (let ((cache (make-hash-table)))
     (lambda args
@@ -140,8 +140,7 @@ diff to this file rather than a change to the interpreter.
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (display ((compose inc inc) 5)) (newline)
 (display ((pipe inc inc inc) 5)) (newline)
 (display (alist-ref '((a 1) (b 2)) 'b)) (newline)
@@ -152,7 +151,6 @@ shs run /dev/stdin <<'EOF'
 (display (->> (range 5) (map inc) (filter even?))) (newline)
 (do ((i 0 (+ i 1))) ((= i 3) (display "done")) (display i))
 (newline)
-EOF
 ```
 
 ```text

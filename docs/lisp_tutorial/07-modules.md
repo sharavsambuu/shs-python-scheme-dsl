@@ -34,7 +34,7 @@ on the search path. The `.scm`-optional rule is why both
 spellings below are the same file — the loader tries the name with `.scm` and
 then without it.
 
-```lisp
+```scheme
 (load "domains/pacing/gravity")   ; root-relative, from any script
 (load "profile")                  ; a neighbour of the loading file
 ```
@@ -54,7 +54,7 @@ nothing again. The cache is keyed by the **resolved absolute path**, so
 `domains/pacing/gravity.scm` and `./domains/pacing/gravity.scm` are one module,
 not two.
 
-```lisp
+```scheme
 (load "domains/pacing/gravity")
 (load "domains/pacing/gravity")   ; a no-op; returns the first load's value
 ```
@@ -115,7 +115,7 @@ exactly those; the import sets `only`/`except`/`prefix`/`rename` are
 supported, and the R7RS `(scheme …)` libraries and the SRFIs are entries in
 the same registry:
 
-```lisp
+```scheme
 (define-library (demo math)
   (export double)
   (import (scheme base))
@@ -154,20 +154,18 @@ to `()` — the language's "nothing" — so a caller always sees a value.
 
 This is exactly why an entry file can be one line:
 
-```lisp
+```scheme
 (load "examples/announcement.scm")   ; resolved via the search path
 ```
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (write (loaded? "examples/announcement")) (newline)
 (display (load "examples/announcement")) (newline)
 (write (loaded? "examples/announcement")) (newline)
 (display (length (loaded-modules))) (newline)
 (display (length (search-path))) (newline)
-EOF
 ```
 
 ```text

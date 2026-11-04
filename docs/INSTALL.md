@@ -114,5 +114,5 @@ configuration needed for the common case.
 - The tutorial: [`lisp_tutorial/README.md`](lisp_tutorial/README.md) — from
   "Lisp in ten minutes" to the SRFI layer.
 - The one-stop language reference: [`language.md`](language.md).
-- Embedding in your own project: [`lisp_tutorial/21-embedding-in-python.md`](lisp_tutorial/21-embedding-in-python.md)
+- Embedding in your own project: [`lisp_tutorial/27-embedding-in-python.md`](lisp_tutorial/27-embedding-in-python.md)
   and the runnable [`examples/embed_inventory_host.py`](../examples/embed_inventory_host.py).

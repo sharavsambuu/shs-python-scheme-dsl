@@ -20,7 +20,7 @@ until the parentheses balance, so a `define` can span as many lines as it takes.
 
 ## Calling things
 
-```lisp
+```scheme
 > (+ 1 2 3)
 6
 > (< 1 2 3)
@@ -34,7 +34,7 @@ arguments. `+` and `append` are variadic primitives.
 
 ## Defining functions
 
-```lisp
+```scheme
 > (define (square x) (* x x))
 square
 > (square 5)
@@ -52,7 +52,7 @@ sequence of forms evaluated in order; the last value is the function's value.
 positional optional is `(v default)`; a named one is `(keyword: v default)`,
 supplied at the call site by keyword:
 
-```lisp
+```scheme
 > (define* (greet name (greeting: g "hello"))
     (string-append g ", " name))
 > (greet "ada")
@@ -67,7 +67,7 @@ keyword `greeting:` is a value of its own (SRFI 88; chapter
 
 ## Conditionals
 
-```lisp
+```scheme
 > (if (> 3 2) "yes" "no")
 yes
 > (cond ((= 1 2) "one") ((= 2 2) "two") (else "other"))
@@ -86,7 +86,7 @@ arm is a tail call.
 
 ## Local bindings
 
-```lisp
+```scheme
 > (let ((a 2) (b 3)) (+ a b))
 5
 > (let* ((a 2) (b (* a a))) b)     ; b sees a
@@ -101,7 +101,7 @@ arm is a tail call.
 one another (for mutual recursion). There is no `for`; a **named `let` is the
 loop**:
 
-```lisp
+```scheme
 > (let loop ((i 0) (acc '()))
     (if (= i 3) (reverse acc) (loop (+ i 1) (cons i acc))))
 (0 1 2)
@@ -112,7 +112,7 @@ Read it as: call `loop` with `i=0`, `acc=()`. The body either returns or calls
 (chapter [03](03-evaluating.md)). This named-let shape is *the* Lisp loop, and
 you will see it in nearly every Lisp file in the wild.
 
-```lisp
+```scheme
 > (define (sum-to n) (let loop ((i 0) (s 0)) (if (> i n) s (loop (+ i 1) (+ s i)))))
 > (sum-to 10)
 55
@@ -123,7 +123,7 @@ you will see it in nearly every Lisp file in the wild.
 Lists are built recursively — `cons` puts an element on the front, `car`/`cdr`
 take it apart, `()` ends it:
 
-```lisp
+```scheme
 > (cons 1 '(2 3))
 (1 2 3)
 > (car '(1 2 3))
@@ -146,7 +146,7 @@ argument order, so `(foldl + 0 xs)` and `(fold + 0 xs)` are the same call —
 list functions take the list first and the count second — `(take xs n)`, not
 `(take n xs)`:
 
-```lisp
+```scheme
 > (take (range 10) 3)
 (0 1 2)
 > (drop (range 10) 7)
@@ -160,7 +160,7 @@ list functions take the list first and the count second — `(take xs n)`, not
 A `lambda` captures the scope it was written in, which is how you carry private
 state without objects:
 
-```lisp
+```scheme
 > (define (make-counter) (let ((n 0)) (lambda () (set! n (+ n 1)) n)))
 > (define c (make-counter))
 > (c)
@@ -179,7 +179,7 @@ independently.
 Strings are for text from the outside world; symbols are for names you write.
 Quoting a symbol yields the symbol itself:
 
-```lisp
+```scheme
 > 'square
 square
 > (symbol? 'square)
@@ -196,7 +196,7 @@ square
 
 An **alist** — a list of `(key value)` pairs — is the language's record shape:
 
-```lisp
+```scheme
 > (alist-ref '((a 1) (b 2)) 'b)
 2
 > (alist-ref '((a 1)) 'missing)
@@ -214,7 +214,7 @@ naturally an alist, and `alist-ref` is how you read a field.
 
 `set!` mutates the nearest binding; vectors and hash tables are mutable in place:
 
-```lisp
+```scheme
 > (define i 0)
 > (while (< i 3) (display i) (set! i (+ i 1)))
 012
@@ -236,7 +236,7 @@ would expect — speed.
 
 **FizzBuzz**, with `cond`:
 
-```lisp
+```scheme
 > (define (fizzbuzz n)
     (cond ((= (modulo n 15) 0) "FizzBuzz")
           ((= (modulo n 3) 0)  "Fizz")
@@ -248,7 +248,7 @@ would expect — speed.
 
 **A word count**, with `fold` and an alist accumulator:
 
-```lisp
+```scheme
 (define (word-count words)
   (fold (lambda (w acc)
            (let ((n (alist-ref acc w)))
@@ -261,7 +261,7 @@ would expect — speed.
 **A tiny evaluator**, with recursion and `case` (a preview of the pattern the
 interpreter itself is written in — data in, value out):
 
-```lisp
+```scheme
 (define (calc e)
   (cond ((number? e) e)
         ((list? e)
@@ -278,7 +278,7 @@ interpreter itself is written in — data in, value out):
 When a sequence of calls reads better in data-flow order, `->` and `->>` rewrite
 it (they are macros; they cost nothing):
 
-```lisp
+```scheme
 > (-> 5 inc inc (* 2))                 ; (* (inc (inc 5)) 2)
 14
 > (->> (range 5) (map inc) (filter even?))
@@ -288,22 +288,21 @@ it (they are macros; they cost nothing):
 SRFI 197's `chain` is the pre-imported standard spelling of the same idea —
 `_` names the hole, `chain-and`/`chain-when` add early exit:
 
-```lisp
+```scheme
 > (chain '(1 2 3) (map (lambda (x) (* x x)) _) (fold + 0 _))
 14
 ```
 
 The partial-application side of the same coin is SRFI 26's `cut`/`cute`:
 
-```lisp
+```scheme
 > ((cut + 1 <>) 41)
 42
 ```
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (define (square x) (* x x))
 (display (square 5)) (newline)
 
@@ -321,7 +320,6 @@ shs run /dev/stdin <<'EOF'
 (define v (make-vector 3 0))
 (vector-set! v 1 'x)
 (display v) (newline)
-EOF
 ```
 
 ```text
@@ -345,7 +343,7 @@ record. Those three plus `define`/`lambda` are the whole language you write.
    need is the one from earlier in the chapter.
 2. **A record, twice.** Represent a point as `'((x 1) (y 2))` and write
    `point-x`, `point-y`, and `point+`. Then do the same with `define-variant`
-   (chapter [09](09-typed-control-flow.md)) and say which one the domain's shape
+   (chapter [20](20-typed-control-flow.md)) and say which one the domain's shape
    types would use, and why.
 3. **Recursion to a loop.** Take the recursive `fact` above and rewrite it with
    an accumulator in a named `let`. Confirm both give `3628800` for `10`, then
@@ -358,4 +356,4 @@ record. Those three plus `define`/`lambda` are the whole language you write.
 > alist for records. Everything else is a variation, and everything a real
 > program does is built from these.
 
-Next: [09 Typed control flow](09-typed-control-flow.md).
+Next: [09 Rosetta: Python's data structures](09-rosetta-data-structures.md).

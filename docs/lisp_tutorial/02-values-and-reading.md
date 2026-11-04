@@ -37,7 +37,7 @@ Two design choices in that table are load-bearing, so notice them now.
 
 ### 1. Truthiness: only `#f` is false
 
-```lisp
+```scheme
 (if '() "truthy" "falsy")   ;=> "truthy"
 (if 'x  "truthy" "falsy")   ;=> "truthy"
 (if 0   "truthy" "falsy")   ;=> "truthy"
@@ -69,7 +69,7 @@ The reader turns a symbol-shaped token with a **trailing colon** into a
 *keyword object* — `host:` is the keyword named `host`, self-evaluating and
 distinct from symbols:
 
-```lisp
+```scheme
 (keyword? host:)            ;=> #t
 (keyword? ':host)           ;=> #f — a leading colon is just a symbol
 (symbol? ':host)            ;=> #t
@@ -97,7 +97,7 @@ A Lisp list is a linked chain. Three things model it here:
   directly, which is why `map` and `filter` are cheap.
 - a `Pair` — an improper chain, e.g. from `(cons 1 2)`.
 
-```lisp
+```scheme
 (display '(1 2 3))     ;=> (1 2 3)
 (display (cons 1 2))   ;=> (1 . 2)
 (display (list 1 2 3)) ;=> (1 2 3)
@@ -119,13 +119,13 @@ plus a rest binder (chapter [03](03-evaluating.md)).
 
 A `Tagged` is a *tag* plus fields, and it prints like a one-element-headed list:
 
-```lisp
+```scheme
 (display (tag 'ok 3))         ;=> (ok 3)
 (display (tag-of (tag 'ok 3))) ;=> ok
 (display (tag-fields (tag 'ok 3))) ;=> (3)
 ```
 
-`define-variant` (chapter [09](09-typed-control-flow.md)) builds tagged
+`define-variant` (chapter [20](20-typed-control-flow.md)) builds tagged
 constructors for you, and `match` knows how to read the fields back out. For now
 just note that a tagged value is *list-shaped*, and that `match` accepts either
 the declared-tag spelling `(ok v)` or the explicit-quote spelling `('ok v)`.
@@ -166,7 +166,7 @@ the middle of a form.
 `lisp/printer.py` has one formatter, `to_string(value, write=False)`. The two
 modes are the Scheme split:
 
-```lisp
+```scheme
 (display "hi")   ;=> hi      (for a human)
 (write "hi")     ;=> "hi"    (so it can be read back)
 ```
@@ -184,8 +184,7 @@ string comes back unquoted, and `hello` is what a string looks like).
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (display (read-string "(+ 1 2)"))          (newline)
 (display (read-string "'(a b)"))           (newline)
 (display (read-string "(a b . c)"))        (newline)
@@ -194,7 +193,6 @@ shs run /dev/stdin <<'EOF'
 (display (symbol? 'square))                (newline)
 (display (list? '()))                      (newline)
 (display (if '() "truthy" "falsy"))        (newline)
-EOF
 ```
 
 ```text

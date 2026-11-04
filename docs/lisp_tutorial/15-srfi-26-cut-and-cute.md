@@ -1,4 +1,4 @@
-# 23 — SRFI 26: `cut` and `cute`
+# 15 — SRFI 26: `cut` and `cute`
 
 > **What this chapter teaches.** Specializing a procedure without naming a
 > lambda: `cut` and `cute`, their two placeholder kinds, the difference
@@ -12,14 +12,14 @@
 
 Feeding `map` a partially applied function is everyday Lisp:
 
-```lisp
+```scheme
 (map (lambda (x) (* x 2)) '(1 2 3))    ;=> (2 4 6)
 ```
 
 That `lambda` is boilerplate: it names a variable only to fill one slot of a
 call. SRFI 26's `cut` writes the call directly, with `<>` marking the hole:
 
-```lisp
+```scheme
 (map (cut * 2 <>) '(1 2 3))            ;=> (2 4 6)
 ```
 
@@ -27,7 +27,7 @@ call. SRFI 26's `cut` writes the call directly, with `<>` marking the hole:
 generated parameter, and everything else is captured. Several holes are
 allowed; they become the parameters in order:
 
-```lisp
+```scheme
 ((cut + 1 <> 10) 5)                    ;=> 16
 ((cut cons <> <>) 1 2)                 ;=> (1 . 2)
 ```
@@ -37,7 +37,7 @@ allowed; they become the parameters in order:
 `<...>` collects *all remaining* arguments into an `apply` — it must come
 last, immediately after a `<>`:
 
-```lisp
+```scheme
 ((cut list <> <...>) 1 2 3 4)          ;=> (1 2 3 4)
 ```
 
@@ -50,7 +50,7 @@ it is why `cut` can wrap variadic procedures.
 evaluates them **once, at construction** (`cute` = "composable, uniformly
 nestable, tail-oriented expression" — the `e` is *evaluated now*):
 
-```lisp
+```scheme
 (define n 0)
 (define (tick) (set! n (+ n 1)) n)
 (define f (cut + (tick) 0))
@@ -69,7 +69,7 @@ composes more safely inside other expressions).
 
 The prelude keeps two related tools (chapter [05](05-standard-library.md)):
 
-```lisp
+```scheme
 ((partial + 1 2) 3)     ;=> 6  — binds the *leading* arguments, variadic
 ((curry + 3) 4)         ;=> a closure — one argument per call, needs an arity
 ```
@@ -87,8 +87,7 @@ generically).
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (display ((cut + 1 <> 10) 5)) (newline)
 (display (map (cut * 2 <>) '(1 2 3))) (newline)
 (display ((cut cons <> <>) 1 2)) (newline)
@@ -101,7 +100,6 @@ shs run /dev/stdin <<'EOF'
 (define g (cute + (tick) 0))
 (g) (g)
 (display n) (newline)
-EOF
 ```
 
 ```text
@@ -132,4 +130,4 @@ EOF
 > pure, and for `partial`/`curry` when you need a procedure value rather than
 > a specialised call.
 
-Next: [24 SRFI 88 — keywords](24-srfi-88-keywords.md).
+Next: [16 SRFI 88 — keywords](16-srfi-88-keywords.md).

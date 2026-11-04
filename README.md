@@ -125,7 +125,7 @@ run("(double 21)", env)                # -> 42
 
 The seam is declared, total, and loud: a host publishes a plain list of
 `name -> callable` pairs; duplicates and non-callables are refused at install
-time. See chapter 21 of the tutorial.
+time. See chapter 27 of the tutorial.
 
 ## Development
 

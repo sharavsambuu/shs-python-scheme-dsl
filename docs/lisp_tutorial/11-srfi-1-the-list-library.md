@@ -1,4 +1,4 @@
-# 22 — SRFI 1: the list library
+# 11 — SRFI 1: the list library
 
 > **What this chapter teaches.** `(srfi 1)`, the list library that ships
 > pre-imported: the fold family, list constructors and slicers, searching,
@@ -22,7 +22,7 @@ This is the **default DSL profile** at work: `make_env()` pre-imports every
 mandatory SRFI, so programs need no preamble. The profile is *additive* — it
 binds no name the core already binds — and `cond-expand` reports it:
 
-```lisp
+```scheme
 (cond-expand (dsl-profile 'dsl) (else 'strict))            ;=> dsl
 (cond-expand ((library (srfi 1)) 'there) (else 'absent))   ;=> there
 ```
@@ -37,7 +37,7 @@ the point: the default profile is for *writing*, the strict one is for
 SRFI 1's fold family is the workhorse. The function takes `(elt acc)` —
 element first, accumulator second — and `fold` walks left to right:
 
-```lisp
+```scheme
 (fold + 0 '(1 2 3 4))                          ;=> 10
 (fold (lambda (x acc) (cons (* x x) acc)) '() '(1 2 3))  ;=> (9 4 1)
 (fold-right cons '() '(1 2 3))                 ;=> (1 2 3)
@@ -49,7 +49,7 @@ with the same argument order — `fold` is the name shipped code uses.
 
 ## Constructing and slicing
 
-```lisp
+```scheme
 (iota 5)                       ;=> (0 1 2 3 4)
 (iota 5 10)                    ;=> (10 11 12 13 14)
 (list-tabulate 3 (lambda (i) (* i i)))   ;=> (0 1 4)
@@ -63,7 +63,7 @@ with the same argument order — `fold` is the name shipped code uses.
 slices. Deletion comes in two shapes: `delete` removes equal elements,
 `delete-duplicates` keeps the first of each:
 
-```lisp
+```scheme
 (delete 2 '(1 2 3 2))          ;=> (1 3)
 (delete-duplicates '(1 2 1 3 2))   ;=> (1 2 3)
 ```
@@ -76,7 +76,7 @@ returns the element, `any` returns the predicate's true value, and
 accept an optional comparator — which is how you search by content instead
 of identity:
 
-```lisp
+```scheme
 (find even? '(1 3 4 5))        ;=> 4
 (count odd? '(1 2 3 4 5))      ;=> 3
 (any even? '(1 3 4))           ;=> #t
@@ -90,7 +90,7 @@ of identity:
 fails — and they return **two values**, the way `values` does. This is the
 single most surprising thing in the library, so meet it deliberately:
 
-```lisp
+```scheme
 (call-with-values (lambda () (partition odd? '(1 2 3 4))) list)
 ;=> ((1 3) (2 4))
 (call-with-values (lambda () (span odd? '(1 3 2 4))) list)
@@ -104,7 +104,7 @@ the form to remember is the `call-with-values` (or `let-values`) one.
 
 The `lset` family treats lists as sets, taking the comparator first:
 
-```lisp
+```scheme
 (lset-union eq? '(1 2 3) '(3 4 5))         ;=> (1 2 3 4 5)
 (lset-intersection eq? '(1 2 3) '(2 3 4))  ;=> (2 3)
 (lset-difference eq? '(1 2 3) '(2 3 4))    ;=> (1)
@@ -116,7 +116,7 @@ SRFI 1's `map`/`for-each` **stop at the shortest list**; the `(scheme base)`
 ones require equal lengths and raise. Because both readings are correct, the
 default profile imports SRFI 1 with those two names **renamed**:
 
-```lisp
+```scheme
 (map + '(1 2 3) '(10 20))        ;=> error: map: lists must be the same length
 (srfi-1:map + '(1 2 3) '(10 20)) ;=> (11 22)
 ```
@@ -127,8 +127,7 @@ are the only two in the whole layer.
 
 ## Try it
 
-```sh
-shs run /dev/stdin <<'EOF'
+```scheme
 (display (cond-expand (srfi-1 'yes) (else 'no))) (newline)
 (display (iota 5)) (newline)
 (display (fold + 0 (iota 5))) (newline)
@@ -143,7 +142,6 @@ shs run /dev/stdin <<'EOF'
 (display (call-with-values (lambda () (partition odd? '(1 2 3 4))) list)) (newline)
 (display (lset-union eq? '(1 2 3) '(3 4 5))) (newline)
 (display (srfi-1:map + '(1 2 3) '(10 20))) (newline)
-EOF
 ```
 
 ```text
@@ -183,5 +181,5 @@ yes
 > a set operation? And when a function answers two questions, expect two
 > values.
 
-Next: [23 SRFI 26 — cut and cute](23-srfi-26-cut-and-cute.md).
+Next: [12 Dictionaries: alists and hash tables](12-dictionaries-alists-and-hash-tables.md).
 

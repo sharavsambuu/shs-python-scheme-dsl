@@ -54,7 +54,7 @@ binds). The project's tag-dispatch matcher is the separate `variant-match`;
 `case` is the older, literal-equality dispatcher.
 
 **`variant-match`** — dispatch on a `define-variant` value's tag, binding its
-fields, and naming a case you forgot. Chapter [09](09-typed-control-flow.md).
+fields, and naming a case you forgot. Chapter [20](20-typed-control-flow.md).
 
 **Profile** — the SRFI layer an environment is born with: `"dsl"` (the
 default; every mandatory SRFI pre-imported), `"r7rs"` (strict core + prelude),
@@ -68,7 +68,7 @@ are supplied with them.
 
 **Monad / Kleisli arrow** — `result-bind` is the monad; `>=>` composes arrows
 (`A -> Result`). `pipe-results`, `result-do`. Chapter
-[10](10-railway-oriented.md).
+[21](21-railway-oriented.md).
 
 **ROP (railway-oriented programming)** — writing a fallible computation as a chain
 that short-circuits on the first refusal.
