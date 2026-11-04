@@ -486,9 +486,14 @@ def apply_imports(env: Environment, sets: list, who: str = "import") -> None:
     for spec in sets:
         for name, binding in _resolve_set(spec, env, who).items():
             if name in mapping and not _same_binding(mapping[name], binding):
+                second = _describe_set(spec)
                 raise LispError(
-                    f"{who}: name collision on {name} between "
-                    f"{sources[name]} and an import set"
+                    f"{who}: name collision on {name} between {sources[name]} "
+                    f"and {second} — the two sets bind {name} to different "
+                    f"bindings; fix: split the sets into separate (import ...) "
+                    f"forms (the later one shadows), or trim one set with "
+                    f"(except {second} {name}), or keep both with "
+                    f"(rename {second} ({name} <new-name>))"
                 )
             mapping[name] = binding
             sources[name] = _describe_set(spec)

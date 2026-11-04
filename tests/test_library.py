@@ -55,8 +55,15 @@ def test_import_collision_names_the_name(env) -> None:
     (define-library (two) (export clash) (import (scheme base))
       (begin (define (clash) 2)))
     """)
-    with pytest.raises(LispError, match="collision on clash"):
+    with pytest.raises(LispError, match="collision on clash") as excinfo:
         run(env, "(import (only (one) clash) (only (two) clash))")
+    message = str(excinfo.value)
+    # both colliding sets are named, and the message teaches the three fixes
+    assert "(only (one) clash)" in message
+    assert "(only (two) clash)" in message
+    assert "separate (import ...) forms" in message
+    assert "(except (only (two) clash) clash)" in message
+    assert "(rename (only (two) clash) (clash <new-name>))" in message
 
 
 def test_import_shared_names_are_not_collisions(env) -> None:
