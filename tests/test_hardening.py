@@ -151,10 +151,13 @@ def test_equal_on_a_cyclic_pair_raises_a_lisp_error(env) -> None:
         run(env, "(equal? p p)")
 
 
-def test_exactness_prefix_on_an_inexact_literal_stays_inexact(env) -> None:
-    # #e asks for the exact rational 3/2; this tower has no rationals, so the
-    # value survives as the inexact 1.5. Pinned as the documented behaviour.
-    assert run(env, "#e1.5") == 1.5
+def test_exactness_prefix_on_a_decimal_denotes_the_rational(env) -> None:
+    # #e asks for the exact rational the decimal spells: 3/2, not the inexact
+    # 1.5. (The old test pinned the pre-rational-tower behaviour and only
+    # passed because Python compares 3/2 == 1.5.)
+    value = run(env, "#e1.5")
+    assert value == Fraction(3, 2)
+    assert type(value) is Fraction
 
 
 def test_tail_loop_beyond_the_budget_raises(env, monkeypatch) -> None:

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import sys
 import threading
+from fractions import Fraction
 from typing import Any, List, Optional
 
 from .env import Environment
@@ -44,6 +45,7 @@ from .types import (
     ByteVector,
     Char,
     Closure,
+    Complex,
     ErrorObject,
     Macro,
     Pair,
@@ -284,6 +286,12 @@ def _run(expr: Any, env: Environment, budget: _Budget) -> Any:
                 )
             return value
 
+        if isinstance(expr, Pair):
+            # A dotted form such as ``(begin . 1)`` is not code: every
+            # application and special form is a proper list. Treating it as
+            # self-evaluating data would silently turn a typo into a value.
+            raise LispSyntaxError("improper list in expression position")
+
         if not isinstance(expr, list):
             return expr  # a number, string, boolean, or NIL literal
 
@@ -330,6 +338,10 @@ def _run(expr: Any, env: Environment, budget: _Budget) -> Any:
                 env.set(expr[1], value)
                 return value
             if head is LAMBDA:
+                if len(expr) < 3:
+                    raise LispSyntaxError(
+                        "lambda: expected (lambda params body...)"
+                    )
                 params, rest = _parse_params(expr[1], "lambda")
                 return Closure(params, rest, expr[2:], env, "lambda")
             if head is LET:
@@ -738,6 +750,32 @@ def _eval_defmacro(expr: list, env: Environment) -> Any:
     return name
 
 
+def _parse_bindings(raw: Any, who: str) -> list:
+    """Validate a ``((name initializer) ...)`` binding list.
+
+    The reader represents a proper list as a Python ``list`` and an improper
+    one as a :class:`Pair`, so this is the one place a binding list's *shape*
+    is checked. Every malformed case — a missing initializer, an extra form, a
+    non-symbol name, a dotted list — becomes a :class:`LispSyntaxError`; none
+    of them may reach the index-based expansion below and surface as a host
+    ``IndexError``. An empty binding list is valid in every binding form.
+    """
+    if is_nil(raw):
+        return []
+    if isinstance(raw, Pair):
+        raise LispSyntaxError(f"{who}: the binding list must be a proper list")
+    if not isinstance(raw, list):
+        raise LispSyntaxError(f"{who}: bad binding list")
+    for binding in raw:
+        if not isinstance(binding, list) or len(binding) != 2:
+            raise LispSyntaxError(
+                f"{who}: each binding must be (name initializer)"
+            )
+        if not isinstance(binding[0], Symbol):
+            raise LispSyntaxError(f"{who}: a binding name must be a symbol")
+    return list(raw)
+
+
 def _step_let(expr: list) -> Any:
     """``let`` — including named ``let`` — becomes a lambda application.
 
@@ -749,18 +787,12 @@ def _step_let(expr: list) -> Any:
         raise LispSyntaxError("let: expected (let (bindings...) body...)")
     if isinstance(expr[1], Symbol):  # named let
         name = expr[1]
-        raw = expr[2]
-        if not (isinstance(raw, list) or is_nil(raw)):
-            raise LispSyntaxError("let: bad binding list")
-        bindings = [] if is_nil(raw) else raw
+        bindings = _parse_bindings(expr[2], "let")
         names = [b[0] for b in bindings]
         inits = [b[1] for b in bindings]
         lam = [LAMBDA, make_list(names), *expr[3:]]
         return [LETREC, [[name, lam]], [name, *inits]]
-    bindings = expr[1]
-    if not (isinstance(bindings, list) or is_nil(bindings)):
-        raise LispSyntaxError("let: bad binding list")
-    bindings = [] if is_nil(bindings) else bindings
+    bindings = _parse_bindings(expr[1], "let")
     names = [b[0] for b in bindings]
     inits = [b[1] for b in bindings]
     return [make_list([LAMBDA, make_list(names), *expr[2:]]), *inits]
@@ -773,10 +805,10 @@ def _step_let_star(expr: list) -> Any:
     remaining binding list would bind those names in parallel, so with three
     or more bindings a later initialiser could not see an earlier name.
     """
-    if len(expr) < 3 or not isinstance(expr[1], list):
+    if len(expr) < 3:
         raise LispSyntaxError("let*: expected (let* (bindings...) body...)")
-    bindings = expr[1]
-    if not bindings or is_nil(bindings):
+    bindings = _parse_bindings(expr[1], "let*")
+    if not bindings:
         return [LET, NIL, *expr[2:]]
     first, rest = bindings[0], bindings[1:]
     inner: Any = [LET_STAR, rest, *expr[2:]] if rest else _body_form(expr[2:])
@@ -792,9 +824,9 @@ def _step_letrec(expr: list, who: str = "letrec") -> Any:
     standard leaves the initialisers' order unspecified, so compiling both to
     the sequential form is the honest superset.
     """
-    if len(expr) < 3 or not isinstance(expr[1], list):
+    if len(expr) < 3:
         raise LispSyntaxError(f"{who}: expected ({who} (bindings...) body...)")
-    bindings = expr[1]
+    bindings = _parse_bindings(expr[1], who)
     names = [b[0] for b in bindings]
     blanks = [[n, NIL] for n in names]
     assigns = [[SET, b[0], b[1]] for b in bindings]
@@ -924,6 +956,12 @@ def _step_or(expr: list, env: Environment) -> Any:
 def _step_case(expr: list, env: Environment) -> Any:
     if len(expr) < 2:
         raise LispSyntaxError("case: expected (case key clauses...)")
+    # R7RS compares the key with each datum by ``eqv?``, not ``equal?``: the
+    # exactness of a number is part of its identity, so ``(case 1 ...)`` must
+    # not match a ``1.0`` clause. Imported lazily to keep the evaluator free of
+    # a module-level cycle with ``builtins``.
+    from .builtins import _eqv
+
     key = evaluate(expr[1], env)
     for clause in expr[2:]:
         if not isinstance(clause, list) or not clause:
@@ -935,7 +973,7 @@ def _step_case(expr: list, env: Environment) -> Any:
             return NIL if len(clause) == 1 else _body_form(clause[1:])
         if not isinstance(datums, list):
             raise LispSyntaxError("case: datum list expected")
-        if any(equal(key, datum) for datum in datums):
+        if any(_eqv(key, datum) for datum in datums):
             if len(clause) >= 3 and clause[1] is ARROW:
                 return _Result(apply_procedure(evaluate(clause[2], env), [key]))
             return NIL if len(clause) == 1 else _body_form(clause[1:])
@@ -1899,10 +1937,24 @@ def _eval_define_values(expr: list, env: Environment) -> Any:
 #  Equality (shared with the ``equal?`` primitive)                             #
 # --------------------------------------------------------------------------- #
 
+#: The numeric tower's host types, mirroring ``builtins.Number``. Kept here so
+#: ``equal?`` can honour exactness without importing ``builtins`` (which imports
+#: the evaluator).
+_NUMBER_TYPES = (int, float, Fraction, Complex, complex)
+
+
 def equal(a: Any, b: Any) -> bool:
-    """Structural equality with Scheme's booleans-before-numbers rule."""
+    """Structural equality with Scheme's booleans-before-numbers rule.
+
+    R7RS defines ``equal?`` recursively but compares atoms with ``eqv?``, so
+    exactness is part of numeric identity: ``(equal? 1 1.0)`` is ``#f``, just
+    as ``(eqv? 1 1.0)`` is. Without this rule ``case``/hash-table lookups and
+    the numeric tower disagree about what "the same value" means.
+    """
     if isinstance(a, bool) or isinstance(b, bool):
         return a is b
+    if isinstance(a, _NUMBER_TYPES) and isinstance(b, _NUMBER_TYPES):
+        return type(a) is type(b) and a == b
     if a is NIL or b is NIL:
         return a is b
     # A keyword is a ``str`` subclass too, so the host ``==`` below would call

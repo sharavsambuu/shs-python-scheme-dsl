@@ -272,7 +272,9 @@ def test_strings(ev) -> None:
 
 def test_eval_reads_forms(ev) -> None:
     assert ev("(eval '(+ 1 2))") == 3
-    assert ev("(read-string \"(a b)\")") == [intern("a"), intern("b")]
+    # The datum-from-text convenience is ``read-from-string``; ``read-string``
+    # is R7RS's character reader and is tested in test_review_fixes.py.
+    assert ev("(read-from-string \"(a b)\")") == [intern("a"), intern("b")]
 
 
 # --------------------------------------------------------------------------- #

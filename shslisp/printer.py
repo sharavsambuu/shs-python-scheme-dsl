@@ -48,8 +48,10 @@ def to_string(value: Any, write: bool = False) -> str:
     if isinstance(value, Symbol):
         return _symbol_text(value)
     if isinstance(value, Keyword):
-        # A keyword prints with its trailing colon, so it reads back.
-        return f"{value}:"
+        # A keyword prints with its trailing colon, and its name goes through
+        # the symbol renderer so an unusual name is quoted (``|a b|:``) and
+        # reads back. A bare ``a b:`` would not be one token.
+        return f"{_symbol_text(value)}:"
     if isinstance(value, Char):
         return _char_literal(value.value)
     if isinstance(value, str):
@@ -135,9 +137,12 @@ def _symbol_text(symbol: Symbol) -> str:
     text = str(symbol)
     if text in _PECULIAR_IDENTIFIERS:
         return text
-    if text and (text[0].isalpha() or text[0] in _SYMBOL_INITIAL):
-        if all(ch.isalnum() or ch in _SYMBOL_SUBSEQUENT for ch in text[1:]):
-            return text
+    # A trailing colon makes a bare token a *keyword*, not this symbol, so a
+    # symbol such as ``a:`` must be quoted to preserve its kind on read-back.
+    if text and not text.endswith(":"):
+        if text[0].isalpha() or text[0] in _SYMBOL_INITIAL:
+            if all(ch.isalnum() or ch in _SYMBOL_SUBSEQUENT for ch in text[1:]):
+                return text
     escaped = text.replace("\\", "\\\\").replace("|", "\\|")
     return f"|{escaped}|"
 

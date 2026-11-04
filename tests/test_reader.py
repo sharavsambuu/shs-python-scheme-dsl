@@ -57,11 +57,22 @@ def test_exactness_prefix_honours_its_promise() -> None:
     assert read_one("#i1/3") == pytest.approx(1 / 3)
 
 
-def test_rational_literals_are_decimal_only() -> None:
-    # Row 18: R7RS requires no radix-rational spelling, so `#x1/3` is refused
-    # rather than guessed at.
+def test_rational_literals_keep_their_radix() -> None:
+    # Row 18, reversed: ``<ureal R>`` is ``<uinteger R>`` or
+    # ``<uinteger R> / <uinteger R>``, so a ratio keeps its radix. A radix
+    # *decimal* is not in the report (`<decimal 10>` fixes the radix at ten),
+    # so `#x1.8` stays refused.
+    assert read_one("#x1/2") == Fraction(1, 2)
+    assert read_one("#x10") == 16
+    assert read_one("#e#x1/2") == Fraction(1, 2)
+    assert read_one("#i#x1/2") == 0.5
+    assert type(read_one("#i#x1/2")) is float
+    assert read_one("#x2/2") == 1
+    assert read_one("#b11/10") == Fraction(3, 2)
     with pytest.raises(LispSyntaxError, match="bad number literal"):
-        read_one("#x1/3")
+        read_one("#x1/0")
+    with pytest.raises(LispSyntaxError, match="bad number literal"):
+        read_one("#x1.8")
 
 
 def test_rationals_round_trip_through_the_printer() -> None:

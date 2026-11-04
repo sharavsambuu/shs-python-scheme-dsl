@@ -19,7 +19,7 @@ time anything is evaluated, quoting has already turned code into data.
 from __future__ import annotations
 
 from fractions import Fraction
-from typing import Iterator, List
+from typing import Iterator, List, Optional
 
 from .errors import LispSyntaxError
 from .types import (
@@ -92,6 +92,24 @@ _STRING_MARK = "\x00"
 #: body is kept verbatim — case-sensitive, spaces allowed (R7RS §6.10).
 _QUOTED_SYMBOL_MARK = "\x02"
 
+#: ``|quoted name|:`` is a keyword whose name cannot be written as a plain
+#: identifier. The marker keeps it distinct from a quoted *symbol*.
+_QUOTED_KEYWORD_MARK = "\x03"
+
+#: The introducers that are longer than one character. A text that is a
+#: *proper prefix* of one is an incomplete datum, not a symbol — which is what
+#: lets ``read`` on a port wait for the rest of ``#u8(`` instead of stopping
+#: at ``#u`` and handing back a symbol nobody wrote.
+_DISPATCH_INTRODUCERS = (
+    "#(",
+    "#u8(",
+    "#\\",
+    "#|",
+    "#;",
+    "#!fold-case",
+    "#!no-fold-case",
+)
+
 
 def tokenize(text: str) -> Iterator[str]:
     """Split *text* into tokens: parentheses, sugar, and atoms."""
@@ -145,6 +163,11 @@ def tokenize(text: str) -> Iterator[str]:
             continue
         if ch == "|":  # |quoted symbol| — unusual characters, case preserved
             token, i = _scan_quoted_symbol(text, i)
+            if i < n and text[i] == ":":
+                # ``|a b|:`` — the quoted spelling of a keyword, which lets
+                # the printer round-trip a name the bare suffix cannot hold.
+                i += 1
+                token = _QUOTED_KEYWORD_MARK + token[len(_QUOTED_SYMBOL_MARK) :]
             yield token
             continue
         if text.startswith("#!", i):
@@ -157,6 +180,18 @@ def tokenize(text: str) -> Iterator[str]:
                 i += len("#!no-fold-case")
                 continue
             # An unknown directive reads as an atom; there is nothing to fold.
+
+        if ch == "#":
+            # A ``#`` whose text stops inside an introducer is a datum that has
+            # not arrived yet: ``#``, ``#u``, ``#u8``, ``#!``, ``#!no``. A port
+            # reader must pull more characters rather than read the fragment as
+            # a symbol. Every *complete* introducer is handled above, so what is
+            # left here can only be a proper prefix. The old behaviour stopped
+            # ``read`` after one character, truncating any stream that began
+            # with ``#;``, ``#|``, ``#(``, ``#u8(``, ``#\`` or ``#!``.
+            tail = text[i:]
+            if any(name.startswith(tail) for name in _DISPATCH_INTRODUCERS):
+                raise LispSyntaxError("unexpected end of input")
 
         # An atom: run until a delimiter.
         start = i
@@ -205,6 +240,7 @@ def _number_from_literal(token: str):
             return plain
         return _complex_number(token, None)
     radix, exactness = 10, None
+    seen_radix = seen_exactness = False
     rest = token[1:]
     consumed = False
     for _ in range(4):
@@ -213,9 +249,19 @@ def _number_from_literal(token: str):
             continue
         head = rest[:1].lower()
         if head in _RADIX:
+            # R7RS §7.1.1's ``<prefix R>`` allows one radix and one exactness
+            # prefix, in either order — so ``#i#e10`` is not a number at all.
+            # Letting the last one win silently made ``#i#e10`` the exact 10
+            # and ``#e#i10`` the inexact 10.0.
+            if seen_radix:
+                raise LispSyntaxError(f"bad number literal: {token}")
+            seen_radix = True
             radix, rest = _RADIX[head], rest[1:]
             consumed = True
         elif head in ("e", "i"):
+            if seen_exactness:
+                raise LispSyntaxError(f"bad number literal: {token}")
+            seen_exactness = True
             exactness, rest = head, rest[1:]
             consumed = True
         else:
@@ -225,10 +271,25 @@ def _number_from_literal(token: str):
     if not rest:
         raise LispSyntaxError(f"bad number literal: {token}")
     if radix != 10:
+        # ``<ureal R>`` is ``<uinteger R>`` or ``<uinteger R> / <uinteger R>``,
+        # so a ratio keeps its radix too: ``#x1/2`` is one half. A radix
+        # *decimal* is not in the report — ``<decimal 10>`` fixes the radix at
+        # ten — so ``#x1.8`` stays a bad literal.
+        head_text, sep, tail_text = rest.partition("/")
         try:
-            return int(rest, radix)
+            if sep:
+                denominator = int(tail_text, radix)
+                if denominator == 0:
+                    raise LispSyntaxError(f"bad number literal: {token}")
+                exact = Fraction(int(head_text, radix), denominator)
+                value = int(exact) if exact.denominator == 1 else exact
+            else:
+                value = int(rest, radix)
         except ValueError:
             raise LispSyntaxError(f"bad number literal: {token}") from None
+        # ``#i`` applies to the whole literal, whichever order the prefixes
+        # appear in: ``#i#x10`` is the inexact 16.0, not the exact 16.
+        return float(value) if exactness == "i" else value
     value = _plain_number(rest)
     if value is None:
         return _complex_number(rest, exactness)
@@ -531,10 +592,18 @@ def _atom(token: str):
         return intern_char(token[1:])
     if token.startswith(_QUOTED_SYMBOL_MARK):
         return intern(token[len(_QUOTED_SYMBOL_MARK) :])
+    if token.startswith(_QUOTED_KEYWORD_MARK):
+        return intern_keyword(token[len(_QUOTED_KEYWORD_MARK) :])
     if token == "#t":
         return True
     if token == "#f":
         return False
+    if token == "#":
+        # R7RS §7.1.1: ``#`` is not an <initial>, so no identifier may start
+        # with it. A lone one is a dispatch prefix with nothing to dispatch —
+        # and here the text after it has arrived already and is not a dispatch
+        # body, so this is a malformed datum rather than an incomplete one.
+        raise LispSyntaxError("bad syntax: #")
     value = _number_from_literal(token)
     if value is not NOT_A_NUMBER:
         return value
@@ -699,9 +768,14 @@ def read_all(text: str) -> list:
     return Reader(_strip_shebang(text)).read_all()
 
 
-def read_one(text: str):
-    """Parse exactly one form; a trailing form is a syntax error."""
+def read_one(text: str, fold_case: bool = False):
+    """Parse exactly one form; a trailing form is a syntax error.
+
+    *fold_case* seeds the reader's ``#!fold-case`` state, which is how a
+    stream's earlier directive reaches the datum that follows it.
+    """
     reader = Reader(text)
+    reader.fold_case = fold_case
     form = reader.read_form()
     if not reader.at_end():
         raise LispSyntaxError("trailing data after form")
@@ -712,8 +786,16 @@ def read_one(text: str):
 _ATOM_DELIMITERS = set("()'`\",; \t\r\n|[]")
 
 
-def _skip_white_and_comments(text: str, i: int) -> int:
-    """Skip whitespace, ``;`` lines, ``#| |#`` blocks, and ``#;`` data."""
+def _skip_white_and_comments(
+    text: str, i: int, directives: Optional[dict] = None
+) -> int:
+    """Skip whitespace, ``;`` lines, ``#| |#`` blocks, ``#;`` data, and ``#!``.
+
+    *directives*, when given, collects ``{"fold": bool}`` for the
+    ``#!fold-case`` / ``#!no-fold-case`` lines walked over — a caller that
+    splits a stream at datum boundaries has to carry that state forward, the
+    way a file's reader does.
+    """
     n = len(text)
     while i < n:
         ch = text[i]
@@ -728,8 +810,22 @@ def _skip_white_and_comments(text: str, i: int) -> int:
             i = _skip_block_comment(text, i)
             continue
         if text.startswith("#;", i):
-            i = _skip_white_and_comments(text, i + 2)
-            _, i = _datum_end(text, i)
+            i = _skip_white_and_comments(text, i + 2, directives)
+            i, _ = _datum_end(text, i)
+            continue
+        # ``#!fold-case`` / ``#!no-fold-case`` are noise between datums: the
+        # `Reader` applies them, but a caller that only looks for datum
+        # boundaries (`read` on a port) must step over them too, or it hands
+        # ``read_one`` the directive alone and gets "unexpected end of input".
+        if text.startswith("#!fold-case", i):
+            i += len("#!fold-case")
+            if directives is not None:
+                directives["fold"] = True
+            continue
+        if text.startswith("#!no-fold-case", i):
+            i += len("#!no-fold-case")
+            if directives is not None:
+                directives["fold"] = False
             continue
         break
     return i
@@ -781,7 +877,10 @@ def _datum_end(text: str, i: int) -> tuple[int, int]:
                 j += 2
                 continue
             if text[j] == "|":
-                return j + 1, 0
+                end = j + 1
+                if end < n and text[end] == ":":
+                    end += 1  # ``|quoted name|:`` is one keyword datum
+                return end, 0
             j += 1
         raise LispSyntaxError("unterminated |quoted symbol|")
     j = i
@@ -791,7 +890,12 @@ def _datum_end(text: str, i: int) -> tuple[int, int]:
 
 
 def _balanced_end(text: str, i: int) -> int:
-    """The index just past the ``)`` matching the ``(`` at *i*."""
+    """The index just past the ``)`` matching the ``(`` at *i*.
+
+    Strings, characters, quoted symbols, comments, and ``#;`` datum comments
+    are skipped as whole data, so a ``)`` inside a string is text, not a close
+    paren — which is what lets ``read`` split a stream at a datum boundary.
+    """
     depth = 0
     n = len(text)
     while i < n:
@@ -803,8 +907,16 @@ def _balanced_end(text: str, i: int) -> int:
         if text.startswith("#|", i):
             i = _skip_block_comment(text, i)
             continue
-        if ch in "\"'`,":
+        if text.startswith("#;", i):
+            # A datum comment hides a complete datum, parens included.
+            i = _skip_white_and_comments(text, i + 2)
+            i, _ = _datum_end(text, i)
+            continue
+        if ch in "'`,":
             i += 1
+            continue
+        if ch == '"':
+            i, _ = _datum_end(text, i)
             continue
         if text.startswith("#\\", i):
             i, _ = _datum_end(text, i)
@@ -822,17 +934,22 @@ def _balanced_end(text: str, i: int) -> int:
     raise LispSyntaxError("missing )")
 
 
-def read_one_at(text: str, start: int = 0) -> tuple[Any, int]:
-    """Read the first datum at or after *start*, and the index after it.
+def read_one_at(
+    text: str, start: int = 0, fold_case: bool = False
+) -> tuple[Any, int, bool]:
+    """Read the first datum at or after *start*: ``(form, end, fold_case)``.
 
     Raises :class:`LispSyntaxError` on bad input. The caller decides what an
-    empty tail means (``read`` returns the eof object).
+    empty tail means (``read`` returns the eof object). The third element is
+    the case-folding state after any ``#!`` directive the skip walked over, so
+    a stream reader can apply it to the datum it returns *and* to later calls.
     """
-    i = _skip_white_and_comments(text, start)
+    state = {"fold": fold_case}
+    i = _skip_white_and_comments(text, start, state)
     if i >= len(text):
         raise LispSyntaxError("unexpected end of input")
     end, _ = _datum_end(text, i)
-    return read_one(text[i:end]), end
+    return read_one(text[i:end], state["fold"]), end, state["fold"]
 
 
 # ``Symbol`` and ``NIL`` are re-exported for callers that only import the reader.

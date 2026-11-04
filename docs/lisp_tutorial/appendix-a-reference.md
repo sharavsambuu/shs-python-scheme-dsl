@@ -99,7 +99,7 @@ that is not a plain identifier prints between bars (`|1+|`).
   close-output-port call-with-port flush-output-port`
   `open-input-string open-output-string get-output-string`
   `open-input-file open-output-file read`
-  `read-char peek-char read-line char-ready?` `write-char write-string`
+  `read-char peek-char read-line read-string char-ready?` `write-char write-string`
   `write-shared write-simple` `eof-object eof-object?`
 - **Binary ports** `open-input-bytevector open-output-bytevector
   get-output-bytevector open-binary-input-file open-binary-output-file
@@ -116,7 +116,7 @@ that is not a plain identifier prints between bars (`|1+|`).
   environment interaction-environment` — `cond-expand` understands
   `and`/`or`/`not`/`library`/`else`; `include` is textual and resolved like
   `load`; `(eval form env)` takes an environment object
-- **Host holes** `apply eval read-string error assert gensym`
+- **Host holes** `apply eval read-from-string error assert gensym`
 - **Macros, from the outside** `macroexpand-1 macroexpand` — hand back the
   *form* a macro would expand to (one step / all steps), so it prints as code
   and can be fed to `eval`. Free identifiers in the result appear as their

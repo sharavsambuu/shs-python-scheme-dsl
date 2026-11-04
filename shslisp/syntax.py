@@ -27,12 +27,22 @@ Macros may be bound locally with ``let-syntax`` / ``letrec-syntax``.
 
 Deviations worth knowing: a template's ``(define name ...)`` keeps its written
 name (so macros that define helpers stay visible), and only the binding forms
-``lambda``/``let``/``let*``/``letrec`` are scope-analysed. An identifier that
-was *unbound* where the macro was defined has no binding to pin, so it resolves
-at the use site; define a helper before the macro that expands to it (or use
-``defmacro`` with ``gensym``) when use-site capture would matter. There is no
+``lambda``/``let``/``let*``/``letrec`` are scope-analysed. An identifier that is
+*unbound* where the macro was defined pins to that definition site's **root**
+scope rather than the use site: a top-level helper defined later still
+resolves, a ``let-syntax`` sibling stays invisible (as the report requires —
+use ``letrec-syntax`` to name a sibling), and a caller's local frame cannot
+capture it. Quoted data in a template is data: ``'(x ...)`` substitutes its
+pattern variables and leaves every other name as written. There is no
 ``syntax-case`` and no custom ellipsis identifier: the transformer is always
 ``(syntax-rules (<literal> ...) (pattern template) ...)``.
+
+One limit of the library system meets this one: a macro *exported* from a
+``define-library`` expands in the importing program, but its hygiene aliases
+live in the library's own scope, which that program cannot see. So a template
+may name what it imports or what exists at top level, and a library's private
+helpers are not reachable through it — export them, or build the form with
+``defmacro``. The error names the identifier the template wrote, not its alias.
 """
 from __future__ import annotations
 
@@ -43,6 +53,7 @@ from .errors import LispSyntaxError
 from .printer import to_string
 from .types import (
     NIL,
+    ForwardReference,
     Pair,
     Symbol,
     SyntaxRules,
@@ -63,6 +74,17 @@ LAMBDA = intern("lambda")
 LET = intern("let")
 LET_STAR = intern("let*")
 LETREC = intern("letrec")
+QUOTE = intern("quote")
+QUASIQUOTE = intern("quasiquote")
+UNQUOTE = intern("unquote")
+UNQUOTE_SPLICING = intern("unquote-splicing")
+
+#: The identifiers the evaluator dispatches by *identity* rather than by value.
+#: A template's ``if`` must reach it as ``if``: a hygiene alias would name a
+#: special form nobody recognises. Filled from the evaluator on first use, to
+#: keep this module free of an import cycle, plus the auxiliary syntax R7RS
+#: treats as keywords inside ``cond``/``case``/quasiquote.
+_core_syntax_cache: "frozenset | None" = None
 
 _counter = 0
 
@@ -87,10 +109,15 @@ def eval_let_syntax(expr: list, env: Environment, *, recursive: bool) -> Any:
     The bindings are **local**: they shadow an outer macro (or a function) of
     the same name for the body's extent only, and vanish when it ends. In
     ``letrec-syntax`` the macros are pinned in the local frame, so a template
-    may refer to a sibling macro; in ``let-syntax`` they are pinned in the
-    enclosing frame, so a sibling is invisible to them — the only difference
-    that matters, since a ``syntax-rules`` transformer is declarative data and
-    is never run at definition time.
+    may refer to a sibling macro by name.
+
+    In ``let-syntax`` the transformer is defined in the *enclosing* frame, so a
+    sibling is not bound where the transformer is defined — and a free
+    identifier that is unbound there pins to the definition site's root, not to
+    this body's frame, so the sibling stays invisible in a template. That is
+    the report's rule. Code that needs a template to name a sibling uses
+    ``letrec-syntax``, whose bindings *are* in scope where each transformer is
+    defined.
     """
     from .evaluator import _body_form, evaluate
 
@@ -153,6 +180,22 @@ def _parse_transformer(
 #  Expansion                                                                   #
 # --------------------------------------------------------------------------- #
 
+def _copy_form(value: Any) -> Any:
+    """Deep-copy an expansion's mutable structure (lists, pairs, vectors).
+
+    A cached expansion must never be handed out twice: quoted data in an
+    expansion is mutable Scheme data, so ``(set-car! a ...)`` on one result
+    would otherwise change the next identical macro use.
+    """
+    if isinstance(value, list):
+        return [_copy_form(item) for item in value]
+    if isinstance(value, Pair):
+        return Pair(_copy_form(value.car), _copy_form(value.cdr))
+    if isinstance(value, Vector):
+        return Vector([_copy_form(item) for item in value.items])
+    return value
+
+
 def expand(rules: SyntaxRules, form: list) -> Any:
     """Rewrite *form* (the whole macro use, keyword included) to its expansion."""
     key = to_string(form, write=True)
@@ -162,13 +205,15 @@ def expand(rules: SyntaxRules, form: list) -> Any:
     if cacheable:
         cached = rules.cache.get(key)
         if cached is not None:
-            return cached
+            return _copy_form(cached)
     for pattern, template in rules.rules:
         bindings = _match_rule(rules, pattern, form)
         if bindings is not None:
             result = _instantiate(template, dict(bindings), {}, rules)
             if cacheable:
-                rules.cache[key] = result
+                # Store a private copy so a caller mutating *result* cannot
+                # poison the cache (and every later identical use).
+                rules.cache[key] = _copy_form(result)
             return result
     raise LispSyntaxError(f"{rules.name}: no syntax-rules pattern matched")
 
@@ -331,6 +376,16 @@ def _instantiate(template: Any, binds: dict, scope: dict, rules: SyntaxRules) ->
             return _instantiate_lambda(items, binds, scope, rules)
         if head is LET or head is LET_STAR or head is LETREC:
             return _instantiate_let(items, binds, scope, rules)
+        if head is QUOTE and len(items) >= 2:
+            # Quoted data in a template is *data*: pattern variables are
+            # substituted (ellipses included), but every other identifier keeps
+            # its written name — `'x` must still be the symbol `x`, and a
+            # quoted list must not sprout `name#h7` aliases.
+            return make_list([QUOTE, _instantiate_data(items[1], binds, rules, 0)])
+        if head is QUASIQUOTE and len(items) >= 2:
+            return make_list(
+                [QUASIQUOTE, _instantiate_data(items[1], binds, rules, 1)]
+            )
         out = _walk_items(
             items, binds, lambda item, b: _instantiate(item, b, scope, rules)
         )
@@ -415,13 +470,89 @@ def _vars_in(form: Any) -> list:
     return found
 
 
+def _instantiate_data(
+    template: Any, binds: dict, rules: SyntaxRules, depth: int
+) -> Any:
+    """Instantiate *template* as quoted data, at quasiquote nesting *depth*.
+
+    Pattern variables are substituted — ``'(x ...)`` expands its ellipsis — but
+    every other identifier is data and keeps its written name. At depth 1 an
+    ``unquote`` is an expression again, so its form goes back through the
+    ordinary, hygienic instantiation; deeper, it is nested data.
+    """
+    if isinstance(template, Symbol):
+        if template not in binds:
+            return template
+        value = binds[template]
+        if isinstance(value, _Seq):
+            if isinstance(value, _Rest):
+                return make_list(list(value))
+            raise LispSyntaxError(
+                f"{rules.name}: '{template}' used without a matching '...'"
+            )
+        return value
+    if is_nil(template):
+        return NIL
+    if isinstance(template, Vector):
+        return Vector(
+            _walk_items(
+                list(template.items),
+                binds,
+                lambda item, b: _instantiate_data(item, b, rules, depth),
+            )
+        )
+    if isinstance(template, (list, Pair)):
+        items, tail = _split(template)
+        head = items[0] if items else None
+        if depth and head is QUASIQUOTE and len(items) > 1:
+            built = [head] + [
+                _instantiate_data(item, binds, rules, depth + 1) for item in items[1:]
+            ]
+        elif depth and (head is UNQUOTE or head is UNQUOTE_SPLICING) and len(items) > 1:
+            inner = items[1]
+            form = (
+                _instantiate(inner, binds, {}, rules)
+                if depth == 1
+                else _instantiate_data(inner, binds, rules, depth - 1)
+            )
+            built = [head, form] + [
+                _instantiate_data(item, binds, rules, depth) for item in items[2:]
+            ]
+        else:
+            built = _walk_items(
+                items, binds, lambda item, b: _instantiate_data(item, b, rules, depth)
+            )
+        new_tail = NIL if is_nil(tail) else _instantiate_data(tail, binds, rules, depth)
+        return from_cells(built, new_tail) if not is_nil(new_tail) else make_list(built)
+    return template
+
+
 def _hygienic(name: Symbol, scope: dict, rules: SyntaxRules) -> Symbol:
     if name in scope:
         return scope[name]
-    binding = _find(rules.env, name)
-    if binding is not None:
-        return _alias(name, rules)
-    return name
+    if name in _core_syntax():
+        return name
+    return _alias(name, rules)
+
+
+def _core_syntax() -> frozenset:
+    """Identifiers that must survive hygiene unchanged (see ``_core_syntax_cache``)."""
+    global _core_syntax_cache
+    if _core_syntax_cache is None:
+        from .evaluator import _SPECIAL_FORMS
+
+        _core_syntax_cache = _SPECIAL_FORMS | {
+            intern("else"),
+            intern("=>"),
+            ELLIPSIS,
+            UNDERSCORE,
+            # ``(syntax-rules ...)`` is parsed structurally by a macro that
+            # expands to a macro, not looked up as a value.
+            SYNTAX_RULES,
+            UNQUOTE,
+            UNQUOTE_SPLICING,
+        }
+    return _core_syntax_cache
 
 
 def _alias(name: Symbol, rules: SyntaxRules) -> Symbol:
@@ -430,7 +561,16 @@ def _alias(name: Symbol, rules: SyntaxRules) -> Symbol:
         alias = _fresh(str(name))
         rules.aliases[name] = alias
         root = _root(rules.env)
-        root.define(alias, rules.env.lookup(name))
+        found = rules.env.find(name)
+        if found is None:
+            # Nothing to pin to yet: hold the *name*, resolved in the
+            # definition site's root when the alias is first used. A use-site
+            # frame can no longer capture it (the ``let-syntax`` sibling case),
+            # a later top-level definition still answers, and a self-recursive
+            # macro finds its own binding.
+            root.define(alias, ForwardReference(root, name))
+        else:
+            root.define(alias, found.vars[name])
     return alias
 
 
@@ -580,10 +720,6 @@ def _split(form: Any) -> tuple[list, Any]:
             node = node.cdr
         return items, node
     raise LispSyntaxError("syntax-rules: a list was expected")
-
-
-def _find(env: Environment, name: Symbol) -> Any:
-    return env.find(name)
 
 
 def _root(env: Environment) -> Environment:

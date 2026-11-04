@@ -233,10 +233,10 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     define("member", _member_pair)
     define("member?", lambda x, xs: is_true(_member(x, xs)))
     define("memq", lambda x, xs: _memq(x, xs, _eq))
-    define("memv", lambda x, xs: _memq(x, xs, lambda a, b: _eq(a, b)))
+    define("memv", lambda x, xs: _memq(x, xs, _eqv))
     define("assoc", _assoc)
     define("assq", lambda key, alist: _assoc_with(key, alist, _eq))
-    define("assv", lambda key, alist: _assoc_with(key, alist, _eq))
+    define("assv", lambda key, alist: _assoc_with(key, alist, _eqv))
 
     define("map", _map)
     define("filter", lambda f, xs: make_list(x for x in list_to_python(xs) if is_true(apply_procedure(f, [x]))))
@@ -425,7 +425,15 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     define("null-environment", null_environment)
     define("scheme-report-environment", scheme_report_environment)
     define("features", lambda: make_list(feature_symbols()))
-    define("read-string", lambda text: _read_first(text))
+    # R7RS ``read-string`` reads characters; the datum-from-text convenience
+    # lives on under its own name (and is not part of ``(scheme base)``).
+    define(
+        "read-string",
+        lambda count, *rest: _read_string(
+            count, destination(rest, "current-input-port", standard_in)
+        ),
+    )
+    define("read-from-string", lambda text: _read_first(text))
 
     # -- macros, from the outside ------------------------------------------- #
     #
@@ -2384,21 +2392,76 @@ def _call_with_port(port: Any, proc: Any) -> Any:
         port.close()
 
 
+#: Reader errors that mean "the datum is not complete yet", not "the datum is
+#: malformed". ``read`` on a stream grows its buffer until one of these clears.
+#: ``nothing follows`` covers the prefixes that take a second character — ``'``,
+#: ``,``, ``#\`` — which on a complete document are errors and on a stream are
+#: just a boundary the reader has not reached yet.
+_INCOMPLETE_READ = (
+    "unexpected end of input",
+    "nothing follows",
+    "missing )",
+    "unterminated string literal",
+    "unterminated escape in string",
+    "unterminated \\x escape",
+    "unterminated block comment",
+    "unterminated |quoted symbol|",
+)
+
+
 def _read_datum(port: Any) -> Any:
-    """``(read [port])`` — one datum, leaving the rest of the stream in place."""
+    """``(read [port])`` — one datum, leaving the rest of the stream in place.
+
+    Characters are pulled only until the first datum is complete, rather than
+    reading the whole stream to EOF. That keeps ``read`` usable on an
+    interactive port (and on a pipe that stays open): the next call sees the
+    characters after this datum in ``port.buffer``.
+    """
     from .reader import read_one_at
 
     source = _port_input(port, "read")
-    text = source.buffer + source.stream.read()
+    text = source.buffer
+    while True:
+        try:
+            form, end, source.fold_case = read_one_at(text, 0, source.fold_case)
+        except LispSyntaxError as error:
+            message = str(error)
+            if any(fragment in message for fragment in _INCOMPLETE_READ):
+                chunk = source.stream.read(1)
+                if chunk == "":
+                    source.buffer = ""
+                    if not text.strip():
+                        return EOF
+                    raise ReadError(f"read: {error}") from None
+                text += chunk
+                continue
+            source.buffer = ""
+            raise ReadError(f"read: {error}") from None
+        source.buffer = text[end:]
+        return form
+
+
+def _read_string(count: Any, port: Any) -> Any:
+    """R7RS ``(read-string k [port])`` — up to *k* characters.
+
+    Returns a string of at most *k* characters; at end of input it returns the
+    shorter remainder, or the eof object when no characters are available.
+    """
+    if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+        raise LispTypeError(
+            f"read-string: expected a non-negative exact integer, got {count!r}"
+        )
+    source = _port_input(port, "read-string")
+    if count == 0:
+        return ""
+    text = source.buffer
     source.buffer = ""
-    try:
-        form, end = read_one_at(text)
-    except LispSyntaxError as error:
-        if "unexpected end of input" in str(error):
-            return EOF
-        raise ReadError(f"read: {error}") from None
-    source.buffer = text[end:]
-    return form
+    if len(text) < count:
+        text += source.stream.read(count - len(text))
+    if text == "":
+        return EOF
+    source.buffer = text[count:]
+    return text[:count]
 
 
 def _open_input_bytevector(bv: Any) -> Port:

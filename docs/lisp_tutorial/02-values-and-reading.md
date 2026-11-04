@@ -185,10 +185,10 @@ string comes back unquoted, and `hello` is what a string looks like).
 ## Try it
 
 ```scheme
-(display (read-string "(+ 1 2)"))          (newline)
-(display (read-string "'(a b)"))           (newline)
-(display (read-string "(a b . c)"))        (newline)
-(display (read-string "#(1 2 3)"))         (newline)
+(display (read-from-string "(+ 1 2)"))     (newline)
+(display (read-from-string "'(a b)"))      (newline)
+(display (read-from-string "(a b . c)"))   (newline)
+(display (read-from-string "#(1 2 3)"))    (newline)
 (display (string? 'square))                (newline)
 (display (symbol? 'square))                (newline)
 (display (list? '()))                      (newline)
@@ -216,7 +216,7 @@ under R7RS, only `#f` is false, so the empty list takes the true branch.
    `(pair? '())`, and `(null? '())`. The answers are `#t`, `#f`, `#t`: the empty
    list is a list and is null, but it is not a pair — which is why `car` of it
    is an error rather than a silent `()`.
-2. **Keep the shape you wrote.** Compare `(read-string "(1 . (2 3))")` with
+2. **Keep the shape you wrote.** Compare `(read-from-string "(1 . (2 3))")` with
    `(cons 1 '(2 3))`. Both print as `(1 2 3)`, but they are **not** `equal?`:
    the reader preserves a dotted pair as a dotted value. That is a useful
    reminder that the reader's output is data with a shape, not a normalised

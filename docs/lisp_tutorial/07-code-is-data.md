@@ -50,7 +50,7 @@ expanded exactly as `test_quote_sugar_expands` in `tests/test_r7rs.py` checks).
 is the data, run it*. Together they close a circle with three stations:
 
 ```text
-   text --(read/read-string)--> data --(eval)--> value
+   text --(read-from-string)--> data --(eval)--> value
      ^                                            |
      +--------------(write/print)-----------------+
 ```
@@ -348,7 +348,7 @@ Homoiconicity is not magic, and this dialect states its edges:
 (display (eval `(,op ,@args)))                (newline)
 
 ;; 5. The full circle: text -> data -> value.
-(display (eval (read-string "(* 6 7)")))      (newline)
+(display (eval (read-from-string "(* 6 7)")))   (newline)
 
 ;; 6. A program that writes a program.
 (define (make-check name ok?)
@@ -378,7 +378,7 @@ x
 
 Station by station: quote hands back the form, `eval` runs it, `car`/`cdr`
 treat code as the list it is, the double quote shows a program whose value is a
-program, the template builds a form out of runtime values, `read-string` closes
+program, the template builds a form out of runtime values, `read-from-string` closes
 the circle from text, and `make-check` stamps out a real procedure from a
 template with two holes.
 

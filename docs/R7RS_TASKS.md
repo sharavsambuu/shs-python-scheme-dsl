@@ -17,6 +17,14 @@
 
 ## Landed
 
+- **T01–T15** — the conformance review: malformed forms that leaked host
+  exceptions, four predicates that disagreed with `eqv?` about exactness, a
+  `read-string` that was not the report's, a printer that could not read back
+  some of its own output, a `read` that stopped after one character on a
+  dispatch form, hygiene that resolved free identifiers at the use site, radix
+  ratios, duplicate prefixes, and a case directive that did not outlive its
+  datum. The tests are in [`tests/test_review_fixes.py`](../tests/test_review_fixes.py).
+
 - **A0–A15** — the R7RS-small subset itself: every library the
   [`r7rs.md`](r7rs.md) matrix marks *supported* (`(scheme base)` at 200/200
   procedures and 32/32 syntax, plus `char`, `cxr`, `eval`, `file`, `inexact`,

@@ -98,7 +98,7 @@ same change, and each is R7RS-correct — that is the whole point of the phase.
 | 15 | `(+ 0.1 0.2)` → `0.3000000000000004…` | IEEE double | unchanged | KEEP — inexact arithmetic is IEEE, untouched by phase R |
 | 16 | `(eqv? 1 1.0)` → `#f` | exactness distinguishes | unchanged; `(eqv? 3/4 0.75)` is `#f` by the same rule | KEEP |
 | 17 | `(string->number "3/4")` | `#f` | `3/4` | **CHANGE** — the reader's twin |
-| 18 | `#x10`, `#e#x10` | work | unchanged for integers; rational literals are **decimal only** (`#x1/3` is not recognized) | KEEP — R7RS requires no radix-rational spelling |
+| 18 | `#x10`, `#e#x10` | work | work; and a ratio keeps its radix — `#x1/2` is `1/2`, `#i#x1/2` is `0.5` | **CHANGE** — `<ureal R>` is `<uinteger R>` or `<uinteger R> / <uinteger R>`, both parametric in the radix; a radix *decimal* (`#x1.8`) is still refused, because `<decimal 10>` fixes the radix at ten |
 | 19 | `(sqrt -1)` | error | still an error in phase R | KEEP (for now) — phase C's gate |
 | 20 | `1/0` | a symbol | a **read error** (denominator must be nonzero) | **CHANGE** — a rational literal that means nothing must not become a symbol |
 
@@ -121,6 +121,13 @@ same change, and each is R7RS-correct — that is the whole point of the phase.
   current `#f` for `3.0` reads as "exactness pedantry", but R7RS is clear —
   `3.0` *is* an integer, and `exact-integer?` exists precisely to ask the
   type-strict question.
+- **Row 18 is decided by the grammar, not by taste.** The report replicates the
+  number productions for R = 2, 8, 10 and 16, and defines no `<decimal 2>`,
+  `<decimal 8>` or `<decimal 16>`: *"numbers containing decimal points or
+  exponents must be in decimal radix"* (R5RS §7.1.1, kept in R7RS). So a ratio
+  keeps its radix — `#x1/2` is the exact `1/2`, since `<ureal R>` contains
+  `<uinteger R> / <uinteger R>` — and a radix decimal (`#x1.8`) is not a
+  number at all. Refusing the second is the same rule that requires the first.
 - **Performance is acknowledged, not feared.** `Fraction` arithmetic is slower
   than `int`/`float` and can grow denominators; the step budget already bounds
   runaway programs, and unbounded `int` bignums were accepted for the same

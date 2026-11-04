@@ -1,5 +1,52 @@
 # Changelog
 
+## Unreleased
+
+A conformance review of the R7RS-small surface, run from the CLI against the
+0.2.0 build — fifteen tasks, all landed. The tests that pin them are in
+`tests/test_review_fixes.py`.
+
+- **Breaking:** `read-string` is now R7RS's character reader — `(read-string k
+  [port])` returns up to *k* characters. The datum-from-text convenience kept
+  its behaviour under a new name, `read-from-string`; update
+  `(read-string "…")` to `(read-from-string "…")`. Tutorial chapters 01, 02 and
+  07 and the reference appendix follow the rename.
+- `read` on a port reads one datum without draining the stream, and a stream
+  that begins with a dispatch form — `#;`, `#|`, `#(`, `#u8(`, `#\`, `#!` — or
+  a quote prefix is read whole instead of stopping after `#`. A lone `#` is a
+  syntax error, not the symbol `#`.
+- Malformed forms fail loudly instead of leaking host exceptions: a binding
+  list with a missing initializer, an extra form, or a non-symbol name; a
+  `lambda` with no body; a dotted form in expression position. Each raises
+  `LispSyntaxError`.
+- Equality is one rule across the board: `equal?` compares numbers the way
+  `eqv?` does, so exactness distinguishes (`(equal? 1 1.0)` is `#f`), and
+  `case`, `memv`, `assv` and hash-table keys follow. Hash keys carry the
+  numeric type.
+- The printer round-trips what it writes: a symbol whose name ends in `:` is
+  written `|a:|` (bare, it would read back as a keyword), and a keyword whose
+  name cannot be a bare identifier is written `|a b|:`.
+- A cached `syntax-rules` expansion is copied before it is handed out, so
+  quoted data in a template is fresh per use — `set-car!` on one expansion no
+  longer reaches the next identical use.
+- **Hygiene resolves free template identifiers at the definition site.** An
+  identifier that is unbound where the macro is defined no longer resolves in
+  the caller's frame: it pins to the definition site's root scope, so a
+  `let-syntax` sibling is invisible (R7RS's rule — `letrec-syntax` is the form
+  that names siblings), a caller's local cannot capture it, and a helper
+  defined later at top level still answers. Quoted data in a template is data:
+  `'x` is the symbol `x`, never a hygiene alias. **Breaking** for code that
+  relied on use-site capture; `(macroexpand '(m …))` still shows the aliases.
+- Radix ratios read: `#x1/2` is the exact `1/2`, `#i#x1/2` is `0.5`, and
+  `#x1/0` is a read error. A radix *decimal* (`#x1.8`) stays a bad literal,
+  because the report's `<decimal 10>` fixes the radix at ten.
+- One radix and one exactness prefix, in either order, are now enforced:
+  `#e#x10` and `#x#e10` are numbers, `#i#e10` and `#x#x10` are errors instead
+  of silently last-one-wins.
+- A `#!fold-case` / `#!no-fold-case` directive read from a *port* now applies
+  to the datum that follows it and to later `read`s on the same port, as it
+  already did within a file.
+
 ## 0.2.0 — 2026-11-04
 
 The name release. One name everywhere: the import package and the PyPI

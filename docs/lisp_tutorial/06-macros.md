@@ -100,10 +100,10 @@ the caller's `t`.
 - a template's `(define name …)` **keeps its written name** (so a macro that
   defines a helper leaves it visible);
 - only the binding forms `lambda` / `let` / `let*` / `letrec` are scope-analysed;
-- an identifier that was **unbound where the macro was defined** has no binding
-  to pin, so it resolves at the use site. Define a helper before the macro that
-  expands to it (or use `defmacro` with `gensym`) when use-site capture would
-  matter;
+- an identifier that was **unbound where the macro was defined** pins to that
+  definition site's *root* scope rather than the use site: a helper defined
+  later still resolves, a `let-syntax` sibling stays invisible (name one with
+  `letrec-syntax` instead), and a caller's local frame cannot capture it;
 - the transformer is **always `syntax-rules`** — there is no `syntax-case`, and
   no custom ellipsis identifier. What `syntax-rules` can express, this does.
 

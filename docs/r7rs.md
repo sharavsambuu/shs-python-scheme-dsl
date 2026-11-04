@@ -84,7 +84,11 @@ round-trip corpus covering every form below.
   `1/3`, reduced, and whole forms (`2/2`) read as integers — while `1/0` is a
   read error and `1/x` stays a symbol. `#e` makes the number exact the way
   the decimal spells it (`#e1.5` is `3/2`, `#e0.1` is `1/10`); `#i` forces
-  inexact. Rational literals are decimal only (`#x1/3` is refused). Complex
+  inexact. A ratio keeps its radix (`#x1/2` is `1/2`), while a radix decimal
+  (`#x1.8`) is refused — the report replicates the number productions for
+  R = 2/8/10/16 but defines no `<decimal 2>`/`<decimal 8>`/`<decimal 16>`, so
+  "numbers containing decimal points or exponents must be in decimal radix".
+  Complex
   literals read (C3): the rectangular `1+2i`, `1/2+1/3i`, `+i`, `1.0-0.0i`,
   and the polar `2@1`, with `#e`/`#i` governing the whole literal — and
   everything the complex printer writes reads back (the round trip is

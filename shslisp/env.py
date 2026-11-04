@@ -7,10 +7,21 @@ that created them returned (the classic test of lexical, not dynamic, scope).
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 
 from .errors import LispNameError
-from .types import Symbol
+from .types import ForwardReference, Symbol
+
+#: A hygiene alias ends in ``#h<counter>``. An error that leaks one is telling
+#: the programmer about a name they never wrote, so the messages below put the
+#: original spelling back.
+_ALIAS_SUFFIX = re.compile(r"#h\d+$")
+
+
+def _original(name: Symbol) -> str:
+    """``later#h1`` → ``later``: an alias reported as the name it stands for."""
+    return _ALIAS_SUFFIX.sub("", str(name))
 
 
 class Environment:
@@ -62,17 +73,35 @@ class Environment:
         return None
 
     def lookup(self, name: Symbol) -> Any:
-        """The value bound to *name*, or raise :class:`LispNameError`."""
+        """The value bound to *name*, or raise :class:`LispNameError`.
+
+        A hygiene alias for an identifier that was unbound where its macro was
+        defined is bound to a :class:`ForwardReference`; resolving it *here*,
+        in the definition site's root scope, is what keeps a use-site frame
+        from capturing it while still letting a later top-level ``define``
+        answer.
+        """
         env = self.find(name)
         if env is None:
-            raise LispNameError(f"unbound symbol: {name}")
-        return env.vars[name]
+            raise LispNameError(f"unbound symbol: {_original(name)}")
+        value = env.vars[name]
+        seen: Optional[set] = None
+        while isinstance(value, ForwardReference):
+            seen = seen if seen is not None else set()
+            if value.name in seen:
+                raise LispNameError(f"unbound symbol: {_original(value.name)}")
+            seen.add(value.name)
+            found = value.env.find(value.name)
+            if found is None:
+                raise LispNameError(f"unbound symbol: {_original(value.name)}")
+            value = found.vars[value.name]
+        return value
 
     def set(self, name: Symbol, value: Any) -> None:
         """Assign through to the frame that already binds *name*."""
         env = self.find(name)
         if env is None:
-            raise LispNameError(f"cannot set! unbound symbol: {name}")
+            raise LispNameError(f"cannot set! unbound symbol: {_original(name)}")
         env.vars[name] = value
 
     def is_bound(self, name: Symbol) -> bool:

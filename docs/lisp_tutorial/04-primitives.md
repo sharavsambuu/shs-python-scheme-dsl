@@ -67,8 +67,8 @@ call-with-values`.
 
 **Continuations** — `call/cc` and its two aliases. Escape continuations only.
 
-**Control over the host** — `apply eval read-string display write print newline
-error assert gensym`.
+**Control over the host** — `apply eval read-from-string display write print
+newline error assert gensym`.
 
 ## The split that matters: pure vs holes
 
@@ -88,7 +88,7 @@ short, named list:
 | `display` `write` `print` `newline` | `builtins.py` | the output stream |
 | `error` `assert` `raise` | `builtins.py` | the condition system |
 | `eval` | `builtins.py` | the evaluator itself |
-| `read-string` | `builtins.py` | the reader |
+| `read-from-string` | `builtins.py` | the reader |
 | `load` | `loader.py` | the filesystem |
 
 Everything else is a pure function of its arguments. That is the claim a host's
@@ -144,8 +144,8 @@ See chapter [02](02-values-and-reading.md) on the `write`/`display` split.)
 
 ## Exercises
 
-1. **Sort the floor.** Classify each of `car`, `display`, `read-string`, `eval`,
-   `map`, and `error` as *pure* or *host hole*, using the table above. Then check
+1. **Sort the floor.** Classify each of `car`, `display`, `read-from-string`,
+   `eval`, `map`, and `error` as *pure* or *host hole*, using the table above. Then check
    your answers against the module docstring in `shslisp/builtins.py`.
 2. **Chained comparison.** Run `(< 1 2 3)` and `(< 1 3 2)`. The first is `#t` and
    the second is `#f`; a chain is not `(< (< 1 2) 3)`. Why would the second

@@ -31,7 +31,7 @@ and *no witness* (nothing outside the call changed — no `set!`, no table
 mutated, no output). The second is the one Python code quietly fails, and the
 reason this language's architecture is an FP claim: chapter
 [04](04-primitives.md) keeps the primitive floor pure and names the impure
-doors — `display`, `error`, `eval`, `read-string`, `load`. A program that
+doors — `display`, `error`, `eval`, `read-from-string`, `load`. A program that
 touches the world only through that short list has purity you can *check*
 instead of hope for.
 

@@ -33,7 +33,7 @@ without the label:
   all pure functions of their arguments. `shslisp/builtins.py` states the claim
   as an architecture (chapter [04](04-primitives.md)): everything is pure
   *except a short, named list of host holes* — `display`, `error`, `eval`,
-  `read-string`, `load`.
+  `read-from-string`, `load`.
 - **The shell:** the REPL and the file runner. They are the only code that
   prints, reads files, and catches conditions — and they are *thin*: chapter
   [01](01-the-pipeline.md) puts the whole machine at about five thousand

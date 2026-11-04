@@ -109,7 +109,31 @@ configuration needed for the common case.
 - **Threads** — one `Environment` is not safe to share across Python threads;
   give each thread its own `make_env()`.
 
-## 5. What next
+## 5. Running the tests
+
+The suite is ordinary `pytest`, run from the project root so the **working
+tree** is what gets imported:
+
+```console
+pip install pytest
+python -m pytest -q
+```
+
+From a clone, install the package **editable**, so the `shs` command follows
+the tree you are editing. Otherwise `shs` keeps running whatever copy pip
+installed earlier, and a fix the tests can see looks missing at the CLI:
+
+```console
+pip install -e . --no-deps
+```
+
+The tutorial is executable: `tests/test_tutorial.py` runs every `Try it` block
+and compares its printed output, so a documentation edit that breaks an example
+fails the suite instead of the reader. The top-level pages are guarded the same
+way by `tests/test_docs.py`, which refuses a dead link, a path that does not
+exist, or a cited test file that was renamed.
+
+## 6. What next
 
 - The tutorial: [`lisp_tutorial/README.md`](lisp_tutorial/README.md) — from
   "Lisp in ten minutes" to the SRFI layer.

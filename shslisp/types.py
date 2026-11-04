@@ -743,7 +743,10 @@ def hash_key(value: Any) -> Any:
     if value is NIL:
         return ("nil",)
     if isinstance(value, (int, float, Fraction, Complex, complex)):
-        return ("num", value)
+        # ``equal?`` distinguishes exactness (``(equal? 1 1.0)`` is ``#f``), so
+        # the hash key must too, or a hash table could find a key under one
+        # exactness that ``equal?`` says is a different value.
+        return ("num", type(value), value)
     if isinstance(value, Symbol):
         return ("sym", str(value))
     if isinstance(value, Keyword):
@@ -880,7 +883,16 @@ class Port:
     whole point: the host's I/O *is* the language's I/O, with a name on it.
     """
 
-    __slots__ = ("stream", "readable", "writable", "name", "closed", "binary", "buffer")
+    __slots__ = (
+        "stream",
+        "readable",
+        "writable",
+        "name",
+        "closed",
+        "binary",
+        "buffer",
+        "fold_case",
+    )
 
     def __init__(
         self,
@@ -900,6 +912,11 @@ class Port:
         self.binary = binary
         #: Text already read from a non-seekable stream but not yet consumed.
         self.buffer = ""
+        #: The ``#!fold-case`` / ``#!no-fold-case`` state ``read`` has walked
+        #: over on this port. A directive outlives the datum that follows it,
+        #: exactly as it does in a file, so the flag belongs to the port and
+        #: not to one call.
+        self.fold_case = False
 
     def close(self) -> None:
         if not self.closed:
@@ -973,6 +990,26 @@ class Macro:
     body: list
     env: "Environment"
     name: str = "macro"
+
+
+class ForwardReference:
+    """A macro's free identifier whose binding had to wait for the use site.
+
+    Hygiene pins a template's free identifiers to the environment where the
+    macro was *defined*. When that identifier is not bound yet — a helper
+    ``define``d later, or a sibling macro that a ``let-syntax`` body must not
+    see — there is nothing to pin to, so the hygiene alias holds this
+    placeholder and :meth:`shslisp.env.Environment.lookup` resolves it in the
+    definition site's **root** scope when the alias is finally used. That is
+    the difference between "late binding" and "use-site capture": the name is
+    found where the macro was defined, never in the frame that calls it.
+    """
+
+    __slots__ = ("env", "name")
+
+    def __init__(self, env: "Environment", name: Symbol) -> None:
+        self.env = env
+        self.name = name
 
 
 @dataclass

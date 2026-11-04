@@ -41,7 +41,7 @@ lexically.
 **Primitive** — a Python function exposed as a Lisp value. `shslisp/builtins.py`.
 
 **Host hole** — the few primitives that touch the outside world (`display`,
-`error`, `eval`, `read-string`, `load`, `quit!`, `sound!`). Chapter
+`error`, `eval`, `read-from-string`, `load`, `quit!`, `sound!`). Chapter
 [04](04-primitives.md).
 
 **Prelude** — the standard library, written in Lisp. `shslisp/prelude.scm`.

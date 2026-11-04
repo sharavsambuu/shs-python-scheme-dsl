@@ -142,11 +142,11 @@ first, then the crossing, then the program you write in Lisp.
 
 ```scheme
 ;; What does the reader see? Ask it directly.
-(display (read-string "(+ 1 2)"))
+(display (read-from-string "(+ 1 2)"))
 (newline)
-(display (read-string "'(a b)"))
+(display (read-from-string "'(a b)"))
 (newline)
-(display (read-string "(a b . c)"))
+(display (read-from-string "(a b . c)"))
 ```
 
 ```text
@@ -158,9 +158,16 @@ first, then the crossing, then the program you write in Lisp.
 The first line prints `(+ 1 2)`; the second prints `(quote (a b))` — the reader
 has already applied the quote sugar. That is the whole trick.
 
+One naming note, because it catches everyone once: the datum reader here is
+`read-from-string`. In R7RS, `read-string` is a different procedure — it reads
+*characters*, so `(read-string 3 port)` is the next three characters, not a
+datum. For the report's spelling of "one datum from a stream", use `read` on a
+port you opened with `open-input-string`.
+
 ## Exercises
 
-1. **Predict, then check.** Write down what `(read-string "#(1 2)")` will print
+1. **Predict, then check.** Write down what `(read-from-string "#(1 2)")` will
+   print
    before you run it. (It prints `#(1 2)`: a vector is already a value the
    reader can make, so there is nothing to expand.)
 2. **Break the sugar.** At the REPL, type `'(a b)` and then `(quote (a b))`.
