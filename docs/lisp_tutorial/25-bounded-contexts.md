@@ -1,14 +1,14 @@
-# 24 — Bounded contexts: DDD in this Lisp
+# 25 — Bounded contexts: DDD in this Lisp
 
 > **What this chapter teaches.** Domain-driven design, mapped onto the
 > structures you already own: the ubiquitous language as `define-variant`,
 > value objects and entities as the two equalities from chapter
-> [13](13-records-variants-and-objects.md), aggregates as folds over events,
+> [14](14-records-variants-and-objects.md), aggregates as folds over events,
 > the context map as one named translation, and the repository as chapter
-> [23](23-fp-design-patterns.md)'s closure-with-a-protocol.
+> [24](24-fp-design-patterns.md)'s closure-with-a-protocol.
 >
-> **Before this:** 13 and 23; chapter [07](07-modules.md) for modules and
-> [20](20-typed-control-flow.md) for `variant-match`. · **Time:** ~15 min.
+> **Before this:** 14 and 23; chapter [08](08-modules.md) for modules and
+> [21](21-typed-control-flow.md) for `variant-match`. · **Time:** ~15 min.
 > **After this you can:** draw a context map over a real domain and implement
 > every arrow in it with something this language already has.
 
@@ -25,12 +25,12 @@ claims are oddly at home in a small Lisp. The two that matter here:
 This codebase has been doing the second all along: the Tetris edition's
 `success?`/`failure?` are named for the *domain's* `Success`/`Failure` and
 never collide with the library's `ok`/`err` (chapter
-[21](21-railway-oriented.md)). That naming discipline is a context map in
+[22](22-railway-oriented.md)). That naming discipline is a context map in
 miniature. This chapter builds the full pattern.
 
 ## Value objects and entities: the two equalities
 
-The DDD distinction is exactly chapter [13](13-records-variants-and-objects.md)'s
+The DDD distinction is exactly chapter [14](14-records-variants-and-objects.md)'s
 distinction, so the language makes it a *choice you make*, not an accident:
 
 - A **value object** — money, an address, a date range — is defined by its
@@ -58,7 +58,7 @@ one line apart.
 
 A bounded context's vocabulary is most visible in what *happened* there. Each
 context declares its own events — its own words — with `define-variant`
-(chapter [20](20-typed-control-flow.md)):
+(chapter [21](21-typed-control-flow.md)):
 
 ```scheme
 ;; the catalog context
@@ -91,14 +91,14 @@ ordering world *only* through it, reshaped into ordering's words
 answered `#f` — explicitly, at the boundary, not by silent drift. When the
 foreign vocabulary is a *host's* — Python objects crossing into the domain —
 the same discipline scales up to the seam itself: chapter
-[27](27-embedding-in-python.md)'s `install_primitives` is the anti-corruption
+[28](28-embedding-in-python.md)'s `install_primitives` is the anti-corruption
 layer, the one door where outside facts are translated into domain words
 before anything downstream can see them.
 
 ## The aggregate: state is a fold over events
 
 An aggregate is a consistency boundary: a rule-enforcing lump of state. The FP
-answer (chapters [22](22-functional-foundations.md)–[23](23-fp-design-patterns.md))
+answer (chapters [23](23-functional-foundations.md)–[24](24-fp-design-patterns.md))
 is that state is not a thing you mutate — it is the *reduction of history*:
 
 ```scheme
@@ -137,7 +137,7 @@ Same history, same state, always — because state *is* the history reduced.
 ## The repository: a closure with a protocol
 
 The repository's DDD job is to make "where the aggregate lives" someone else's
-problem. Chapter [23](23-fp-design-patterns.md)'s module pattern does it
+problem. Chapter [24](24-fp-design-patterns.md)'s module pattern does it
 exactly — private state, a small message protocol, behavior at the wall:
 
 ```scheme
@@ -153,19 +153,19 @@ exactly — private state, a small message protocol, behavior at the wall:
 The mutation is real and it is *quarantined*: callers say `handle`, `find`,
 `count` — domain verbs — and cannot touch `state` from outside. Swap the
 `let` binding for a host-backed table (a Python seam primitive, chapter
-[27](27-embedding-in-python.md)) and no caller changes. That swap-ability is
+[28](28-embedding-in-python.md)) and no caller changes. That swap-ability is
 the entire promise of a repository, and here it is one `let` wide.
 
 ## Contexts as files
 
 In a script the two contexts above are sections; in a program they are
-*modules*. Chapter [07](07-modules.md)'s file model is the boundary: the
+*modules*. Chapter [08](08-modules.md)'s file model is the boundary: the
 catalog context is a file that defines `catalog-event` and its reducer and
 nothing of ordering's; the ordering file defines its own; the translation
 lives in a third, or in whichever file loads last. The load order then forces
 the design conversation DDD wants you to have — a context that needs another
 context's words has to *say so* by loading it, and the dependency arrow
-becomes visible in the load list. `SHS_PATH` (chapter [27](27-embedding-in-python.md))
+becomes visible in the load list. `SHS_PATH` (chapter [28](28-embedding-in-python.md))
 is how contexts in different projects find each other.
 
 ## Projections: questions answered without state
@@ -183,7 +183,7 @@ chapter 22's tools. A count by tag, a fold that reads the fields:
       events)                                                   ;=> 2
 ```
 
-`tag-of` (chapter [20](20-typed-control-flow.md)'s raw layer) classifies an
+`tag-of` (chapter [21](21-typed-control-flow.md)'s raw layer) classifies an
 event without knowing its variant; the fold's `_` arm makes "everything else
 contributes nothing" explicit. These are *read models* in DDD's vocabulary —
 answers shaped for a caller, derived from the one history, never stored as a
@@ -194,7 +194,7 @@ second truth to drift out of sync.
 Some rules touch two contexts — "place an order only for skus the catalog
 knows." That rule belongs to *neither* aggregate; it is a **policy**: a pure
 function that reads one context and produces another's command, with
-`Result` (chapter [21](21-railway-oriented.md)) carrying the refusal:
+`Result` (chapter [22](22-railway-oriented.md)) carrying the refusal:
 
 ```scheme
 (define catalog '((w-42 199) (k-9 599)))
@@ -330,7 +330,7 @@ refused
    list now say about your dependencies that the single script hid?
 3. **The cross-context policy.** "Place an order only for skus the catalog
    knows" touches two contexts. Write it as a function that translates, asks,
-   and returns a `Result` (chapter [21](21-railway-oriented.md)) — and
+   and returns a `Result` (chapter [22](22-railway-oriented.md)) — and
    explain why this is a *policy* (a pure function over both contexts) rather
    than a constraint buried in one aggregate.
 
@@ -343,5 +343,5 @@ refused
 > transitions; every crossing between contexts is one named translation; and
 > the repository is the only place that knows where the state sleeps.
 
-Next: [25 Functional core, imperative shell](25-functional-core-imperative-shell.md).
+Next: [26 Functional core, imperative shell](26-functional-core-imperative-shell.md).
 

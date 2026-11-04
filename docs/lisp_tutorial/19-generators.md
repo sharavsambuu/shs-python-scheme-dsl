@@ -1,4 +1,4 @@
-# 18 — Generators: lazy sequences
+# 19 — Generators: lazy sequences
 
 > **What this chapter teaches.** The prelude's generator library: a generator
 > is an ordinary procedure of zero arguments that answers the next value, and
@@ -121,4 +121,4 @@ answer generators, exactly SRFI 158's shape — but "comfortable" is not
 > another closure over that. Laziness is not a language feature here — it is
 > what first-class procedures were always for.
 
-Next: [19 SRFI 197 — chain and nest](19-srfi-197-chain-and-nest.md).
+Next: [20 SRFI 197 — chain and nest](20-srfi-197-chain-and-nest.md).

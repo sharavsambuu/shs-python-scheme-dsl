@@ -1,4 +1,4 @@
-# 08 — Lisp by example
+# 09 — Lisp by example
 
 > **What this chapter teaches.** The language itself, at the REPL: functions,
 > recursion, local bindings, lists, higher-order functions, records, mutation,
@@ -343,7 +343,7 @@ record. Those three plus `define`/`lambda` are the whole language you write.
    need is the one from earlier in the chapter.
 2. **A record, twice.** Represent a point as `'((x 1) (y 2))` and write
    `point-x`, `point-y`, and `point+`. Then do the same with `define-variant`
-   (chapter [20](20-typed-control-flow.md)) and say which one the domain's shape
+   (chapter [21](21-typed-control-flow.md)) and say which one the domain's shape
    types would use, and why.
 3. **Recursion to a loop.** Take the recursive `fact` above and rewrite it with
    an accumulator in a named `let`. Confirm both give `3628800` for `10`, then
@@ -356,4 +356,4 @@ record. Those three plus `define`/`lambda` are the whole language you write.
 > alist for records. Everything else is a variation, and everything a real
 > program does is built from these.
 
-Next: [09 Rosetta: Python's data structures](09-rosetta-data-structures.md).
+Next: [10 Rosetta: Python's data structures](10-rosetta-data-structures.md).

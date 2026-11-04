@@ -1,11 +1,11 @@
-# 14 — SRFI 241: `match`
+# 15 — SRFI 241: `match`
 
 > **What this chapter teaches.** The standard pattern matcher: quasiquote
 > patterns, guards, ellipsis, vector and dotted patterns, the catamorphism —
 > and the deliberate split between this `match` and the project's
 > `variant-match`.
 >
-> **Before this:** 13 (records and variants), 08. · **Time:** ~15 min.
+> **Before this:** 14 (records and variants), 08. · **Time:** ~15 min.
 > **After this you can:** destructure any value by shape, and know which
 > matcher a case calls for.
 
@@ -13,7 +13,7 @@
 
 This dialect has two matchers, and the split is deliberate:
 
-- **`variant-match`** (chapter [20](20-typed-control-flow.md)) dispatches on
+- **`variant-match`** (chapter [21](21-typed-control-flow.md)) dispatches on
   a `define-variant` value's *tag*: bare-symbol patterns bind, the tag names
   the case, and a forgotten case is refused because the set is closed.
 - **`match`** (this chapter, SRFI 241) is the general pattern matcher:
@@ -129,7 +129,7 @@ No matching clause and no matching guard is an error that names the value:
 (match '(1 2 3) [(,a ,b) 1])     ;=> error: match: no clause matched (1 2 3)
 ```
 
-That is the exhaustiveness discipline from chapter [20](20-typed-control-flow.md),
+That is the exhaustiveness discipline from chapter [21](21-typed-control-flow.md),
 carried over to general patterns: `match` refuses to guess.
 
 ## Try it
@@ -162,7 +162,7 @@ same
 
 ## Exercises
 
-1. **Tag vs shape.** Rewrite chapter [20](20-typed-control-flow.md)'s `area`
+1. **Tag vs shape.** Rewrite chapter [21](21-typed-control-flow.md)'s `area`
    with `variant-match` and with `match`. Which one refuses a case you
    forgot, and why does the SRFI's version need the `else`-style refusal
    written differently?
@@ -180,4 +180,4 @@ same
 > when it is a list's structure. Either way, the matcher names the value that
 > fits nothing — a silent default is the bug.
 
-Next: [15 SRFI 26 — cut and cute](15-srfi-26-cut-and-cute.md).
+Next: [16 SRFI 26 — cut and cute](16-srfi-26-cut-and-cute.md).

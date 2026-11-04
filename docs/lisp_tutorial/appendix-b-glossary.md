@@ -10,6 +10,10 @@ nothing of meaning.
 **Form / datum** — a value the reader produced. Because code is data, a form is
 also a datum: a list, a symbol, or a literal.
 
+**Homoiconicity** — the property that a program's representation is the
+language's own data: code is a list, so lists are code. `quote` freezes,
+`eval` thaws, quasiquote builds. Chapter [07](07-code-is-data.md).
+
 **Special form** — a form the evaluator handles by name: `if`, `define`, `lambda`,
 `match`, … (the literal `_SPECIAL_FORMS` set). Not a primitive and not a macro.
 
@@ -54,7 +58,7 @@ binds). The project's tag-dispatch matcher is the separate `variant-match`;
 `case` is the older, literal-equality dispatcher.
 
 **`variant-match`** — dispatch on a `define-variant` value's tag, binding its
-fields, and naming a case you forgot. Chapter [20](20-typed-control-flow.md).
+fields, and naming a case you forgot. Chapter [21](21-typed-control-flow.md).
 
 **Profile** — the SRFI layer an environment is born with: `"dsl"` (the
 default; every mandatory SRFI pre-imported), `"r7rs"` (strict core + prelude),
@@ -68,7 +72,7 @@ are supplied with them.
 
 **Monad / Kleisli arrow** — `result-bind` is the monad; `>=>` composes arrows
 (`A -> Result`). `pipe-results`, `result-do`. Chapter
-[21](21-railway-oriented.md).
+[22](22-railway-oriented.md).
 
 **ROP (railway-oriented programming)** — writing a fallible computation as a chain
 that short-circuits on the first refusal.

@@ -1,13 +1,13 @@
-# 26 — The gala: one checkout, eight ideas
+# 27 — The gala: one checkout, eight ideas
 
 > **What this chapter teaches.** Everything from chapters
-> [20](20-typed-control-flow.md)–[25](25-functional-core-imperative-shell.md)
+> [21](21-typed-control-flow.md)–[26](26-functional-core-imperative-shell.md)
 > in one program: typed control flow, pattern matching, contracts, functional
 > programming, monadic pipelines, railway-oriented programming, bounded
 > contexts, and the functional core / imperative shell split — arranged
 > around a single case study, the checkout pipeline.
 >
-> **Before this:** 21 and 22–25 (the ideas arrive pre-loaded; this chapter is
+> **Before this:** 22 and 23–26 (the ideas arrive pre-loaded; this chapter is
 > where they meet). · **Time:** ~20 min.
 > **After this you can:** read an architecture from its shape, and build one
 > of your own by placing each idea where it belongs.
@@ -65,7 +65,7 @@ it a receipt. Every sin below has a named cure.
 ## Station 1 — typed control flow: illegal states unrepresentable
 
 The lifecycle is a closed variant (chapter
-[20](20-typed-control-flow.md)) where *each stage is its own tag* — and the
+[21](21-typed-control-flow.md)) where *each stage is its own tag* — and the
 later stages carry the data only that stage has earned:
 
 ```scheme
@@ -79,14 +79,14 @@ later stages carry the data only that stage has earned:
 A `priced` order cannot exist without a total, and a `paid` order cannot
 exist without a receipt — not because a comment says so, but because there is
 no way to construct one. This is DDD's "make illegal states unrepresentable"
-(chapter [24](24-bounded-contexts.md)), and the state machine *is* the type:
+(chapter [25](25-bounded-contexts.md)), and the state machine *is* the type:
 you cannot ask for the total of an unvalidated order, because unvalidated
 orders do not have that slot.
 
 ## Station 2 — contracts: named invariants at the boundaries
 
 A **contract** is a predicate with a name and a verdict on the rails
-(chapter [21](21-railway-oriented.md)):
+(chapter [22](22-railway-oriented.md)):
 
 ```scheme
 (define (contract name pred)
@@ -133,8 +133,8 @@ boundary's — and neither needs a type system to enforce.
 
 The stage arrows are pure functions between the stage types — each arrow's
 input tag and output tag are different, so the pipeline's shape *is* the
-lifecycle diagram (chapters [22](22-functional-foundations.md) and
-[21](21-railway-oriented.md)):
+lifecycle diagram (chapters [23](23-functional-foundations.md) and
+[22](22-railway-oriented.md)):
 
 ```scheme
 (define (checkout coupon verdict order)
@@ -146,18 +146,18 @@ lifecycle diagram (chapters [22](22-functional-foundations.md) and
                 (pay verdict)))     ; priced       -> paid (or declined)
 ```
 
-`pipe-results` (chapter [21](21-railway-oriented.md)) is the monadic
+`pipe-results` (chapter [22](22-railway-oriented.md)) is the monadic
 pipeline: green track advances stage by stage; the first refusal bypasses
 everything and comes back tagged. Note where `coupon` and `verdict` enter —
 as *arguments* to arrow builders, not as globals the core reads. That is
-chapter [25](25-functional-core-imperative-shell.md)'s rule: facts enter as
+chapter [26](26-functional-core-imperative-shell.md)'s rule: facts enter as
 arguments, and the payment gateway's verdict is a fact the shell supplies.
 
 ## Station 4 — pattern matching: failures are data with names
 
 The failure side of the rails is *typed* too — a closed variant of named
 refusals, so an error can carry its own evidence (chapter
-[20](20-typed-control-flow.md)):
+[21](21-typed-control-flow.md)):
 
 ```scheme
 (define-variant failure
@@ -192,7 +192,7 @@ has become a structured, testable `(409 (out-of-stock ghost))`.
 ## Station 5 — bounded contexts: billing sees only invoices
 
 The ordering context's `paid` order is *its* word. Billing receives its own
-shape through one translation (chapter [24](24-bounded-contexts.md)) — and
+shape through one translation (chapter [25](25-bounded-contexts.md)) — and
 notice billing never learns about lines, discounts, or the coupon system:
 
 ```scheme
@@ -215,7 +215,7 @@ lifecycle), billing (invoices) — and only the translation knows two of them.
 Everything from station 1 to 5 is pure: same inputs, same answer, no
 witness. Which makes the interesting test a *property*, not an example —
 "whatever the quantity, a paid order's total is never negative" — swept over
-many inputs with `every` (chapter [22](22-functional-foundations.md)):
+many inputs with `every` (chapter [23](23-functional-foundations.md)):
 
 ```scheme
 (define (all-paid? quantities)
@@ -238,7 +238,7 @@ catches it at the boundary, exactly where chapter 24 placed invariants.
 
 The imperative shell is: `respond`, one `display` per envelope line if this
 fronted a real service, and the session machinery from chapter
-[25](25-functional-core-imperative-shell.md) (plan the whole checkout with
+[26](26-functional-core-imperative-shell.md) (plan the whole checkout with
 the `session` fold, then perform the effect log). Count the impure arms:
 they fit on one hand, they are all in shell functions, and none of them is
 inside a decision. The proof the boundary is in the right place is the
@@ -416,4 +416,4 @@ a *named* bad-coupon refusal, a *named* out-of-stock refusal, and a
 > by property, not by example. Eight ideas, one program — each doing the one
 > job it is best at.
 
-Next: [27 Embedding in Python](27-embedding-in-python.md).
+Next: [28 Embedding in Python](28-embedding-in-python.md).

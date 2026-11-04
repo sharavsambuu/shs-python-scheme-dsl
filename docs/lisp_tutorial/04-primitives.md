@@ -94,7 +94,7 @@ short, named list:
 Everything else is a pure function of its arguments. That is the claim a host's
 architecture can rest on: a program's *decisions* are pure Lisp over the host's
 facts, and the only impure calls are named doors — the ones above, plus any
-your host declares (chapter [27](27-embedding-in-python.md)).
+your host declares (chapter [28](28-embedding-in-python.md)).
 
 Two subtleties worth filing away:
 

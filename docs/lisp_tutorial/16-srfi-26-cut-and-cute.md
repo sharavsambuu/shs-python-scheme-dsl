@@ -1,10 +1,10 @@
-# 15 — SRFI 26: `cut` and `cute`
+# 16 — SRFI 26: `cut` and `cute`
 
 > **What this chapter teaches.** Specializing a procedure without naming a
 > lambda: `cut` and `cute`, their two placeholder kinds, the difference
 > between them, and when the prelude's `partial`/`curry` are the better tool.
 >
-> **Before this:** 08. · **Time:** ~10 min.
+> **Before this:** 09. · **Time:** ~10 min.
 > **After this you can:** write `(cut * 2 <>)` where a lambda would be noise,
 > and say exactly when it is evaluated.
 
@@ -114,7 +114,7 @@ generically).
 ## Exercises
 
 1. **Rewrite the lambda.** Take three `map` calls you wrote in chapter
-   [08](08-lisp-by-example.md) and rewrite each with `cut`. Which ones got
+   [09](09-lisp-by-example.md) and rewrite each with `cut`. Which ones got
    clearer, and which one was better as an explicit `lambda`?
 2. **The rest slot.** Predict `((cut list <> <...>) 1)` and
    `((cut list <> <...>))`, then run them. The second is an arity error —
@@ -130,4 +130,4 @@ generically).
 > pure, and for `partial`/`curry` when you need a procedure value rather than
 > a specialised call.
 
-Next: [16 SRFI 88 — keywords](16-srfi-88-keywords.md).
+Next: [17 SRFI 88 — keywords](17-srfi-88-keywords.md).

@@ -1,4 +1,4 @@
-# 16 — SRFI 88: keyword objects
+# 17 — SRFI 88: keyword objects
 
 > **What this chapter teaches.** What a keyword *is* in this dialect: how the
 > reader makes one, how it differs from a symbol, and why a language needs a
@@ -129,4 +129,4 @@ host:
 > say *which* argument without computing anything. Suffix colon is the whole
 > syntax; everything else is the three conversion procedures.
 
-Next: [17 SRFI 89 — optional and named parameters](17-srfi-89-optional-and-named-parameters.md).
+Next: [18 SRFI 89 — optional and named parameters](18-srfi-89-optional-and-named-parameters.md).

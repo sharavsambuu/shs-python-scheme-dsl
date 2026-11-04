@@ -1,4 +1,4 @@
-# 27 — Embedding this language in your own Python
+# 28 — Embedding this language in your own Python
 
 > **What this chapter teaches.** The host-facing seam, `shslisp/embed.py`: how a
 > *different* Python project exposes its own functions to this language in one

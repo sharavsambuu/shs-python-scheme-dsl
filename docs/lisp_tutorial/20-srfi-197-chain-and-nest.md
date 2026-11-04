@@ -1,10 +1,10 @@
-# 19 — SRFI 197: chain and nest
+# 20 — SRFI 197: chain and nest
 
 > **What this chapter teaches.** The pipeline operators: `chain` and its
 > short-circuiting siblings, `chain-lambda`, and the lexically-substituting
 > `nest`/`nest-reverse` — plus where the project's own `->`/`->>` fit.
 >
-> **Before this:** 08, 11. · **Time:** ~12 min.
+> **Before this:** 09, 11. · **Time:** ~12 min.
 > **After this you can:** write a data flow left to right, with early exit
 > where it needs one.
 
@@ -95,7 +95,7 @@ data* and can contain special forms — the two things `chain` cannot do.
 
 ## And the project's `->` / `->>`
 
-The prelude's `->`/`->>` (chapter [08](08-lisp-by-example.md)) remain — they
+The prelude's `->`/`->>` (chapter [09](09-lisp-by-example.md)) remain — they
 are the project's own extensions with Clojure-style semantics:
 
 ```scheme
@@ -151,6 +151,6 @@ barfoo
 > A pipeline is a list of steps in run order, and `_` is the pipe between
 > them. When a step must be skipped or must stop the train, that is
 > `chain-when` and `chain-and` — the same railway idea as chapter
-> [21](21-railway-oriented.md), written as syntax.
+> [22](22-railway-oriented.md), written as syntax.
 
-Next: [20 Typed control flow](20-typed-control-flow.md).
+Next: [21 Typed control flow](21-typed-control-flow.md).

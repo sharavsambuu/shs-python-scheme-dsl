@@ -1,11 +1,11 @@
-# 12 — Dictionaries: alists and hash tables
+# 13 — Dictionaries: alists and hash tables
 
 > **What this chapter teaches.** The two dictionary shapes this language ships —
 > the persistent alist and the mutable hash table — the recipes that cover most
 > of what Python dicts do daily (counting, grouping, inverting, indexing), and
 > the two argument-order gotchas that are documented right here in the code.
 >
-> **Before this:** 10. · **Time:** ~15 min.
+> **Before this:** 11. · **Time:** ~15 min.
 > **After this you can:** choose between the two dictionaries deliberately, and
 > write the frequency-count / group-by / invert trio from memory.
 
@@ -135,7 +135,7 @@ table is a machine.
 ## The comparator is the search
 
 The three `ass*` searches differ in exactly one thing — the rung of the
-equality ladder (chapter [09](09-rosetta-data-structures.md)) they use:
+equality ladder (chapter [10](10-rosetta-data-structures.md)) they use:
 
 ```scheme
 (define alist '((b 2) ("a" 1)))
@@ -151,7 +151,7 @@ between them for numbers and characters. The same triangle organizes `member`
 
 ## Keywords are their own keys
 
-SRFI 88 keywords (chapter [16](16-srfi-88-keywords.md)) hash *separately*
+SRFI 88 keywords (chapter [17](17-srfi-88-keywords.md)) hash *separately*
 from symbols, so the same name spelled two ways is two dictionary entries:
 
 ```scheme
@@ -167,7 +167,7 @@ the other. Pick one spelling per table and be consistent.
 
 ## The counting recipe, finished
 
-Chapter 13's counting loop plus chapter [10](10-lists-and-vectors.md)'s
+Chapter 13's counting loop plus chapter [11](11-lists-and-vectors.md)'s
 `sort-by` is the whole word-frequency program:
 
 ```scheme
@@ -197,7 +197,7 @@ table can hold tables:
 
 That is a two-level index in four lines — but note what the pattern costs:
 the inner table is *shared state* through the outer's slot, and chapter
-[25](25-functional-core-imperative-shell.md)'s discipline says that kind of
+[26](26-functional-core-imperative-shell.md)'s discipline says that kind of
 mutation belongs in the shell, not in a decision.
 
 ## Try it
@@ -282,4 +282,4 @@ rook
 > data, not machinery. And reach for `hash-table-update!` before writing the
 > read-check-write dance by hand.
 
-Next: [13 Modeling data: records, variants, and closures](13-records-variants-and-objects.md).
+Next: [14 Modeling data: records, variants, and closures](14-records-variants-and-objects.md).

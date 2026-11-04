@@ -1,7 +1,7 @@
 # P5 — Shipping an extension
 
 **Before this:** [P2](p2-programs-across-files.md) — you think in boundaries
-now; chapter [27](../lisp_tutorial/27-embedding-in-python.md) of the main
+now; chapter [28](../lisp_tutorial/28-embedding-in-python.md) of the main
 tutorial is the big picture.
 **Time:** 30 minutes.
 **After this you can:** hand a Lisp program a table of Python functions it
@@ -42,7 +42,7 @@ Three rules, all enforced at install time (`tests/test_embed.py` pins each):
    rejected on sight.
 
 The values crossing the boundary are the ordinary host types — numbers,
-strings, lists — the same ones chapter [27](../lisp_tutorial/27-embedding-in-python.md)
+strings, lists — the same ones chapter [28](../lisp_tutorial/28-embedding-in-python.md)
 catalogues. A primitive that raises a Python exception surfaces on the Lisp
 side as an error a `guard` can catch ([P1](p1-when-things-go-wrong.md)).
 
@@ -133,7 +133,7 @@ args: 0
 
 ## See also
 
-- [27 Embedding in Python](../lisp_tutorial/27-embedding-in-python.md) — the
+- [28 Embedding in Python](../lisp_tutorial/28-embedding-in-python.md) — the
   full value-crossing table
 - [P6 — Testing Lisp from the host](p6-testing-lisp-from-the-host.md) — the
   same seam, from the test's side

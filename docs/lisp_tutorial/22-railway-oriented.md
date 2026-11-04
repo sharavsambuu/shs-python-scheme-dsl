@@ -1,10 +1,10 @@
-# 21 — Railway-oriented programming
+# 22 — Railway-oriented programming
 
 > **What this chapter teaches.** `shslisp/rope.scm`: writing a fallible computation
 > as a *chain* instead of a nest of checks, using the `Result` variant from
-> chapter [20](20-typed-control-flow.md).
+> chapter [21](21-typed-control-flow.md).
 >
-> **Before this:** 20. · **Time:** ~20 min.
+> **Before this:** 21. · **Time:** ~20 min.
 > **After this you can:** write a fallible step as a Kleisli arrow and compose a
 > pipeline that short-circuits in exactly one place.
 >
@@ -95,7 +95,7 @@ ways, each naming what happens on a refusal:
 ```
 
 `result-tags` returns the declared, closed tag set as data — the same
-`variant-tags` you met in chapter [20](20-typed-control-flow.md).
+`variant-tags` you met in chapter [21](21-typed-control-flow.md).
 
 ## Kleisli composition
 
@@ -290,7 +290,7 @@ which one did:
 Three things to notice. The happy path never mentions failure — no `if err`
 checks anywhere. The exact rational survives the whole pipeline (`231/5` is
 `42 × 11/10`, exact — the numeric tower is working for you, chapter
-[08](08-lisp-by-example.md)). And each failure names its stage's reason, so
+[09](09-lisp-by-example.md)). And each failure names its stage's reason, so
 the caller's recovery can be as precise as the refusal.
 
 `attempt` slots a *raising* step into the same chain — wrap the risky call,
@@ -385,4 +385,4 @@ failure — a caught `car` of `()` — once raw, once with its message rewritten
 > pipeline, and a refusal is data you can inspect instead of an exception you must
 > remember to catch.
 
-Next: [22 Functional programming: foundations](22-functional-foundations.md).
+Next: [23 Functional programming: foundations](23-functional-foundations.md).

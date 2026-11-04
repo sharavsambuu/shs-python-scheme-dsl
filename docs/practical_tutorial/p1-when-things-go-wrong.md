@@ -54,7 +54,7 @@ boom
 
 That is the condition system's whole shape: `raise`/`error` put a value in
 flight, `guard` decides what it means, and ROP (chapter
-[21](../lisp_tutorial/21-railway-oriented.md)) builds the railway on top.
+[22](../lisp_tutorial/22-railway-oriented.md)) builds the railway on top.
 
 ## What a guard cannot catch
 
@@ -137,6 +137,6 @@ blocked: over-limit
 
 - [P4 — Features and the walls](p4-features-and-the-walls.md) — the budgets,
   from the inside
-- [21 Railway-oriented programming](../lisp_tutorial/21-railway-oriented.md) —
+- [22 Railway-oriented programming](../lisp_tutorial/22-railway-oriented.md) —
   the design pattern built on all of this
 - The error classes: `shslisp/errors.py`; the recoveries: `tests/test_repl.py`

@@ -1,11 +1,11 @@
-# 13 — Modeling data: records, variants, and closures
+# 14 — Modeling data: records, variants, and closures
 
 > **What this chapter teaches.** The three ways to be a "custom class" here:
 > `define-record-type` for named shapes, `define-variant` for closed sets of
 > cases, and a closure over private state when the object is *behaviour*. Each
 > is a different answer to "what does this value know?"
 >
-> **Before this:** 12; chapter [20](20-typed-control-flow.md) for `variant-match`.
+> **Before this:** 13; chapter [21](21-typed-control-flow.md) for `variant-match`.
 > · **Time:** ~15 min.
 > **After this you can:** model a domain object the way the shipped libraries
 > do — and defend the choice between record, variant, and closure.
@@ -43,7 +43,7 @@ Two Python differences to internalise:
   documents it). Structural equality is yours to define — usually by
   converting to data: `(equal? (list (p-x a) (p-y a)) (list (p-x b) (p-y b)))`,
   or by keeping the fields in an alist/hash table instead when equality is the
-  point (chapter [12](12-dictionaries-alists-and-hash-tables.md)).
+  point (chapter [13](13-dictionaries-alists-and-hash-tables.md)).
 
 A record prints as its contents — `#<record:point 1 2>` — so it is inspectable,
 but it has no reader syntax: you cannot `read` one back.
@@ -65,7 +65,7 @@ subclasses of `Shape` — this language declares the *whole set* in one form:
 (variant-tags 'shape)    ;=> (circle rect)
 ```
 
-Dispatch is `variant-match` — chapter [20](20-typed-control-flow.md) teaches
+Dispatch is `variant-match` — chapter [21](21-typed-control-flow.md) teaches
 the full pattern grammar, and its central promise is worth repeating: with no
 matching clause and no `else`, the error *names the cases you forgot*. That is
 the thing a class hierarchy with a base-class default cannot do for you.
@@ -101,10 +101,10 @@ unknown messages loudly instead of returning `None`. Every call of
 | A named shape with fixed fields — a row, a config, a point | `define-record-type` |
 | A closed set of alternatives, dispatched by case — AST nodes, results, game events | `define-variant` (+ `variant-match`) |
 | A thing that *does* something over time — counters, connections, state machines | a closure |
-| Open-ended keyed data, or data that must compare by value | alist / hash table (chapter [12](12-dictionaries-alists-and-hash-tables.md)) |
+| Open-ended keyed data, or data that must compare by value | alist / hash table (chapter [13](13-dictionaries-alists-and-hash-tables.md)) |
 
 The shipped code follows this table: `shslisp/rope.scm` declares `Result` as a
-variant (chapter [21](21-railway-oriented.md)), the prelude builds promises on
+variant (chapter [22](22-railway-oriented.md)), the prelude builds promises on
 vectors (data that mutates in exactly one slot), and the memoiser is a closure
 over a hash table — all three, each where it fits.
 
@@ -112,7 +112,7 @@ over a hash table — all three, each where it fits.
 
 Records take every field, every time — and that is *right* for a data
 carrier, but callers should not pay for it. SRFI 89's `define*` (chapter
-[17](17-srfi-89-optional-and-named-parameters.md)) wraps the constructor with
+[18](18-srfi-89-optional-and-named-parameters.md)) wraps the constructor with
 defaults, and the pattern is one line:
 
 ```scheme
@@ -145,7 +145,7 @@ That is the quiet payoff of chapter 13's model: there is no method table, no
 
 ## Identity bites in hash tables too
 
-Chapter [12](12-dictionaries-alists-and-hash-tables.md) taught that table
+Chapter [13](13-dictionaries-alists-and-hash-tables.md) taught that table
 keys compare structurally. Records are the exception that proves the rule —
 they compare by identity, so two same-content records are *different keys*:
 
@@ -155,7 +155,7 @@ they compare by identity, so two same-content records are *different keys*:
 (hash-table-ref/default h (make-user "ada" 0 #f) 'missing)  ;=> missing
 ```
 
-Not a bug — the DDD entity rule (chapter [24](24-bounded-contexts.md)) doing
+Not a bug — the DDD entity rule (chapter [25](25-bounded-contexts.md)) doing
 its job. The fix when you want lookup-by-value is the same one the domain
 uses: key by the *id field*, not the record —
 `(hash-table-set! h (user-name u) u)` — and let the name be the identity.
@@ -176,7 +176,7 @@ the whole tower apart in a single pattern:
 
 The pattern binds `u` straight into a record, and the accessor reads it —
 no intermediate unpacking. This is the normal shape of a modeled domain:
-chapter [24](24-bounded-contexts.md)'s aggregates are exactly this, one level
+chapter [25](25-bounded-contexts.md)'s aggregates are exactly this, one level
 deeper.
 
 ## Try it
@@ -275,4 +275,4 @@ ada
 > four, refuse none of them, and let the accessor's refusal do the type
 > checking you would have written tests for.
 
-Next: [14 SRFI 241 — match](14-srfi-241-match.md).
+Next: [15 SRFI 241 — match](15-srfi-241-match.md).

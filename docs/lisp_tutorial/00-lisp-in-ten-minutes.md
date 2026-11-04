@@ -88,7 +88,7 @@ list of three symbols rather than a call to `a`:
 
 Records in this repo are **alists** — lists of two-element lists — because they
 are just lists: `'((id "demo") (mode "marathon"))`. Chapter
-[08](08-lisp-by-example.md) is the longer guided session on all of this.
+[09](09-lisp-by-example.md) is the longer guided session on all of this.
 
 ## Why this is enough
 

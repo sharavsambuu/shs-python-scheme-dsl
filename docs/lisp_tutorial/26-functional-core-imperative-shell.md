@@ -1,11 +1,11 @@
-# 25 — Functional core, imperative shell
+# 26 — Functional core, imperative shell
 
 > **What this chapter teaches.** The architecture pattern this whole project
 > embodies: a pure decision-making core that answers with *data*, wrapped in a
 > thin imperative shell that owns every effect — and how to build one
 > deliberately, so the impurity is countable.
 >
-> **Before this:** 22–24 (purity, closures as modules, aggregates over events).
+> **Before this:** 23–25 (purity, closures as modules, aggregates over events).
 > · **Time:** ~15 min.
 > **After this you can:** name which half of your program is the core and which
 > is the shell, and prove the split by counting the shell's impure arms.
@@ -17,9 +17,9 @@ The pattern has a name — Gary Bernhardt's — and a one-line contract:
 > anything actually happen.
 
 Everything before this chapter was building to this. Chapter
-[22](22-functional-foundations.md) named purity and quarantine; chapter
-[23](23-fp-design-patterns.md) put mutation behind closure walls; chapter
-[24](24-bounded-contexts.md) reduced aggregate state to a fold over events.
+[23](23-functional-foundations.md) named purity and quarantine; chapter
+[24](24-fp-design-patterns.md) put mutation behind closure walls; chapter
+[25](25-bounded-contexts.md) reduced aggregate state to a fold over events.
 Functional core, imperative shell is the *architectural name* for what all
 three were doing: the core is the pure part, the shell is the quarantine
 boundary, and the wall between them is made of data.
@@ -39,7 +39,7 @@ without the label:
   [01](01-the-pipeline.md) puts the whole machine at about five thousand
   lines, and the shell part of it is a fraction.
 
-Chapter [27](27-embedding-in-python.md) adds the third piece, the host seam:
+Chapter [28](28-embedding-in-python.md) adds the third piece, the host seam:
 `install_primitives` is the door where *your* project's effects enter, as a
 declared list. A host edition of this language is a functional core (the Lisp
 program) inside an imperative shell (the Python host), and the seam is the
@@ -67,7 +67,7 @@ A core that *fetches* is a core with a hidden shell.
 ```
 
 **Effects are described, not performed.** The commands and the effects are
-variants — chapter [24](24-bounded-contexts.md)'s events, pointed the other
+variants — chapter [25](25-bounded-contexts.md)'s events, pointed the other
 way: events record what *did* happen, effects describe what *should*:
 
 ```scheme
@@ -77,7 +77,7 @@ way: events record what *did* happen, effects describe what *should*:
 
 And the decision function is pure in the strict chapter-15 sense —
 substitution test passing, refusals as `Result` values (chapter
-[21](21-railway-oriented.md)), new state returned instead of mutated:
+[22](22-railway-oriented.md)), new state returned instead of mutated:
 
 ```scheme
 (define (decide cart command)
@@ -159,12 +159,12 @@ test cannot reach; the core never reaches the world, so its tests are
 two `decide` lines above *are* the test suite.
 
 **The shell is replaceable.** Swap `perform!`'s arms for chapter
-[24](24-bounded-contexts.md)'s repository and the effect log is persisted;
-swap them for a Python seam call (chapter [27](27-embedding-in-python.md))
+[25](25-bounded-contexts.md)'s repository and the effect log is persisted;
+swap them for a Python seam call (chapter [28](28-embedding-in-python.md))
 and the effects cross the host boundary. Neither change touches a line of
 `decide` — which is the point.
 
-**The shape generalizes.** Chapter [23](23-fp-design-patterns.md)'s bind
+**The shape generalizes.** Chapter [24](24-fp-design-patterns.md)'s bind
 showed `pipe-results` and `append-map` as the same "continue in the shape"
 idea. Effects-as-data is the same family: a list of effect descriptions is a
 container, `for-each perform!` is its interpreter, and if you squint you can
@@ -203,7 +203,7 @@ ordered record of what the session will do —
 ```
 
 The shell's whole job shrinks to interpreting one list — with `tagged?`
-(chapter [20](20-typed-control-flow.md)) telling the two entry kinds apart:
+(chapter [21](21-typed-control-flow.md)) telling the two entry kinds apart:
 
 ```scheme
 (for-each (lambda (e)
@@ -217,7 +217,7 @@ This is the pattern's endgame, and it is worth pausing on. *Planning* is
 pure, replayable, testable with `equal?` — and it is where every interesting
 decision lives. *Performing* is a fixed interpreter over a value that already
 exists, which makes it auditable after the fact: the log you executed is the
-log you can print. Chapter [24](24-bounded-contexts.md)'s event sourcing and
+log you can print. Chapter [25](25-bounded-contexts.md)'s event sourcing and
 this chapter's effect log are the same list seen from two sides — one records
 what the domain decided, the other what the shell will do about it.
 
@@ -335,4 +335,4 @@ kept the state the core handed back.)
 > on one hand, the core is testable without mocks and the shell is
 > replaceable without fear.
 
-Next: [26 The gala: one checkout, eight ideas](26-the-gala-checkout.md).
+Next: [27 The gala: one checkout, eight ideas](27-the-gala-checkout.md).

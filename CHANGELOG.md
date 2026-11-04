@@ -23,6 +23,13 @@ distribution are both **`shslisp`**; the CLI stays `shs`.
 - S9: a lazy-sequence generator library in the prelude; R5RS clause
   keywords are auxiliary syntax, not bindings.
 - The REPL is hostile-input safe: a mistake is an error line, never a crash.
+- The guided tutorial gains a chapter on homoiconicity — `07 Code is data` —
+  `quote`/`eval`/quasiquote templates, a program that writes a program, code as
+  configuration, and the honest limits (no `gensym`, pattern-only
+  `syntax-rules`, depth-counting nested quasiquote). Chapters 07–27 renumber to
+  08–28 with every cross-link, metadata line, and worked exercise updated; the
+  new chapter's `Try it` block and answer key (`exercises/code-is-data.scm`)
+  are enforced by `tests/test_tutorial.py` and `tests/test_exercises.py`.
 - The practical tutorial handbook (P0–P6) lands — REPL workbench, reading
   failures, programs across files, ports and `dynamic-wind`, features and
   the walls, shipping an extension, testing from the host — every `Try it`

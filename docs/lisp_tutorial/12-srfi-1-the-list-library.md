@@ -1,11 +1,11 @@
-# 11 — SRFI 1: the list library
+# 12 — SRFI 1: the list library
 
 > **What this chapter teaches.** `(srfi 1)`, the list library that ships
 > pre-imported: the fold family, list constructors and slicers, searching,
 > set operations on lists — and the one import collision the language
 > resolves for you.
 >
-> **Before this:** 08 (you are comfortable with `map`/`filter` and named
+> **Before this:** 09 (you are comfortable with `map`/`filter` and named
 > `let`). · **Time:** ~15 min.
 > **After this you can:** reach for the right list operation by name, and
 > know when a result is *two values* rather than one.
@@ -181,5 +181,5 @@ yes
 > a set operation? And when a function answers two questions, expect two
 > values.
 
-Next: [12 Dictionaries: alists and hash tables](12-dictionaries-alists-and-hash-tables.md).
+Next: [13 Dictionaries: alists and hash tables](13-dictionaries-alists-and-hash-tables.md).
 

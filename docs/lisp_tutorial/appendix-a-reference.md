@@ -352,7 +352,7 @@ run("(double 21)", env)                # -> 42
   pass them to `make_env(extensions=[…])`.
 - The package installs with `pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git`
   (see `docs/INSTALL.md`); the import name is `shslisp`. See
-  chapter [27](27-embedding-in-python.md).
+  chapter [28](28-embedding-in-python.md).
 
 ## Budgets and limits
 

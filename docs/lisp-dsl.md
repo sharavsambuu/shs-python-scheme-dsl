@@ -135,7 +135,7 @@ not an accident.
 | --- | --- | --- |
 | **R7RS-small subset** | Reader, evaluator, tail calls, closures, the base procedures, `(scheme base)`, `(scheme write)` | `docs/r7rs.md`, [`docs/R7RS_TASKS.md`](R7RS_TASKS.md) |
 | **SRFI layer** | SRFI 1, 26, 88, 89, 197, 241 | `docs/srfi.md`, [`docs/SRFI_TASKS.md`](SRFI_TASKS.md) |
-| **Python seam** | `install_primitives`, `install_extension`, `make_env`, `run`, `load_lisp` | `shslisp/embed.py`, chapter [21](lisp_tutorial/27-embedding-in-python.md) |
+| **Python seam** | `install_primitives`, `install_extension`, `make_env`, `run`, `load_lisp` | `shslisp/embed.py`, chapter [28](lisp_tutorial/28-embedding-in-python.md) |
 
 ### R7RS-small: the honest claim
 
@@ -290,7 +290,7 @@ implemented:
 
 The seam is tested by `tests/test_embed.py`. The discipline that keeps
 `shslisp/` free of host imports is what makes every Python project a valid host.
-Chapter [21](lisp_tutorial/27-embedding-in-python.md) is the long version.
+Chapter [28](lisp_tutorial/28-embedding-in-python.md) is the long version.
 
 ## Migration policy
 
@@ -364,9 +364,9 @@ Update the page in the same change.
   examples.
 - [The capability assessment](capabilities.md) — where the DSL stands against
   the modern-language checklist, and what is cheap to close.
-- [Chapter 09 — typed control flow](lisp_tutorial/20-typed-control-flow.md)
-- [Chapter 10 — railway-oriented programming](lisp_tutorial/21-railway-oriented.md)
-- [Chapter 21 — embedding in Python](lisp_tutorial/27-embedding-in-python.md)
+- [Chapter 09 — typed control flow](lisp_tutorial/21-typed-control-flow.md)
+- [Chapter 10 — railway-oriented programming](lisp_tutorial/22-railway-oriented.md)
+- [Chapter 21 — embedding in Python](lisp_tutorial/28-embedding-in-python.md)
 - [Appendix A — reference](lisp_tutorial/appendix-a-reference.md)
 - [`docs/R7RS_TASKS.md`](R7RS_TASKS.md)
 - [`docs/SRFI_TASKS.md`](SRFI_TASKS.md)

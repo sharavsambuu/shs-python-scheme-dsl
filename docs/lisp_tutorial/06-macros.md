@@ -139,7 +139,7 @@ The threading macros `->` and `->>` (chapter [05](05-standard-library.md)) are t
 same idea: ordinary calls, written in the order the data flows, expanded at
 compile time.
 
-You will meet one more, the largest, in chapter [21](21-railway-oriented.md):
+You will meet one more, the largest, in chapter [22](22-railway-oriented.md):
 `result-do`, a do-notation for the `Result` monad, built on `result-bind`.
 
 ## Two shapes of ellipsis
@@ -303,4 +303,4 @@ with `rest ...`, a stacked `x ... ...`, a vector pattern, a `let-syntax`, and on
 > is what lets a library of macros feel like built-in syntax instead of a set of
 > names you must avoid.
 
-Next: [07 Modules](07-modules.md).
+Next: [07 Code is data: homoiconicity](07-code-is-data.md).

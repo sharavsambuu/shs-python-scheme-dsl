@@ -1,10 +1,10 @@
-# 17 — SRFI 89: optional and named parameters
+# 18 — SRFI 89: optional and named parameters
 
 > **What this chapter teaches.** `define*` and `lambda*`: a formals list with
 > three sections — positional, named, rest — and the keyword-prefixed call
 > syntax that fills the named ones.
 >
-> **Before this:** 16 (keywords), 08. · **Time:** ~12 min.
+> **Before this:** 17 (keywords), 08. · **Time:** ~12 min.
 > **After this you can:** write a procedure whose callers name their
 > arguments, and read its errors when a call is wrong.
 
@@ -83,7 +83,7 @@ ordinary `lambda` over a single rest parameter plus a runtime binder — the
 shape SRFI 89 recommends. `procedure-arity` and `apply` are untouched, so a
 `define*` procedure is an ordinary closure everywhere else in the language:
 it can be `map`ped, stored in an alist, and partially applied with `cut`
-(chapter [15](15-srfi-26-cut-and-cute.md)).
+(chapter [16](16-srfi-26-cut-and-cute.md)).
 
 ## Try it
 
@@ -129,4 +129,4 @@ hi, ada
 > positional — name it. `define*` keeps short calls short and long calls
 > self-documenting, and the keyword in the call site is the documentation.
 
-Next: [18 Generators](18-generators.md).
+Next: [19 Generators](19-generators.md).

@@ -37,12 +37,12 @@ round-trip.
 | --- | --- | --- |
 | Functional core | first-class functions, closures, lexical scope, HOFs, tail calls (trampoline + deep-stack runner), recursion budgets | `tests/test_r7rs.py`, `shslisp/stack.py` |
 | Metaprogramming | hygienic `syntax-rules` *and* classic `defmacro`, `macroexpand` — most mainstream languages have nothing here | `tests/test_r7rs.py`, ch. [06](lisp_tutorial/06-macros.md) |
-| Data modeling | `define-variant` (closed ADTs), records, pattern matching twice over (SRFI 241 + `variant-match`), alists, hash tables, vectors, bytevectors | `tests/test_rop.py`, ch. [09](lisp_tutorial/20-typed-control-flow.md) |
-| Error handling | conditions (`guard`/`raise`/error objects) plus ROP as a library — better than plain exceptions | `tests/test_rop.py`, ch. [10](lisp_tutorial/21-railway-oriented.md) |
+| Data modeling | `define-variant` (closed ADTs), records, pattern matching twice over (SRFI 241 + `variant-match`), alists, hash tables, vectors, bytevectors | `tests/test_rop.py`, ch. [21](lisp_tutorial/21-typed-control-flow.md) |
+| Error handling | conditions (`guard`/`raise`/error objects) plus ROP as a library — better than plain exceptions | `tests/test_rop.py`, ch. [22](lisp_tutorial/22-railway-oriented.md) |
 | Control flow | multiple values, `dynamic-wind`, parameters (dynamic scope), promises, escape continuations, `case-lambda` | `tests/test_r7rs.py` |
-| Argument passing | optional, named (keywords), defaults, rest — the full SRFI 89 surface | `tests/test_srfi.py`, ch. [25](lisp_tutorial/17-srfi-89-optional-and-named-parameters.md) |
+| Argument passing | optional, named (keywords), defaults, rest — the full SRFI 89 surface | `tests/test_srfi.py`, ch. [18](lisp_tutorial/18-srfi-89-optional-and-named-parameters.md) |
 | Modularity | `define-library`/`import` with `only`/`except`/`prefix`/`rename`, load-once file modules, profiles + `cond-expand` | `tests/test_library.py`, `tests/test_profile.py` |
-| Interop & tooling | declared Python seam, string ports, file I/O, `process-context`, REPL, feature detection | `tests/test_embed.py`, `tests/test_ports.py`, `tests/test_profile.py`, ch. [21](lisp_tutorial/27-embedding-in-python.md) |
+| Interop & tooling | declared Python seam, string ports, file I/O, `process-context`, REPL, feature detection | `tests/test_embed.py`, `tests/test_ports.py`, `tests/test_profile.py`, ch. [28](lisp_tutorial/28-embedding-in-python.md) |
 
 The point of the table: the missing percentages do not live here. A reader
 coming from Python finds every daily-driver feature present, and finds two
@@ -83,7 +83,7 @@ extension mechanisms (macros, the prelude, the Python seam) are exactly the
 tools for closing it:
 
 - **Generators / lazy sequences** — **landed as S9** (`shslisp/generators.scm`,
-  chapter [28](lisp_tutorial/18-generators.md)): closures and `set!`, no
+  chapter [19](lisp_tutorial/19-generators.md)): closures and `set!`, no
   continuation re-entry, shipped in both profiles. The sketch below was the
   pre-S9 shape, kept for the record:
 
@@ -106,7 +106,7 @@ tools for closing it:
   `string-append`.
 - **SRFI 19 date-time, JSON, regexp** — thin Python-seam libraries, exactly
   the `install_primitives` path chapter
-  [21](lisp_tutorial/27-embedding-in-python.md) teaches.
+  [28](lisp_tutorial/28-embedding-in-python.md) teaches.
 
 ## Hardening findings (2026-10-31 probe)
 
@@ -182,7 +182,7 @@ hatch the question assumes is not a workaround; it is the design.
    parallel; an embedding must not share an env across OS threads.
 3. **The FFI is manual and loud.** Every Python capability is an explicit
    `install_primitives` registration (chapter
-   [21](lisp_tutorial/27-embedding-in-python.md)) — a feature for safety,
+   [28](lisp_tutorial/28-embedding-in-python.md)) — a feature for safety,
    but work per capability.
 4. **Tooling depth.** The error messages are honest and the REPL exists, but
    there is no debugger or profiler; source locations are the known next
@@ -299,7 +299,7 @@ ontology layer.
 ## The recommendation
 
 The S9 recommendation below has **landed**: generators are a prelude library
-(`shslisp/generators.scm`), with tests, a chapter ([28](lisp_tutorial/18-generators.md)),
+(`shslisp/generators.scm`), with tests, a chapter ([19](lisp_tutorial/19-generators.md)),
 and a matrix row in [`srfi.md`](srfi.md). The next Tier-3 item by the same
 logic — user value, no interpreter change — is **source locations** for the
 IDE, which is the first step of the numeric/IDE sequence in

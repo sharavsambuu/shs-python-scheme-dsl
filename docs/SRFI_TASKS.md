@@ -22,7 +22,7 @@
 | S0–S6 | The six `(srfi N)` libraries — `(srfi 1)`, `(srfi 26)`, `(srfi 88)`, `(srfi 89)`, `(srfi 197)`, `(srfi 241)` — plus the library system that hosts them | the matrix in [`srfi.md`](srfi.md); the `MUST_IMPORT`/`MUST_BIND` tables in [`tests/test_srfi.py`](../tests/test_srfi.py) |
 | S7 | The SRFI matrix page, audited name by name, with the deviations | [`srfi.md`](srfi.md) |
 | S8 | The profiles: `dsl` (the default; SRFIs pre-imported with the documented collision table) and `r7rs` (the strict subset, no SRFIs) | [`shslisp/profile.py`](../shslisp/profile.py), [`tests/test_profile.py`](../tests/test_profile.py) |
-| S9 | The generator library: lazy sequences as prelude (`shslisp/generators.scm`), both profiles, `(srfi 158)` still unclaimed | [`srfi.md`](srfi.md) (the generator section), [`tests/test_generators.py`](../tests/test_generators.py), chapter [28](lisp_tutorial/18-generators.md) |
+| S9 | The generator library: lazy sequences as prelude (`shslisp/generators.scm`), both profiles, `(srfi 158)` still unclaimed | [`srfi.md`](srfi.md) (the generator section), [`tests/test_generators.py`](../tests/test_generators.py), chapter [19](lisp_tutorial/19-generators.md) |
 
 `(srfi 204)` is recorded in the matrix as *withdrawn*: it is never
 implemented, and importing it fails, naming `(srfi 241)`.

@@ -1,7 +1,7 @@
 # P3 — Files, ports, and the one door
 
 **Before this:** [P1](p1-when-things-go-wrong.md) — you know what an error
-object is; the tutorial's [chapter 25](../lisp_tutorial/25-functional-core-imperative-shell.md)
+object is; the tutorial's [chapter 25](../lisp_tutorial/26-functional-core-imperative-shell.md)
 names the architecture.
 **Time:** 25 minutes.
 **After this you can:** read and write files from Lisp, guarantee cleanup with
@@ -154,7 +154,7 @@ first line
 
 ## See also
 
-- [25 Functional core, imperative shell](../lisp_tutorial/25-functional-core-imperative-shell.md)
+- [26 Functional core, imperative shell](../lisp_tutorial/26-functional-core-imperative-shell.md)
   — the audit this chapter obeys
 - [P1 — When things go wrong](p1-when-things-go-wrong.md) — what the after-thunk
   survives

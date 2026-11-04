@@ -126,7 +126,7 @@ A few worth knowing before we meet them properly:
   family; each has a tail position that the trampoline honours.
 - **`guard`** is the condition system's catcher (below).
 - **`match`** and **`define-variant`** are the typed control flow of chapter
-  [20](20-typed-control-flow.md).
+  [21](21-typed-control-flow.md).
 
 ## Closures and lexical scope
 
@@ -186,7 +186,7 @@ a condition:
 the clauses. `with-exception-handler` and `dynamic-wind` are the lower-level
 versions; `let-values` / `call-with-values` handle multiple values; `call/cc`
 provides escape continuations. You will use `guard` in chapter
-[21](21-railway-oriented.md) to fold a *raising* computation onto a result rail.
+[22](22-railway-oriented.md) to fold a *raising* computation onto a result rail.
 
 ## The two budgets
 

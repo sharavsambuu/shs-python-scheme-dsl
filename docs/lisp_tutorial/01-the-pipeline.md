@@ -103,7 +103,7 @@ That last default is the thesis of the whole project: the language never
 learns a host word in its own source, so a project that installs (or
 vendor-copies) `shslisp/` gets a plain Scheme. The *shell* — `runtime.py` and
 `__main__.py` — is the only place a host can be wired in, by name and only at
-the caller's request. Chapter [27](27-embedding-in-python.md) shows a host of
+the caller's request. Chapter [28](28-embedding-in-python.md) shows a host of
 your own taking that place.
 
 ## A trace: what happens to `(square 5)`
@@ -170,7 +170,7 @@ has already applied the quote sugar. That is the whole trick.
 3. **Find the seam.** Open `shslisp/runtime.py` and `shslisp/__main__.py` and confirm
    they are the only two files under `shslisp/` that name a host edition. The
    language itself never does — that discipline is what makes it embeddable,
-   and chapter [27](27-embedding-in-python.md) shows the other side of the
+   and chapter [28](28-embedding-in-python.md) shows the other side of the
    seam.
 
 ## The shape you copy

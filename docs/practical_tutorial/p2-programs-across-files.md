@@ -1,7 +1,7 @@
 # P2 — Programs across files
 
 **Before this:** [P0](p0-the-repl-as-a-workbench.md); the tutorial's
-[chapter 07](../lisp_tutorial/07-modules.md) helps but is not required.
+[chapter 07](../lisp_tutorial/08-modules.md) helps but is not required.
 **Time:** 30 minutes.
 **After this you can:** split a program into files twice over — `(load ...)`
 for scripts that grow, `define-library`/`import` for code that must keep its
@@ -153,7 +153,7 @@ the inside:
 
 ## See also
 
-- [07 Modules](../lisp_tutorial/07-modules.md) — the loader's story
+- [08 Modules](../lisp_tutorial/08-modules.md) — the loader's story
 - [P5 — Shipping an extension](p5-shipping-an-extension.md) — the same
   boundary discipline, from the host side
 - The library system: `shslisp/library.py`, `shslisp/manifest.py`;

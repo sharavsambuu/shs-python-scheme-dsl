@@ -1,4 +1,4 @@
-# 22 — Functional programming: foundations
+# 23 — Functional programming: foundations
 
 > **What this chapter teaches.** The paradigm the whole language is shaped
 > around, named at last: pure functions and referential transparency, mutation
@@ -6,13 +6,13 @@
 > point-free style, and the real difference between currying and partial
 > application.
 >
-> **Before this:** 10–13 (the data-structures track). · **Time:** ~15 min.
+> **Before this:** 11–14 (the data-structures track). · **Time:** ~15 min.
 > **After this you can:** decide for any loop whether it is a `map`, a `fold`,
 > or a named `let` — and keep every decision you make replaceable.
 
 Nothing in this chapter is new machinery. That is the point: functional
 programming in this language is not a feature you import, it is the grammar you
-have been speaking since chapter [08](08-lisp-by-example.md) — `lambda`, `let`,
+have been speaking since chapter [09](09-lisp-by-example.md) — `lambda`, `let`,
 `define`, and the discipline of what you allow them to touch.
 
 ## Purity, and the substitution test
@@ -45,7 +45,7 @@ mutation belongs — see next section.
 The FP move is not "never mutate" — the prelude itself mutates (`push!` into a
 local, `hash-table-set!` in `group-by`). The move is *quarantine*: mutation
 lives inside a function, behind a parameter, or inside a closure (chapter
-[23](23-fp-design-patterns.md)), and the function still answers by value.
+[24](24-fp-design-patterns.md)), and the function still answers by value.
 
 The workhorse replacement for "mutate as I go" is the **accumulator**: carry
 the result forward as a parameter instead of writing it into a variable:
@@ -127,7 +127,7 @@ SRFI 26:
 
 The style earns its keep when the *pipeline is the idea*: `sort-by` is
 point-free at its core (`(sort xs (lambda (a b) (less (key a) (key b))))`),
-and chapter [19](19-srfi-197-chain-and-nest.md)'s `chain` is the same idea
+and chapter [20](20-srfi-197-chain-and-nest.md)'s `chain` is the same idea
 read left to right. It loses when the composition is the only thing on the
 line and the reader has to simulate it — a two-line `lambda` named after what
 it computes beats a four-stage `compose` named after nothing. The rule of
@@ -156,7 +156,7 @@ When does the difference matter? Currying shines when you will specialize
 *one argument at a time* over time (configurers, builders); `partial` shines
 when you know the leading arguments *now*. And SRFI 26's `cut` is the syntax
 for the common case of both: `(cut f x <>)` is "f with x in front, argument
-in the hole" — chapter [15](15-srfi-26-cut-and-cute.md) is its full grammar.
+in the hole" — chapter [16](16-srfi-26-cut-and-cute.md) is its full grammar.
 
 ## Recursion on more than lists
 
@@ -211,7 +211,7 @@ would be fake. `complement` is how a predicate stays a predicate —
 `flip` is the tool for a function whose arguments arrive in the wrong order
 (most often: fixing a two-argument function for `partial`). And `iterate`
 generates a sequence from a step function — the seed of chapter
-[18](18-generators.md)'s infinite generators, eager here, lazy there.
+[19](19-generators.md)'s infinite generators, eager here, lazy there.
 
 ## Try it
 
@@ -300,4 +300,4 @@ generates a sequence from a step function — the seed of chapter
 > extra accumulators or an early exit; compose when the pipeline is the idea,
 > and keep the `lambda` when only the name would save it.
 
-Next: [23 FP design patterns](23-fp-design-patterns.md).
+Next: [24 FP design patterns](24-fp-design-patterns.md).

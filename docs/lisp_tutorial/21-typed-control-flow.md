@@ -1,10 +1,10 @@
-# 20 — Typed control flow: `define-variant` and `match`
+# 21 — Typed control flow: `define-variant` and `match`
 
 > **What this chapter teaches.** How to declare a *closed set* and dispatch on it
 > so the compiler (well, the interpreter) refuses to guess when you have forgotten
 > a case. This is one of the four pillars the whole project is built on.
 >
-> **Before this:** 08. · **Time:** ~15 min.
+> **Before this:** 09. · **Time:** ~15 min.
 > **After this you can:** declare a closed set and write a `match` that refuses
 > to guess.
 >
@@ -135,7 +135,7 @@ fields, a list of fixed length, a refusal record).
 ## Where you meet this in the language
 
 - `shslisp/rope.scm` declares the `Result` variant: `(define-variant result (ok value) (err reason))`
-  (chapter [21](21-railway-oriented.md)) — two rails, and no arm that swallows a
+  (chapter [22](22-railway-oriented.md)) — two rails, and no arm that swallows a
   third kind of value by accident.
 - A host edition declares its own variants the same way, and matches *by name*
   with no wildcard, so "a new rail would fall off the end rather than be silently
@@ -199,8 +199,8 @@ grammar takes it apart:
 (variant-match (list 1 2 3) ((a b c) (+ a b c)))   ;=> 6
 ```
 
-That is why chapter [21](21-railway-oriented.md) can pattern-match `Result`
-values and chapter [24](24-bounded-contexts.md) can match event variants with
+That is why chapter [22](22-railway-oriented.md) can pattern-match `Result`
+values and chapter [25](25-bounded-contexts.md) can match event variants with
 the same syntax — one matcher, one grammar, any tagged shape.
 
 ## The raw layer under the sugar
@@ -220,7 +220,7 @@ which variant it holds:
 `tag` builds a tagged value with *no* declaration — handy for ad-hoc marks
 in tests, and worth using sparingly in a domain, precisely because
 `variant-tags` will not know it. The generic-code idiom is `(tag-of ev)`:
-chapter [24](24-bounded-contexts.md) uses it to sort a mixed event log by
+chapter [25](25-bounded-contexts.md) uses it to sort a mixed event log by
 which context produced it.
 
 ## Try it
@@ -279,7 +279,7 @@ shape
    matched. Which arm would you add to make the refusal impossible, and what
    does adding it cost you in the exhaustiveness guarantee?
 3. **Against the Python side.** Python has its own structural `match`
-   (chapter [27](27-embedding-in-python.md) crosses the languages). Write one
+   (chapter [28](28-embedding-in-python.md) crosses the languages). Write one
    Python `match` for the same shapes chapter 20's Lisp examples use, and
    compare what each refuses.
 
@@ -289,4 +289,4 @@ shape
 > not in it. A closed set plus a named refusal is how you get exhaustiveness
 > without a compiler to enforce it.
 
-Next: [21 Railway-oriented programming](21-railway-oriented.md).
+Next: [22 Railway-oriented programming](22-railway-oriented.md).

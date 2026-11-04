@@ -1,4 +1,4 @@
-# 07 — Modules: `(load …)`
+# 08 — Modules: `(load …)`
 
 > **What this chapter teaches.** `shslisp/loader.py`: how a program is split across
 > files. Three rules, and they are the whole system — resolution, load-once,
@@ -207,4 +207,4 @@ the file ends with.
 > *speaker*, evaluate each module once, and refuse a cycle by naming it. Everything
 > else — package managers, manifests, versions — is a policy layer on top.
 
-Next: [08 Lisp by example](08-lisp-by-example.md).
+Next: [09 Lisp by example](09-lisp-by-example.md).

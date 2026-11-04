@@ -43,7 +43,7 @@ def test_the_exercises_exist() -> None:
     assert keys, "docs/lisp_tutorial/exercises/ has no answer keys"
     for expected in (
         "unless-not.scm", "greeting.scm", "shapes.scm", "rename-pipeline.scm",
-        "expand-and-flatten.scm",
+        "expand-and-flatten.scm", "code-is-data.scm",
     ):
         assert expected in keys, f"the answer key {expected} is missing"
 
@@ -54,8 +54,22 @@ def test_unless_not_is_hygienic() -> None:
     assert printed.splitlines() == ["ran", "()", "99"]
 
 
+def test_code_is_data_walks_generates_and_evals() -> None:
+    """Chapter 07: a form's leaves, a generated checker as data, and eval."""
+    printed, _env = _run("code-is-data.scm")
+    assert printed.splitlines() == [
+        "(define square x * x x)",
+        "(lambda (value) (if (number? value) (list (quote ok) (quote count) value)"
+        " (list (quote no) (quote count) value)))",
+        "(ok count 3)",
+        "(no count three)",
+        "(ok name ada)",
+        "(no name 7)",
+    ]
+
+
 def test_greeting_loads_once_by_bare_name() -> None:
-    """Chapter 07: a module on the search path loads once, however often asked."""
+    """Chapter 08: a module on the search path loads once, however often asked."""
     env = make_env(install_tetris=False, search_paths=[EXERCISES], out=io.StringIO())
     env.loader.load_one("greeting")
     env.loader.load_one("greeting")
@@ -66,7 +80,7 @@ def test_greeting_loads_once_by_bare_name() -> None:
 
 
 def test_shapes_extend_and_refuse() -> None:
-    """Chapter 09: a new tag works, and a missing clause names the whole set."""
+    """Chapter 21: a new tag works, and a missing clause names the whole set."""
     printed, _env = _run("shapes.scm")
     assert "12" in printed
     assert "(circle rect triangle)" in printed
@@ -74,7 +88,7 @@ def test_shapes_extend_and_refuse() -> None:
 
 
 def test_rename_pipeline_short_circuits() -> None:
-    """Chapter 10: an early refusal skips the rest, and left identity holds."""
+    """Chapter 22: an early refusal skips the rest, and left identity holds."""
     printed, _env = _run("rename-pipeline.scm")
     assert "(ok HI!)" in printed
     assert "(err has space)" in printed

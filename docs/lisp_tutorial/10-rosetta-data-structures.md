@@ -1,15 +1,15 @@
-# 09 — Rosetta: Python's data structures in this Lisp
+# 10 — Rosetta: Python's data structures in this Lisp
 
 > **What this chapter teaches.** The map from the structures you already know —
 > `list`, `tuple`, `dict`, `set`, `class` — to the ones this language ships, and
 > the two small surprises (truthiness and equality) that catch every Python
 > programmer exactly once.
 >
-> **Before this:** 08. · **Time:** ~12 min.
+> **Before this:** 09. · **Time:** ~12 min.
 > **After this you can:** pick the right structure for a job, convert between
 > them, and predict what `#t`/`#f` and `equal?`/`eq?` will say before you run.
 
-The rest of this series (chapters [10](10-lists-and-vectors.md)–[13](13-records-variants-and-objects.md))
+The rest of this series (chapters [11](11-lists-and-vectors.md)–[14](14-records-variants-and-objects.md))
 is the structures themselves. This one is the *map*: which structure is which,
 and how to move data between them.
 
@@ -19,12 +19,12 @@ and how to move data between them.
 | --- | --- | --- |
 | `list` | the proper list `(1 2 3)` | mutation goes through `set!` on a variable, not `xs[0] = ...` |
 | `tuple` | the vector `#(1 2 3)` | *worse* than a tuple in one way: it is mutable (`vector-set!`) |
-| `dict` | hash table (mutable) or alist (persistent) | chapter [12](12-dictionaries-alists-and-hash-tables.md) is all about this choice |
+| `dict` | hash table (mutable) or alist (persistent) | chapter [13](13-dictionaries-alists-and-hash-tables.md) is all about this choice |
 | `set` | a list + the `lset` family | sets are not a type; they are operations on lists |
-| `dataclass` / `namedtuple` | `define-record-type` | chapter [13](13-records-variants-and-objects.md) |
+| `dataclass` / `namedtuple` | `define-record-type` | chapter [14](14-records-variants-and-objects.md) |
 | `Enum` / sum type | `define-variant` | a *closed* set of tagged cases; the interpreter names the ones you forget |
 | `bytes` | bytevector `#u8(1 2 3)` | with the UTF-8 bridge `string->utf8` / `utf8->string` |
-| `range`, `itertools` | the generator library | chapter [18](18-generators.md); `iota` for the common case |
+| `range`, `itertools` | the generator library | chapter [19](19-generators.md); `iota` for the common case |
 | `str` | string | immutable like Python's; `string-split`, `string-join`, `string-append` |
 
 Two structural notes the table hides:
@@ -75,7 +75,7 @@ question you mean:
 
 The working rule: reach for `equal?` unless you have a reason not to. Reach for
 `eq?` only when comparing symbols, or when identity *is* the question (records —
-chapter [13](13-records-variants-and-objects.md)).
+chapter [14](14-records-variants-and-objects.md)).
 
 ## Converting between structures
 
@@ -90,7 +90,7 @@ The conversions are all two-way pairs, and they compose:
 ```
 
 The one direction with no primitive is alist → hash table, and it is a `fold`
-away (chapter [12](12-dictionaries-alists-and-hash-tables.md) builds it).
+away (chapter [13](13-dictionaries-alists-and-hash-tables.md) builds it).
 
 ## The type Python has and you forget you need: bytevectors
 
@@ -125,7 +125,7 @@ characters it asks the `equal?` question, for everything else it asks the
 ```
 
 That `1.0` vs `1` refusal is the exact/inexact boundary doing its job —
-chapter [08](08-lisp-by-example.md)'s numeric tower keeps exact and inexact
+chapter [09](09-lisp-by-example.md)'s numeric tower keeps exact and inexact
 numbers distinct, and `eqv?` is the rung that respects it. The working rule
 expands to: `equal?` by default; `eqv?` when comparing numbers or characters
 in a set-like context (it is what `case` and `memq`'s sibling `memv` use);
@@ -224,7 +224,7 @@ hi
 ```
 
 (The hash table prints only through its alist view `((alice 30))` — a table has
-no reader syntax of its own; chapter [12](12-dictionaries-alists-and-hash-tables.md)
+no reader syntax of its own; chapter [13](13-dictionaries-alists-and-hash-tables.md)
 is about the two dictionary shapes that view connects.)
 
 ## Exercises
@@ -246,5 +246,5 @@ is about the two dictionary shapes that view connects.)
 > table*, a closed set of cases says *variant*, a named shape says
 > `define-record-type` — and let `equal?` be your default equality.
 
-Next: [10 Lists and vectors in depth](10-lists-and-vectors.md).
+Next: [11 Lists and vectors in depth](11-lists-and-vectors.md).
 

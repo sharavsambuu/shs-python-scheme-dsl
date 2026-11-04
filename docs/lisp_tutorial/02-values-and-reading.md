@@ -125,7 +125,7 @@ A `Tagged` is a *tag* plus fields, and it prints like a one-element-headed list:
 (display (tag-fields (tag 'ok 3))) ;=> (3)
 ```
 
-`define-variant` (chapter [20](20-typed-control-flow.md)) builds tagged
+`define-variant` (chapter [21](21-typed-control-flow.md)) builds tagged
 constructors for you, and `match` knows how to read the fields back out. For now
 just note that a tagged value is *list-shaped*, and that `match` accepts either
 the declared-tag spelling `(ok v)` or the explicit-quote spelling `('ok v)`.

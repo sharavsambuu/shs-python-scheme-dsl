@@ -1,12 +1,12 @@
-# 23 — FP design patterns
+# 24 — FP design patterns
 
 > **What this chapter teaches.** The patterns that fall out of chapter 22's
 > foundations once you build with them: behavior passed as data (the strategy),
 > closures as modules with private state, memoisation as a pure wrapper, lazy
 > composition over generators, and one shape — bind — that generalizes chapter
-> [21](21-railway-oriented.md)'s Result railway to any container.
+> [22](22-railway-oriented.md)'s Result railway to any container.
 >
-> **Before this:** 22; chapter [21](21-railway-oriented.md) for the Result
+> **Before this:** 23; chapter [22](22-railway-oriented.md) for the Result
 > vocabulary. · **Time:** ~15 min.
 > **After this you can:** reach for the FP answer to the classic OO pattern
 > book — and know which of the four patterns a given problem is.
@@ -29,7 +29,7 @@ two implementations, and a factory; FP gives it a parameter:
 ```
 
 The strategy is data: you can store it in an alist (chapter
-[12](12-dictionaries-alists-and-hash-tables.md)), swap it per call, test it in
+[13](13-dictionaries-alists-and-hash-tables.md)), swap it per call, test it in
 isolation, and compose it with `cut`/`compose`. The library is already built
 this way — every higher-order function you have met (`sort-by`, `group-by`,
 `filter-map`) takes its behavior as an argument. When you find yourself
@@ -38,7 +38,7 @@ you wanted.
 
 ## Closures as modules: state behind a wall of behavior
 
-Chapter [13](13-records-variants-and-objects.md) built a counter with a
+Chapter [14](14-records-variants-and-objects.md) built a counter with a
 closure. The pattern generalizes: a closure over a `let` is a module whose
 state *cannot be reached* except through the behavior it exports — chapter
 15's quarantine, taken seriously:
@@ -84,7 +84,7 @@ makes the cache legal at all — a memoised impure function is a bug factory.
 
 ## Lazy composition: pipelines that do no work until drained
 
-Chapter [18](18-generators.md)'s generators are chapter 15's composition,
+Chapter [19](19-generators.md)'s generators are chapter 15's composition,
 applied to *infinite* data: `gmap` and `gfilter` chain the way functions do,
 but nothing evaluates until a drain asks for values:
 
@@ -101,7 +101,7 @@ added.
 
 ## One shape, two containers: bind
 
-Chapter [21](21-railway-oriented.md) built error handling on one operation:
+Chapter [22](22-railway-oriented.md) built error handling on one operation:
 `result-bind` runs the continuation only on the success rail. The pattern is
 not about errors — it is about *any* container where "continue in the same
 shape" makes sense. The list is the second instance you already know:
@@ -125,7 +125,7 @@ already ships you two of them.
 ## The strategy table: behaviors in a dictionary
 
 The strategy pattern's second half is *choosing* at runtime, and chapter
-[12](12-dictionaries-alists-and-hash-tables.md)'s alist is the chooser —
+[13](13-dictionaries-alists-and-hash-tables.md)'s alist is the chooser —
 a dictionary whose values are functions:
 
 ```scheme
@@ -160,8 +160,8 @@ by value, exactly the behavior chapter 05's `hash_key` buys.
 
 ## A state machine: closure + variant + case
 
-The three modeling tools of chapters [13](13-records-variants-and-objects.md)
-and [23](23-fp-design-patterns.md) compose into the smallest honest state
+The three modeling tools of chapters [14](14-records-variants-and-objects.md)
+and [24](24-fp-design-patterns.md) compose into the smallest honest state
 machine — states as variants, transitions as `variant-match`, the machine
 itself as a closure with a message protocol:
 
@@ -304,5 +304,5 @@ red
 > bind. Every one of these is behavior as an argument — which is why they all
 > compose.
 
-Next: [24 Bounded contexts: DDD in this Lisp](24-bounded-contexts.md).
+Next: [25 Bounded contexts: DDD in this Lisp](25-bounded-contexts.md).
 

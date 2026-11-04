@@ -1,11 +1,11 @@
-# 10 — Lists and vectors in depth
+# 11 — Lists and vectors in depth
 
 > **What this chapter teaches.** The two sequence types, side by side: the
 > manipulations you would reach for with Python list comprehensions and slices,
 > the prelude's sorting and grouping, and the honest rule for when a vector
 > earns its keep.
 >
-> **Before this:** 09, and chapter [11](11-srfi-1-the-list-library.md) is a
+> **Before this:** 10, and chapter [12](12-srfi-1-the-list-library.md) is a
 > friend, not a prerequisite. · **Time:** ~15 min.
 > **After this you can:** transform, sort, group, and flatten sequences by
 > name — and know when to reach for `#(...)` instead of `(...)`.
@@ -148,7 +148,7 @@ scratch list, `list-set!` is there and it is host-speed.
 **Prefix scans** round out the slicing family: `take-while`/`drop-while`
 split at the first element that fails a predicate (their two-value cousins
 `span`/`break` from SRFI 1 answer both halves at once — chapter
-[11](11-srfi-1-the-list-library.md)):
+[12](12-srfi-1-the-list-library.md)):
 
 ```scheme
 (take-while odd? '(1 3 2 4))  ;=> (1 3)
@@ -286,4 +286,4 @@ HI
 > `group-by`. Reserve vectors for data that is written in place — and when a
 > traversal is hot, walk it with a primitive, never hand-rolled `cdr`.
 
-Next: [11 SRFI 1 — the list library](11-srfi-1-the-list-library.md).
+Next: [12 SRFI 1 — the list library](12-srfi-1-the-list-library.md).
