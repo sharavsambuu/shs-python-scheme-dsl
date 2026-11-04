@@ -437,6 +437,11 @@ def _scan_char(text: str, i: int) -> tuple[str, int]:
     if i >= len(text):
         raise LispSyntaxError("nothing follows #\\")
     first = text[i]
+    if first.isspace():
+        # ``#\`` followed by whitespace is an error (R7RS §6.6): the newline
+        # that ends an interactive line must not be swallowed as the character
+        # itself. More input cannot repair it, so the message is terminal.
+        raise LispSyntaxError("#\\ must be followed by a character or a name")
     if first.isalpha():
         j = i
         while j < len(text) and (text[j].isalnum() or text[j] == "-"):

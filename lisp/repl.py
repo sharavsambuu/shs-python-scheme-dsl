@@ -4,6 +4,11 @@ The REPL is deliberately thin. It only has to solve one problem a plain
 ``eval`` does not: knowing when a form is *finished*. It reads lines until the
 parentheses balance, then evaluates — so a ``define`` can be typed across as
 many lines as it takes, which is what makes a Lisp REPL worth having.
+
+It is also hostile-input safe: a form typed with mistakes — an unterminated
+string, a stray ``)``, a character literal the reader rejects — comes back as
+an ``error:`` line, and the loop goes on. A crash is a bug the error classes
+in :mod:`lisp.errors` exist to prevent.
 """
 from __future__ import annotations
 
@@ -11,7 +16,7 @@ import sys
 from typing import Any, Iterable, List, Optional, TextIO
 
 from .env import Environment
-from .errors import LispError
+from .errors import ContinuationJump, LispError, LispSyntaxError
 from .evaluator import evaluate
 from .printer import to_string
 from .reader import read_all, tokenize
@@ -36,14 +41,33 @@ Everything else is Lisp.  Try:
 """
 
 
-def _balanced(source: str) -> bool:
-    """True when every ``(`` has a partner — comments and strings excluded."""
+#: Reader errors that *more input* can repair — the form is still open and the
+#: REPL should ask for another line. Everything else the tokenizer raises is
+#: terminal: the buffer is handed to the reader, whose error the loop prints
+#: and survives.
+_CONTINUABLE_READ_ERRORS = ("unterminated", "nothing follows #\\")
+
+
+def _complete(source: str) -> bool:
+    """True when *source* holds whole forms the reader can accept.
+
+    Paren balance is the frame; the tokenizer's own errors refine it. An
+    unterminated string, ``|symbol|``, or block comment — or a ``#\\`` still
+    waiting for its character — keeps the form open, exactly like an
+    unbalanced ``(``. A terminal reader error (``#\\zzz``, a bad ``\\x``
+    escape) can never be repaired by more input, so the buffer is declared
+    complete and handed to the reader, whose message comes back as an
+    ``error:`` line instead of a traceback.
+    """
     depth = 0
-    for token in tokenize(source):
-        if token == "(":
-            depth += 1
-        elif token == ")":
-            depth -= 1
+    try:
+        for token in tokenize(source):
+            if token == "(":
+                depth += 1
+            elif token == ")":
+                depth -= 1
+    except LispSyntaxError as exc:
+        return not str(exc).startswith(_CONTINUABLE_READ_ERRORS)
     return depth <= 0
 
 
@@ -69,17 +93,44 @@ class Repl:
             for form in read_all(source)
         ]
 
+    def _echo(self, source: str) -> None:
+        """Evaluate every form in *source*; print each value — or the error."""
+        try:
+            for text in self.eval_source(source):
+                self.out.write(text + "\n")
+        except LispError as exc:
+            self.out.write(f"error: {exc}\n")
+        except ContinuationJump:
+            # A continuation captured in an earlier form has no call/cc left
+            # to return to; the jump ends here as an error, not a dead REPL.
+            self.out.write("error: continuation invoked outside its extent\n")
+        except KeyboardInterrupt:  # pragma: no cover - interactive only
+            self.out.write("\n")
+
+    def _drain(self, buffer: str) -> None:
+        """EOF with an unfinished form: report it instead of dropping it."""
+        if buffer.strip():
+            self._echo(buffer)
+
     def run(self, in_stream: Optional[TextIO] = None) -> int:
         in_stream = in_stream if in_stream is not None else sys.stdin
         if self.banner:
             self.out.write(BANNER + "\n")
         buffer = ""
         while True:
-            self.out.write(self.prompt if not buffer else "  ... ")
-            self.out.flush()
-            line = in_stream.readline()
+            try:
+                self.out.write(self.prompt if not buffer else "  ... ")
+                self.out.flush()
+                line = in_stream.readline()
+            except KeyboardInterrupt:  # pragma: no cover - interactive only
+                # Ctrl+C at the prompt starts a fresh form, it does not kill
+                # the session.
+                self.out.write("\n")
+                buffer = ""
+                continue
             if not line:  # EOF
                 self.out.write("\n")
+                self._drain(buffer)
                 return 0
             if not buffer:
                 stripped = line.strip()
@@ -90,17 +141,10 @@ class Repl:
                 if stripped in ("quit", "exit"):
                     return 0
             buffer += line
-            if not _balanced(buffer):
+            if not _complete(buffer):
                 continue
             source, buffer = buffer, ""
-            try:
-                for text in self.eval_source(source):
-                    self.out.write(text + "\n")
-            except LispError as exc:
-                self.out.write(f"error: {exc}\n")
-            except KeyboardInterrupt:  # pragma: no cover - interactive only
-                self.out.write("\n")
-                buffer = ""
+            self._echo(source)
 
     def _command(self, line: str) -> bool:
         """Run a ``,command``; return True to leave the REPL."""
