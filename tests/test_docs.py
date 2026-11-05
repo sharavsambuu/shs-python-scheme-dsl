@@ -23,8 +23,11 @@ What this deliberately does *not* check: whether the prose is *right*. The
 matrices are the checkable truth and the tests are the final word; this file
 only keeps the documents pointing at things that exist.
 
-Scope: ``README.md`` and ``docs/*.md``. ``docs/lisp_tutorial/`` is the tutorial
-harness's job, and its checks are stricter there (it runs the examples).
+Scope: ``README.md``, ``docs/*.md``, and ``docs/quant_stuffs/README.md``.
+``docs/lisp_tutorial/`` and ``docs/practical_tutorial/`` are their harnesses'
+job, and the checks are stricter there (they run the examples); the quant
+page's executable half is guarded by ``tests/test_quant.py``, and this file
+keeps its links, paths and citations honest.
 """
 from __future__ import annotations
 
@@ -50,8 +53,12 @@ _TEST_FILE_REF = re.compile(r"`((?:tests/)?test_[a-z0-9_]+\.py)`")
 
 
 def _pages() -> list[pathlib.Path]:
-    """The guarded pages: the README and every top-level doc."""
-    return [ROOT / "README.md"] + sorted((ROOT / "docs").glob("*.md"))
+    """The guarded pages: the README, every top-level doc, and the quant page."""
+    pages = [ROOT / "README.md"] + sorted((ROOT / "docs").glob("*.md"))
+    quant = ROOT / "docs" / "quant_stuffs" / "README.md"
+    if quant.exists():
+        pages.append(quant)
+    return pages
 
 
 @lru_cache(maxsize=1)

@@ -103,6 +103,22 @@ A conformance review of the R7RS-small surface, run from the CLI against the
   `Z` at a zero offset; `string->date` distinguishes abbreviated from long
   weekday/month names and requires `~z` to be exactly `HHMM` or `HH:MM`.
 
+- **The quant playbook lands** — `docs/quant_stuffs/README.md`: where strategy
+  rules stay in Scheme and numeric kernels stay in Python, and what the seam
+  costs. The measured table (Python 3.14.7, Apple M1 / arm64): a 1M-element
+  `f64vector-fold` with a primitive callback is ~1.1 s, with a Scheme lambda
+  ~3.8 s; a pre-parsed per-bar decision is ~12–14 µs, so one rule over 1M bars
+  is ~13 s. The step budget's real thresholds are recorded per rule shape — a
+  branch per element raises at ~900k elements, two arithmetic branches at
+  ~550k — next to the working patterns: the one-memcpy host→engine seam and
+  the zero-copy `np.frombuffer` return, index-honest crossover predicates,
+  hygienic rule macros, `(srfi 19)` session gates, `(srfi 158)` replay/live
+  streams, typed decisions with `ok`/`err` risk gates, five execution patterns,
+  the backtest-modelling checklist, and the S14 candidate list. The page's
+  claim that every Scheme snippet was evaluated against this build is
+  machine-kept by `tests/test_quant.py`: the fences run in document order and
+  every `;; =>` value is diffed against the build's answer.
+
 ## 0.2.0 — 2026-11-04
 
 The name release. One name everywhere: the import package and the PyPI

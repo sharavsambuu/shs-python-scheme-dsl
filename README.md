@@ -124,6 +124,9 @@ SRFI 197 pipeline, and Python exceptions caught as Lisp conditions via `guard`.
   the honest answer to "what is this good enough to build?" — the parity
   table, the documented gaps in three tiers, and the fitness-for-use verdict
   with the Python escape hatch spelled out.
+- **The quant playbook** — [`docs/quant_stuffs/README.md`](docs/quant_stuffs/README.md):
+  where strategy rules stay in Scheme and numeric kernels stay in Python,
+  with the measured cost of the seam and the step-budget limits.
 - **The release history** — [`CHANGELOG.md`](CHANGELOG.md): what each
   release changed, honestly.
 
