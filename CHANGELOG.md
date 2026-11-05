@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 — 2026-11-06
+
+The trading layer. `(srfi 19)`, `(srfi 158)` and `(srfi 160)` land, so a
+strategy's rules can stay in Scheme while the numeric work stays host-side
+across a buffer seam; the R7RS conformance review closes fifteen findings; and
+`docs/quant_stuffs/README.md` records what the seam costs, with
+`tests/test_quant.py` keeping its measured outputs true. One breaking change:
+`read-string` is R7RS's character reader; the datum reader is
+`read-from-string`.
 
 A conformance review of the R7RS-small surface, run from the CLI against the
 0.2.0 build — fifteen tasks, all landed. The tests that pin them are in
@@ -102,7 +110,6 @@ A conformance review of the R7RS-small surface, run from the CLI against the
   leaking a host `OverflowError`; `date->string` defaults to `~c` and prints
   `Z` at a zero offset; `string->date` distinguishes abbreviated from long
   weekday/month names and requires `~z` to be exactly `HHMM` or `HH:MM`.
-
 - **The quant playbook lands** — `docs/quant_stuffs/README.md`: where strategy
   rules stay in Scheme and numeric kernels stay in Python, and what the seam
   costs. The measured table (Python 3.14.7, Apple M1 / arm64): a 1M-element
