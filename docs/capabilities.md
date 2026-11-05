@@ -73,8 +73,9 @@ load-bearing in the shipped code.
   reals. The "no complex numbers" gap this tier used to list is closed.
 - Immutable string literals; no datum labels, so cyclic data cannot be read
   or printed.
-- No regexps, no date-time library (SRFI 19 is not ingested), no JSON or
-  networking in the core.
+- No regexps, no JSON or networking in the core. The date-time gap this tier
+  used to list is closed: `(srfi 19)` landed as S10 with the documented
+  deviations.
 
 ### Tier 3 — cheap to close at the library level
 
@@ -104,8 +105,10 @@ tools for closing it:
 
 - **String interpolation** — a small `syntax-rules` macro over
   `string-append`.
-- **SRFI 19 date-time, JSON, regexp** — thin Python-seam libraries, exactly
-  the `install_primitives` path chapter
+- **SRFI 19 date-time** — **landed as S10**, core-backed on the Python
+  stdlib with the documented deviations ([`SRFI_TASKS.md`](SRFI_TASKS.md));
+  JSON and regexp stay unscheduled thin Python-seam libraries, exactly the
+  `install_primitives` path chapter
   [28](lisp_tutorial/28-embedding-in-python.md) teaches.
 
 ## Hardening findings (2026-10-31 probe)
@@ -171,6 +174,13 @@ hatch the question assumes is not a workaround; it is the design.
   are genuinely useful for math-heavy sketches.
 - **Building your own DSL** — `syntax-rules`, `define-variant`,
   `variant-match`, hash tables, and `define-library` are the material.
+- **Systematic trading strategy layers** — the trading SRFIs (S10–S12 in
+  [`SRFI_TASKS.md`](SRFI_TASKS.md): time/date, numeric vectors, generators
+  and accumulators) plus the Python seam for pandas/numpy/MetaTrader 5. The
+  performance wall in *The walls* below sets the shape: per-bar and per-tick
+  decision logic in Scheme, bulk vectorized computation in Python — an
+  `f64vector` column is a zero-copy `numpy` view, so the two worlds share
+  the bytes.
 
 ### The walls (so they are not surprises)
 
@@ -304,6 +314,12 @@ and a matrix row in [`srfi.md`](srfi.md). The next Tier-3 item by the same
 logic — user value, no interpreter change — is **source locations** for the
 IDE, which is the first step of the numeric/IDE sequence in
 [`SRFI_TASKS.md`](SRFI_TASKS.md) and [`R7RS_TASKS.md`](R7RS_TASKS.md).
+
+**The trading track (landed 2026-11-05).** The domain queue was scheduled and
+shipped the same day: S10 `(srfi 19)` time/date, S11 `(srfi 160 base)` +
+`(srfi 160 f64)` numeric vectors, and S12, the `(srfi 158)` audit of the
+generator prelude — ledger entries in [`SRFI_TASKS.md`](SRFI_TASKS.md).
+Source locations stay the next item on the IDE track.
 
 > *(The original text, for the record: if exactly one Tier-3 item is taken
 > next, take generators / lazy sequences as a prelude library — the

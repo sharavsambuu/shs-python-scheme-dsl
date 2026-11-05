@@ -2,7 +2,7 @@
 
 > **What this chapter teaches.** The prelude's generator library: a generator
 > is an ordinary procedure of zero arguments that answers the next value, and
-> the unique `generator-end` object when the values run out. Constructors over
+> the eof-object when the values run out. Constructors over
 > lists, vectors, and ranges — including *infinite* ones; the lazy
 > combinators `gmap`, `gfilter`, `gtake`, `gdrop`; and the drains
 > `generator->list`, `generator-fold`, `generator-for-each`.
@@ -11,18 +11,25 @@
 > **After this you can:** walk data you never want to hold all at once, and
 > say precisely why the library needed no interpreter change.
 
-## The protocol: a procedure and a sentinel
+## The protocol: a procedure and the eof-object
 
 A **generator** is any procedure of zero arguments that follows one convention:
 
 - each call answers the **next value** of a sequence;
-- when the values are gone, it answers **`generator-end`** — a unique object
-  built once when the library loads, checked only with **`generator-end?`**.
+- when the values are gone, it answers **the eof-object** — the same object
+  `(eof-object)` builds and `read` answers at an empty input, checked with
+  **`eof-object?`**.
 
 That is the whole protocol. A generator is not a type — `(procedure? (generator
 1))` is `#t`, and there is nothing else to it. Exhaustion is idempotent: call
-an exhausted generator again and it answers `generator-end` again, so a
+an exhausted generator again and it answers the eof-object again, so a
 consumer cannot fall off the end by over-reading.
+
+> **History, for the record.** S9 originally used a custom `generator-end`
+> pair as the sentinel; S12 — the SRFI 158 audit — aligned the protocol on
+> the eof-object, the standard's spelling. The old object still exists and
+> every library procedure still accepts it, so pre-S12 code keeps running;
+> new code should check `eof-object?`.
 
 ## Constructors
 
@@ -69,14 +76,17 @@ The idiomatic shape for unbounded data is a drain of a *slice*:
 `(generator-fold + 0 (gtake (make-range-generator 1) 5))` is `15`, and the
 other infinitely many values were never computed.
 
-## Not an SRFI — yet
+## The SRFI 158 claim
 
-This library is prelude (S9), not an SRFI claim: `(srfi 158)` still fails
-loudly when imported, and will until its exports are audited name by name
-against SRFI 158's semantics (`docs/SRFI_TASKS.md` records the rule). The
-names here are chosen to sit comfortably with that audit — `gtake` and `gdrop`
-answer generators, exactly SRFI 158's shape — but "comfortable" is not
-"claimed".
+Since S12 this library **is** `(srfi 158)`: the export list was audited name
+by name against the final specification (the combinators, the multi-generator
+drains, the searching half, and the accumulators — `sum-accumulator` and
+friends). Two coroutine-shaped constructors, `make-coroutine-generator` and
+`make-for-each-generator`, fail loudly: suspending a body mid-computation
+needs re-entrant continuations, which this dialect deliberately does not have
+(chapter [07](07-code-is-data.md) and `docs/r7rs.md` record the
+limit). The deviations are in `docs/srfi.md`; the ledger entry is S12 in
+`docs/SRFI_TASKS.md`.
 
 ## Try it
 
@@ -89,7 +99,7 @@ answer generators, exactly SRFI 158's shape — but "comfortable" is not
 (display (generator-fold + 0 (gtake (make-range-generator 1) 5))) (newline)
 (define g (generator 'a 'b))
 (g) (g)
-(display (generator-end? (g))) (newline)
+(display (eof-object? (g))) (newline)
 ```
 
 ```text

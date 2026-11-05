@@ -79,14 +79,18 @@ def test_import_of_an_unknown_library_fails_clearly(env) -> None:
 
 
 def test_import_of_a_declared_but_missing_srfi_says_so(env) -> None:
-    # All the planned SRFIs landed with S1-S6 and import; the only stub left
-    # is the withdrawn SRFI 204, which fails loudly naming SRFI 241.
+    # S10-S12 landed with import; the only stub left is the withdrawn
+    # SRFI 204, which fails loudly naming SRFI 241.
     run(env, "(import (srfi 1))")
     run(env, "(import (srfi 26))")
     run(env, "(import (srfi 88))")
     run(env, "(import (srfi 89))")
     run(env, "(import (srfi 197))")
     run(env, "(import (srfi 241))")
+    run(env, "(import (srfi 19))")
+    run(env, "(import (srfi 158))")
+    run(env, "(import (srfi 160 base))")
+    run(env, "(import (srfi 160 f64))")
     with pytest.raises(LispError, match="SRFI 241"):
         run(env, "(import (srfi 204))")
 

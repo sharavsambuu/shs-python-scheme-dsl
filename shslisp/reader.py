@@ -108,7 +108,27 @@ _DISPATCH_INTRODUCERS = (
     "#;",
     "#!fold-case",
     "#!no-fold-case",
+    # SRFI 160's homogeneous vectors; `#u8(` stays the R7RS bytevector, so
+    # u8 is the one SRFI 160 type without a reader tag.
+    "#s8(",
+    "#u16(",
+    "#s16(",
+    "#u32(",
+    "#s32(",
+    "#u64(",
+    "#s64(",
+    "#f32(",
+    "#f64(",
+    "#c64(",
+    "#c128(",
 )
+
+#: The SRFI 160 reader tags, mapped to their typecode spelling.
+_SRFI160_TAGS = {
+    "#s8(": "s8", "#u16(": "u16", "#s16(": "s16", "#u32(": "u32",
+    "#s32(": "s32", "#u64(": "u64", "#s64(": "s64", "#f32(": "f32",
+    "#f64(": "f64", "#c64(": "c64", "#c128(": "c128",
+}
 
 
 def tokenize(text: str) -> Iterator[str]:
@@ -140,6 +160,13 @@ def tokenize(text: str) -> Iterator[str]:
         if text.startswith("#u8(", i):
             yield "#u8("
             i += 4
+            continue
+        matched_tag = next(
+            (tag for tag in _SRFI160_TAGS if text.startswith(tag, i)), None
+        )
+        if matched_tag:
+            yield matched_tag
+            i += len(matched_tag)
             continue
         if text.startswith("#(", i):
             yield "#("
@@ -189,8 +216,13 @@ def tokenize(text: str) -> Iterator[str]:
             # left here can only be a proper prefix. The old behaviour stopped
             # ``read`` after one character, truncating any stream that began
             # with ``#;``, ``#|``, ``#(``, ``#u8(``, ``#\`` or ``#!``.
+            # ``#f`` and ``#t`` are themselves complete data — ``#f`` is a
+            # proper prefix of the SRFI 160 ``#f32(``/``#f64(`` tags, but the
+            # boolean wins: a trailing ``#f`` is false, never a wait.
             tail = text[i:]
-            if any(name.startswith(tail) for name in _DISPATCH_INTRODUCERS):
+            if tail not in ("#t", "#f") and any(
+                name.startswith(tail) for name in _DISPATCH_INTRODUCERS
+            ):
                 raise LispSyntaxError("unexpected end of input")
 
         # An atom: run until a delimiter.
@@ -659,6 +691,8 @@ class Reader:
             return self._read_vector()
         if token == "#u8(":
             return self._read_bytevector()
+        if token in _SRFI160_TAGS:
+            return self._read_homogeneous_vector(token)
         if token == ")":
             raise LispSyntaxError("unexpected )")
         if token == ")":
@@ -704,6 +738,43 @@ class Reader:
                 raise LispSyntaxError(f"bytevector: {value} is outside 0..255")
             items.append(value)
         return ByteVector(items)
+
+    def _read_homogeneous_vector(self, tag: str):
+        """The SRFI 160 external representation: ``#f64(1.0 2.0)``.
+
+        Elements are read as ordinary forms and validated against the type's
+        domain right here — the spec makes an invalid element an error, and
+        the reader is where a literal can be judged.
+        """
+        from .srfi160 import is_valid_element
+
+        typecode = _SRFI160_TAGS[tag]
+        items = []
+        while True:
+            self._skip_noise()
+            if self.at_end():
+                raise LispSyntaxError("missing )")
+            if self.tokens[self.pos] == ")":
+                self.pos += 1
+                break
+            value = self.read_form()
+            if not is_valid_element(typecode, value):
+                raise LispSyntaxError(
+                    f"{typecode}vector: {value!r} is not a valid {typecode} element"
+                )
+            items.append(value)
+        from .types import Srfi160Vector
+        from array import array
+
+        from .srfi160 import _TYPE_CODES, _COMPLEX_TYPES
+
+        if typecode in _COMPLEX_TYPES:
+            flat: list = []
+            for value in items:
+                number = complex(value)
+                flat.extend((number.real, number.imag))
+            return Srfi160Vector(typecode, array(_TYPE_CODES[typecode], flat))
+        return Srfi160Vector(typecode, array(_TYPE_CODES[typecode], items))
 
     def _read_list(self):
         items = []

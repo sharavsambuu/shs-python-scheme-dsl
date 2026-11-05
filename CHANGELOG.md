@@ -46,6 +46,26 @@ A conformance review of the R7RS-small surface, run from the CLI against the
 - A `#!fold-case` / `#!no-fold-case` directive read from a *port* now applies
   to the datum that follows it and to later `read`s on the same port, as it
   already did within a file.
+- The SRFI ledger schedules the trading layer — `(srfi 19)` time and date,
+  `(srfi 160)` numeric vectors, and the `(srfi 158)` audit-and-complete of
+  the generator prelude (S10–S12 in `docs/SRFI_TASKS.md`). Documentation
+  only: importing any of them still fails loudly until a library lands.
+- **The trading layer lands: S10, S11, S12.** `(srfi 19)` time and date —
+  core-backed Python primitives with the documented deviations (no TAI, no
+  leap seconds, integer zone offsets, a `date->string`/`string->date`
+  directive subset). `(srfi 160 base)` for all twelve homogeneous numeric
+  vector types and `(srfi 160 f64)` with the full SRFI-133-shaped operation
+  set — the payload is an `array.array`, so `numpy.frombuffer` is the
+  zero-copy bridge, and the reader/printer round-trip `#f64(...)`-style
+  literals. `(srfi 158)` generators and accumulators: the generator prelude
+  is audited against the final SRFI 158 export list — the eof-object
+  exhaustion protocol (the S9 `generator-end` sentinel is still accepted),
+  the full combinator set, the multi-generator drains, the searching half,
+  and the accumulators; `make-coroutine-generator`/`make-for-each-generator`
+  fail loudly (they need re-entrant continuations). All three ship in both
+  profiles, pre-imported by the default DSL profile, with the `srfi-19`/
+  `srfi-158`/`srfi-160` feature identifiers. Tests: `tests/test_srfi19.py`,
+  `tests/test_srfi160.py`, and the grown `tests/test_generators.py`.
 
 ## 0.2.0 — 2026-11-04
 

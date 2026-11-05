@@ -52,6 +52,9 @@ from .types import (
     Primitive,
     Record,
     RecordType,
+    Srfi160Vector,
+    Srfi19Date,
+    Srfi19Time,
     Symbol,
     SyntaxRules,
     Tagged,
@@ -1988,6 +1991,14 @@ def equal(a: Any, b: Any) -> bool:
         if not (isinstance(a, ByteVector) and isinstance(b, ByteVector)):
             return False
         return a.data == b.data
+    if isinstance(a, Srfi160Vector) or isinstance(b, Srfi160Vector):
+        if not (isinstance(a, Srfi160Vector) and isinstance(b, Srfi160Vector)):
+            return False
+        return a.typecode == b.typecode and a.data.tobytes() == b.data.tobytes()
+    if isinstance(a, (Srfi19Time, Srfi19Date)) or isinstance(b, (Srfi19Time, Srfi19Date)):
+        # SRFI 19's value types are distinct from everything else; equality is
+        # field-wise (the classes define it), and a time never equals a date.
+        return type(a) is type(b) and a == b
     if isinstance(a, Tagged) or isinstance(b, Tagged):
         if not (isinstance(a, Tagged) and isinstance(b, Tagged)):
             return False

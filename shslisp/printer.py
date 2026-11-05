@@ -28,6 +28,9 @@ from .types import (
     Port,
     Record,
     RecordType,
+    Srfi160Vector,
+    Srfi19Date,
+    Srfi19Time,
     Symbol,
     SyntaxRules,
     Tagged,
@@ -71,6 +74,27 @@ def to_string(value: Any, write: bool = False) -> str:
         return "#(" + " ".join(to_string(item, write) for item in value.items) + ")"
     if isinstance(value, ByteVector):
         return "#u8(" + " ".join(str(byte) for byte in value.data) + ")"
+    if isinstance(value, Srfi160Vector):
+        # The SRFI 160 external representation — `#f64(1.0 2.0)` — which the
+        # reader reads back. Elements go through the write formatter, so
+        # inexact specials (`+inf.0`) and complex spellings round-trip too.
+        from .srfi160 import elements
+
+        return (
+            f"#{value.typecode}("
+            + " ".join(to_string(item, write=True) for item in elements(value))
+            + ")"
+        )
+    if isinstance(value, Srfi19Time):
+        # An opaque spelling: a time's epoch is type-dependent, so there is
+        # nothing a reader could reconstruct without a clock discussion.
+        return f"#<time {value.type} {value.second} {value.nanosecond}>"
+    if isinstance(value, Srfi19Date):
+        # The ~4 ISO spelling inside an unreadable envelope: string->date can
+        # parse the text, but the reader has no template to hand it.
+        from .srfi19 import format_date
+
+        return f"#<date {format_date(value, '~4')}>"
     if isinstance(value, Tagged):
         # A tagged value prints as its constructor call: ``(define-variant
         # result (ok value) ...)`` makes ``(ok 3)``. It reads back as a *list*

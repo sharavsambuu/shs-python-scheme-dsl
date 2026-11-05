@@ -24,10 +24,17 @@ all pre-imported by the default profile:
 | SRFI 89 | Optional and named parameters | `define*` / `lambda*` with optional positional and keyword parameters |
 | SRFI 197 | Pipeline operators | `chain`, `chain-and`, `chain-when`, `chain-lambda`, `nest` |
 | SRFI 241 | Pattern matching | `match` with quasiquote patterns, guards, ellipsis, catamorphism |
+| SRFI 19 | Time and date | `time-utc`/`date`, duration arithmetic, Julian day, `date->string`/`string->date` |
+| SRFI 158 | Generators and accumulators | the full combinator set, multi-generator drains, and the accumulator half |
+| SRFI 160 | Numeric vectors | `f64vector` and its cousins over the buffer protocol — the pandas/numpy bridge, `#f64(...)` literals |
 
 > **Note on SRFI 204.** SRFI 204 (the Wright–Cartwright–Shinn matcher) is
 > *withdrawn* and is deliberately not implemented — `(srfi 204)` fails with a
 > pointer to `(srfi 241)`, which is the final matcher SRFI.
+
+The three trading-layer SRFIs (19, 158, 160) landed as S10–S12 in
+[`docs/SRFI_TASKS.md`](docs/SRFI_TASKS.md), each with its documented
+deviations in [`docs/srfi.md`](docs/srfi.md).
 
 ## Install
 

@@ -1,20 +1,23 @@
-"""The generator library — lazy sequences as ordinary closures (S9).
+"""The generator library — generators and accumulators (S9 + S12).
 
 ``shslisp/generators.scm`` is prelude: a generator is a procedure of zero
-arguments answering the next value, and the unique ``generator-end`` object at
-exhaustion. No evaluator change, no continuations — ``set!`` and a closure are
-the whole mechanism. What is pinned here:
+arguments answering the next value, and the **eof-object** at exhaustion —
+SRFI 158's protocol, since S12 (S9 originally used a custom ``generator-end``
+pair; the object still exists and the library still accepts it, so pre-S12
+code keeps running). No evaluator change, no continuations — ``set!`` and a
+closure are the whole mechanism. What is pinned here:
 
-* **the protocol** — exhaustion is idempotent, the end object is unique
-  (``eq?``) and unforgeable-by-accident, and a generator is a plain procedure;
-* **laziness** — infinite generators (range, cycle) compose with ``gtake``/
-  ``gfilter``/``gmap`` and never build an infinite structure;
-* **the draining discipline** — ``generator->list``/``fold``/``for-each`` and
-  the multi-generator stop-at-shortest rule, matching SRFI 1's ``map``.
+* **the protocol** — exhaustion is idempotent and answered by the core's
+  eof-object; the deprecated sentinel is still accepted by every consumer;
+* **laziness** — infinite generators (range, cycle, circular) compose with
+  ``gtake``/``gfilter``/``gmap`` and never build an infinite structure;
+* **the SRFI 158 surface** — the combinators, the multi-generator drains,
+  the searching half, and the accumulators;
+* **the loud deviations** — ``make-coroutine-generator`` and
+  ``make-for-each-generator`` need re-entrant continuations and fail loudly.
 
-The library is *not* an SRFI claim: ``(srfi 158)`` still fails loudly
-(``tests/test_library.py``). ``gtake``/``gdrop`` answer generators, so they
-compose; ``generator->list`` is the drain.
+The plan this implements is S12 in ``docs/SRFI_TASKS.md``; the matrix row is
+in ``docs/srfi.md``.
 """
 from __future__ import annotations
 
@@ -48,7 +51,7 @@ def dsl():
 
 
 def test_the_end_object_is_unique_and_unforgeable(ev) -> None:
-    # `generator-end?` is the only check; a lookalike pair is not it.
+    # `generator-end?` still answers its own object; a lookalike pair is not it.
     assert ev("(generator-end? generator-end)") is True
     assert ev("(eq? generator-end (list 'generator-end))") is False
     assert ev("(generator-end? (list 'generator-end))") is False
@@ -56,14 +59,28 @@ def test_the_end_object_is_unique_and_unforgeable(ev) -> None:
     assert ev("(generator-end? #f)") is False
 
 
-def test_exhaustion_is_idempotent(ev) -> None:
-    # Calling an exhausted generator again answers the end object again —
+def test_exhaustion_is_the_eof_object_and_is_idempotent(ev) -> None:
+    # S12's protocol: the core's eof-object, exactly as `read` signals an
+    # empty input. Calling an exhausted generator again answers it again —
     # a consumer cannot "fall off" by over-reading.
     ev("(define g (generator 1 2))")
     assert ev("(g)") == 1
     assert ev("(g)") == 2
-    assert ev("(generator-end? (g))") is True
-    assert ev("(generator-end? (g))") is True
+    assert ev("(eof-object? (g))") is True
+    assert ev("(eof-object? (g))") is True
+
+
+def test_the_deprecated_sentinel_is_still_accepted_by_the_drains(ev) -> None:
+    # A pre-S12 generator that answers `generator-end` keeps working: every
+    # consumer accepts both exhaustion markers.
+    ev(
+        "(define old (let ((vals '(7 8)))"
+        "  (lambda () (if (null? vals) generator-end"
+        "               (let ((v (car vals))) (set! vals (cdr vals)) v)))))"
+    )
+    assert ev("(generator->list old)") == [7, 8]
+    # ...and the old sentinel is still what *it* answers on exhaustion:
+    assert ev("(generator-end? (old))") is True
 
 
 def test_a_generator_is_an_ordinary_procedure(ev) -> None:
@@ -227,8 +244,197 @@ def test_the_library_ships_in_both_profiles(ev, dsl) -> None:
     ) == [1, 3, 5]
 
 
-def test_srfi_158_is_still_not_a_claim(env) -> None:
-    # S9 is a prelude library, not an SRFI: importing `(srfi 158)` fails
-    # loudly until its semantics are audited name by name.
-    with pytest.raises(LispError):
-        evaluate_program(read_all("(import (srfi 158))"), env)
+def test_srfi_158_is_now_the_claim(env, ev) -> None:
+    # S12: the audit landed, `(srfi 158)` imports and binds the audited
+    # surface over the same prelude bindings.
+    evaluate_program(read_all("(import (srfi 158))"), env)
+    assert ev("(generator->list (gtake (make-range-generator 1) 3))") == [1, 2, 3]
+
+
+# --------------------------------------------------------------------------- #
+#  The S12 additions: constructors, combinators, searching, accumulators      #
+# --------------------------------------------------------------------------- #
+
+
+def test_the_srfi_158_constructors(ev) -> None:
+    assert ev("(generator->list (make-iota-generator 4))") == [0, 1, 2, 3]
+    assert ev("(generator->list (make-iota-generator 3 10 5))") == [10, 15, 20]
+    assert ev("(generator->list (gtake (circular-generator 'x 'y) 4))") == [
+        "x", "y", "x", "y",
+    ]
+    # Characters answer as characters — compare through equal? in Lisp:
+    assert ev(
+        "(equal? (generator->list (string->generator \"ab\")) (string->list \"ab\"))"
+    ) is True
+    assert ev("(generator->list (bytevector->generator (bytevector 9 8)))") == [9, 8]
+    assert ev(
+        "(generator->list (reverse-vector->generator (vector 1 2 3)))"
+    ) == [3, 2, 1]
+    assert ev(
+        "(generator->list (make-unfold-generator (lambda (s) (> s 3))"
+        "  (lambda (s) (* s s)) (lambda (s) (+ s 1)) 1))"
+    ) == [1, 4, 9]
+
+
+def test_the_two_coroutine_constructors_fail_loudly(ev) -> None:
+    # They need re-entrant continuations, which this dialect deliberately
+    # does not have (docs/r7rs.md); the failure names the limitation.
+    with pytest.raises(LispError, match="re-entrant continuations"):
+        ev("(make-coroutine-generator (lambda (yield) (yield 1)))")
+    with pytest.raises(LispError, match="re-entrant continuations"):
+        ev("(make-for-each-generator (lambda (proc obj) obj) '())")
+
+
+def test_gcons_star_and_gappend(ev) -> None:
+    assert ev("(generator->list (gcons* 1 2 (generator 3 4)))") == [1, 2, 3, 4]
+    assert ev("(generator->list (gappend (generator 1) (generator) (generator 2)))") == [1, 2]
+    assert ev("(generator->list (gappend))") is NIL
+
+
+def test_gflatten_ggroup_and_gstate_filter(ev) -> None:
+    assert ev("(generator->list (gflatten (generator '(1 2) '(3) '())))") == [1, 2, 3]
+    assert ev("(generator->list (ggroup (generator 1 2 3 4 5) 2))") == [
+        [1, 2], [3, 4], [5],
+    ]
+    assert ev("(generator->list (ggroup (generator 1 2 3 4 5) 2 0))") == [
+        [1, 2], [3, 4], [5, 0],
+    ]
+    # A stateful filter: keep the value while the running sum stays below 3.
+    assert ev(
+        "(generator->list (gstate-filter"
+        "  (lambda (v s) (values (< (+ v s) 3) (+ v s))) 0 (generator 1 1 1 1 1)))"
+    ) == [1, 1]
+
+
+def test_gremove_gdelete_and_gdelete_neighbor_dups(ev) -> None:
+    assert ev("(generator->list (gremove odd? (generator 1 2 3 4)))") == [2, 4]
+    assert ev("(generator->list (gdelete 2 (generator 1 2 3 2 4)))") == [1, 3, 4]
+    assert ev("(generator->list (gdelete 2 (generator 1 2 3 2 4) =))") == [1, 3, 4]
+    assert ev(
+        "(generator->list (gdelete-neighbor-dups (generator 1 1 2 2 2 3 1)))"
+    ) == [1, 2, 3, 1]
+    assert ev(
+        "(generator->list (gdelete-neighbor-dups (generator \"a\" \"A\" \"b\") string-ci=?))"
+    ) == ["a", "b"]
+
+
+def test_gindex_gselect_and_gcombine(ev) -> None:
+    assert ev(
+        "(generator->list (gindex (generator 'a 'b 'c 'd) (generator 0 2)))"
+    ) == ["a", "c"]
+    assert ev(
+        "(generator->list (gselect (generator 1 2 3 4) (generator #f #t #f #t)))"
+    ) == [2, 4]
+    # gcombine folds with a seed, threading two values through each step:
+    assert ev(
+        "(generator->list (gcombine (lambda (v s) (values (+ v s) (+ v s)))"
+        "  0 (generator 1 2 3)))"
+    ) == [1, 3, 6]
+
+
+def test_gmerge_merges_sorted_generators(ev) -> None:
+    assert ev(
+        "(generator->list (gmerge < (generator 1 3 5) (generator 2 3 6)))"
+    ) == [1, 2, 3, 3, 5, 6]
+    assert ev(
+        "(generator->list (gmerge < (generator 5 6) (generator 1 2) (generator 3)))"
+    ) == [1, 2, 3, 5, 6]
+
+
+def test_gtake_padding_and_gdrop_while(ev) -> None:
+    assert ev("(generator->list (gtake (generator 1) 3 'pad))") == [1, "pad", "pad"]
+    assert ev("(generator->list (gtake (generator 1 2) 5))") == [1, 2]
+    assert ev(
+        "(generator->list (gdrop-while (lambda (x) (< x 3)) (generator 1 2 3 1 2)))"
+    ) == [3, 1, 2]
+    assert ev(
+        "(generator->list (gdrop-while (lambda (x) #t) (generator 1 2)))"
+    ) is NIL
+
+
+def test_the_multi_generator_drains(ev) -> None:
+    # One-generator fold keeps its shape; several generators fold left to
+    # right and stop at the shortest.
+    assert ev("(generator-fold + 0 (generator 1 2 3))") == 6
+    assert ev("(generator-fold + 0 (generator 1 2) (generator 10 20 30))") == 33
+    assert ev("(generator-map->list + (generator 1 2 3) (generator 10 20))") == [11, 22]
+    ev("(define seen '())")
+    ev("(generator-for-each (lambda (a b) (set! seen (cons (list a b) seen)))"
+    "  (generator 1 2) (generator 10 20))")
+    assert ev("(reverse seen)") == [[1, 10], [2, 20]]
+    # generator->vector! answers how many values it wrote:
+    ev("(define sink (make-vector 5 'x))")
+    assert ev("(generator->vector! sink 1 (generator 7 8 9))") == 3
+    assert ev("(vector->list sink)") == ["x", 7, 8, 9, "x"]
+    assert ev("(generator->string (string->generator \"abc\") 2)") == "ab"
+
+
+def test_the_searching_half(ev, env) -> None:
+    assert ev("(generator-find even? (generator 1 3 4 5))") == 4
+    assert ev("(generator-find even? (generator 1 3))") is False
+    assert ev("(generator-count odd? (generator 1 2 3 4 5))") == 3
+    assert ev("(generator-any even? (generator 1 3 4))") is True
+    assert ev("(generator-any even? (generator 1 3))") is False
+    assert ev("(generator-every odd? (generator 1 3))") is True
+    assert ev("(generator-every odd? (generator 1 4))") is False
+    assert ev("(generator-every odd? (generator))") is True
+    # generator-unfold drives the user's unfold, SRFI 1-shaped — the unfold
+    # arrives as an argument, so the library bakes in no dependency:
+    evaluate_program(read_all("(import (srfi 1))"), env)
+    assert ev("(generator-unfold (make-range-generator 1 5) unfold)") == [1, 2, 3, 4]
+
+
+def test_the_accumulators(ev) -> None:
+    assert ev(
+        "(let ((acc (count-accumulator)))"
+        "  (for-each acc '(1 2 3)) (acc (eof-object)))"
+    ) == 3
+    assert ev(
+        "(let ((acc (list-accumulator))) (acc 1) (acc 2) (acc (eof-object)))"
+    ) == [1, 2]
+    assert ev(
+        "(let ((acc (reverse-list-accumulator))) (acc 1) (acc 2) (acc (eof-object)))"
+    ) == [2, 1]
+    assert ev(
+        "(vector->list (let ((acc (vector-accumulator)))"
+        "  (acc 1) (acc 2) (acc (eof-object))))"
+    ) == [1, 2]
+    assert ev(
+        "(vector->list (let ((acc (reverse-vector-accumulator)))"
+        "  (acc 1) (acc 2) (acc (eof-object))))"
+    ) == [2, 1]
+    assert ev(
+        "(let ((acc (string-accumulator))) (acc #\\a) (acc #\\b) (acc (eof-object)))"
+    ) == "ab"
+    ev("(define bv (let ((acc (bytevector-accumulator))) (acc 1) (acc 2) (acc (eof-object))))")
+    assert ev("(list (bytevector-u8-ref bv 0) (bytevector-u8-ref bv 1))") == [1, 2]
+    assert ev(
+        "(let ((acc (sum-accumulator))) (acc 1) (acc 2) (acc 10) (acc (eof-object)))"
+    ) == 13
+    assert ev(
+        "(let ((acc (product-accumulator))) (acc 2) (acc 3) (acc (eof-object)))"
+    ) == 6
+    # The ! accumulators fill a pre-made structure from an offset:
+    ev("(define v (make-vector 5 'x))")
+    ev("(define sink (vector-accumulator! v 1))")
+    ev("(sink 'a) (sink 'b)")
+    assert ev("(vector->list v)") == ["x", "a", "b", "x", "x"]
+    assert ev("(eq? (sink (eof-object)) v)") is True
+
+
+def test_make_accumulator_builds_a_custom_one(ev) -> None:
+    assert ev(
+        "(let ((acc (make-accumulator (lambda (obj state) (+ obj state)) 0 (lambda (x) x))))"
+        "  (acc 5) (acc 6) (acc (eof-object)))"
+    ) == 11
+
+
+def test_srfi_158_ships_in_both_profiles(env, dsl) -> None:
+    assert evaluate_program(
+        read_all("(import (srfi 158)) (generator->list (gtake (make-range-generator 1) 2))"),
+        env,
+    ) == [1, 2]
+    assert evaluate_program(
+        read_all("(let ((acc (count-accumulator))) (acc 1) (acc 2) (acc (eof-object)))"),
+        dsl,
+    ) == 2

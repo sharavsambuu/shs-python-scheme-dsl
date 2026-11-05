@@ -394,6 +394,140 @@ class ByteVector:
 
 
 # --------------------------------------------------------------------------- #
+#  SRFI 160 homogeneous numeric vectors (S11)                                  #
+# --------------------------------------------------------------------------- #
+
+class Srfi160Vector:
+    """A homogeneous numeric vector: ``#f64(1.0 2.0)`` and its eleven cousins.
+
+    ``typecode`` is the SRFI 160 spelling (``u8`` ... ``s64``, ``f32``/``f64``,
+    ``c64``/``c128``); ``data`` is a Python ``array.array`` — the buffer
+    protocol is the numpy bridge, so a ``float64`` column wraps an
+    ``f64vector``'s payload with zero copies. The complex types store their
+    parts interleaved, real first, so ``data`` always stays a flat number
+    buffer.
+
+    Equality (and therefore ``equal?`` and hash-table keying) is by typecode
+    and payload bytes — the elementwise comparison SRFI 160's ``@vector=``
+    spells with ``=``.
+    """
+
+    __slots__ = ("typecode", "data")
+
+    def __init__(self, typecode: str, data: Any) -> None:
+        self.typecode: str = typecode
+        self.data: Any = data  # an array.array of numbers
+
+    def __len__(self) -> int:
+        if self.typecode in ("c64", "c128"):
+            return len(self.data) // 2  # real/imag interleaved
+        return len(self.data)
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Srfi160Vector):
+            return NotImplemented
+        return (
+            self.typecode == other.typecode
+            and self.data.tobytes() == other.data.tobytes()
+        )
+
+    def __hash__(self) -> int:
+        return hash(("@vector", self.typecode, self.data.tobytes()))
+
+    def __repr__(self) -> str:  # pragma: no cover - the printer is used instead
+        return f"#<{self.typecode}vector of {len(self)}>"
+
+
+# --------------------------------------------------------------------------- #
+#  SRFI 19 time and date (S10)                                                 #
+# --------------------------------------------------------------------------- #
+
+class Srfi19Time:
+    """A point in time or a duration: type spelling, whole seconds, nanoseconds.
+
+    ``second`` counts from the epoch (UTC) for ``time-utc``, and from an
+    arbitrary origin for the monotonic and process clocks — exactly SRFI 19's
+    shape. ``nanosecond`` is always the normalized 0..999,999,999 fraction;
+    the sign of a negative duration lives on ``second``. Mutable: SRFI 19's
+    ``set-time-*!`` procedures and the ``!`` arithmetic mutate in place.
+    """
+
+    __slots__ = ("type", "second", "nanosecond")
+
+    def __init__(self, type_name: str, second: int, nanosecond: int) -> None:
+        self.type: str = type_name
+        self.second: int = second
+        self.nanosecond: int = nanosecond
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Srfi19Time):
+            return NotImplemented
+        return (
+            self.type == other.type
+            and self.second == other.second
+            and self.nanosecond == other.nanosecond
+        )
+
+    def __hash__(self) -> int:
+        return hash(("srfi19-time", self.type, self.second, self.nanosecond))
+
+    def __repr__(self) -> str:  # pragma: no cover - the printer is used instead
+        return f"#<time {self.type} {self.second} {self.nanosecond}>"
+
+
+class Srfi19Date:
+    """A Gregorian date with a zone offset — immutable, per SRFI 19.
+
+    ``zone_offset`` is SRFI 19's integer seconds **east** of UTC. There is no
+    zone *name* here: SRFI 19's locale machinery is out of scope by design
+    (``docs/srfi.md`` records the deviation), and a strategy that needs a
+    named zone publishes it through the host seam.
+    """
+
+    __slots__ = (
+        "nanosecond", "second", "minute", "hour",
+        "day", "month", "year", "zone_offset",
+    )
+
+    def __init__(
+        self,
+        nanosecond: int,
+        second: int,
+        minute: int,
+        hour: int,
+        day: int,
+        month: int,
+        year: int,
+        zone_offset: int,
+    ) -> None:
+        self.nanosecond: int = nanosecond
+        self.second: int = second
+        self.minute: int = minute
+        self.hour: int = hour
+        self.day: int = day
+        self.month: int = month
+        self.year: int = year
+        self.zone_offset: int = zone_offset
+
+    def _fields(self) -> tuple:
+        return (
+            self.nanosecond, self.second, self.minute, self.hour,
+            self.day, self.month, self.year, self.zone_offset,
+        )
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Srfi19Date):
+            return NotImplemented
+        return self._fields() == other._fields()
+
+    def __hash__(self) -> int:
+        return hash(("srfi19-date", self._fields()))
+
+    def __repr__(self) -> str:  # pragma: no cover - the printer is used instead
+        return f"#<date {self.year}-{self.month:02d}-{self.day:02d} ...>"
+
+
+# --------------------------------------------------------------------------- #
 #  Tagged values — the carrier typed control flow dispatches on               #
 # --------------------------------------------------------------------------- #
 
@@ -731,6 +865,9 @@ class Complex:
 #  Hash tables                                                                 #
 # --------------------------------------------------------------------------- #
 
+from .types import NIL, Srfi19Date, Srfi19Time, Srfi160Vector, intern
+
+
 def hash_key(value: Any) -> Any:
     """A hashable token for *value* under ``equal?`` semantics.
 
@@ -765,6 +902,12 @@ def hash_key(value: Any) -> Any:
         return ("vec", tuple(hash_key(x) for x in value.items))
     if isinstance(value, ByteVector):
         return ("u8", bytes(value.data))
+    if isinstance(value, Srfi160Vector):
+        return ("@vector", value.typecode, value.data.tobytes())
+    if isinstance(value, Srfi19Time):
+        return ("srfi19-time", value.type, value.second, value.nanosecond)
+    if isinstance(value, Srfi19Date):
+        return ("srfi19-date", value._fields())
     if isinstance(value, Tagged):
         return ("tag", str(value.tag), tuple(hash_key(x) for x in value.fields))
     if isinstance(value, HashTable):

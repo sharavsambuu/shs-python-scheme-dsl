@@ -641,6 +641,30 @@ def install(env: Environment) -> None:
         builder=lambda: env,
         note="Pattern matcher.",
     )
+    registry[("srfi", "19")] = Library(
+        ("srfi", "19"),
+        exports=frozenset(_SRFI19_EXPORTS),
+        builder=lambda: env,
+        note="Time and date (S10): core-backed Python primitives.",
+    )
+    registry[("srfi", "158")] = Library(
+        ("srfi", "158"),
+        exports=frozenset(_SRFI158_EXPORTS),
+        builder=lambda: env,
+        note="Generators and accumulators (S12): the prelude's audited surface.",
+    )
+    registry[("srfi", "160", "base")] = Library(
+        ("srfi", "160", "base"),
+        exports=frozenset(_SRFI160_BASE_EXPORTS),
+        builder=lambda: env,
+        note="Homogeneous numeric vectors (S11): the SRFI-4 eight + @?, x12 types.",
+    )
+    registry[("srfi", "160", "f64")] = Library(
+        ("srfi", "160", "f64"),
+        exports=frozenset(_SRFI160_F64_EXPORTS),
+        builder=lambda: env,
+        note="The f64vector operation set (S11), the numpy bridge.",
+    )
 
 
 #: A library implemented in Lisp: a private scope whose parent is the owning
@@ -691,4 +715,104 @@ _SRFI1_EXPORTS = (
     " set-car! set-cdr! sixth span span-right span! split-at split-at! take take!"
     " take-right take-while take-while-right take-while! tenth third unfold"
     " unfold-right unzip1 unzip2 unzip3 unzip4 unzip5 xcons zip"
+).split()
+
+#: The (srfi 19) surface (S10) — the workhorse subset the ledger scoped, each
+#: name a core-bound primitive in shslisp/srfi19.py. Documented deviations:
+#: no TAI/thread clocks (the constants exist, the clocks refuse), no leap
+#: seconds, no monotonic<->UTC conversions, no zone names, no date-zone-name/
+#: date-dst? (the reference surface does not require them).
+_SRFI19_EXPORTS = (
+    "time-tai time-utc time-monotonic time-thread time-process time-duration"
+    " current-time time-resolution"
+    " make-time time? time-type time-second time-nanosecond"
+    " set-time-type! set-time-second! set-time-nanosecond! copy-time"
+    " time=? time<? time<=? time>? time>=?"
+    " time-difference time-difference! add-duration add-duration!"
+    " subtract-duration subtract-duration!"
+    " current-date make-date date? date-nanosecond date-second date-minute"
+    " date-hour date-day date-month date-year date-zone-offset"
+    " date-year-day date-week-day date-week-number"
+    " current-julian-day current-modified-julian-day"
+    " date->julian-day date->modified-julian-day date->time-utc"
+    " julian-day->date julian-day->time-utc"
+    " modified-julian-day->date modified-julian-day->time-utc"
+    " time-utc->date time-utc->julian-day time-utc->modified-julian-day"
+    " date->string string->date"
+).split()
+
+#: The (srfi 158) surface (S12) — the final SRFI 158 export list, audited
+#: name by name. The names are bound by the prelude (shslisp/generators.scm);
+#: make-coroutine-generator/make-for-each-generator are bound but fail loudly
+#: (they need re-entrant continuations). `max`/`min` accumulators are *not*
+#: in the final SRFI's export list, so they are not claimed either.
+_SRFI158_EXPORTS = (
+    "generator circular-generator make-iota-generator make-range-generator"
+    " make-coroutine-generator list->generator vector->generator"
+    " reverse-vector->generator string->generator bytevector->generator"
+    " make-for-each-generator make-unfold-generator"
+    " gcons* gappend gcombine gfilter gremove gtake gdrop gtake-while"
+    " gdrop-while gflatten ggroup gmerge gmap gstate-filter gdelete"
+    " gdelete-neighbor-dups gindex gselect"
+    " generator->list generator->reverse-list generator->vector"
+    " generator->vector! generator->string"
+    " generator-fold generator-map->list generator-for-each generator-find"
+    " generator-count generator-any generator-every generator-unfold"
+    " make-accumulator count-accumulator list-accumulator"
+    " reverse-list-accumulator vector-accumulator reverse-vector-accumulator"
+    " vector-accumulator! string-accumulator bytevector-accumulator"
+    " bytevector-accumulator! sum-accumulator product-accumulator"
+).split()
+
+#: (srfi 160 base) — the eight SRFI-4 procedures plus the @? predicate, for
+#: all twelve types. The names are core-bound primitives in srfi160.py.
+_SRFI160_BASE_EXPORTS = (
+    "make-u8vector make-s8vector make-u16vector make-s16vector"
+    " make-u32vector make-s32vector make-u64vector make-s64vector"
+    " make-f32vector make-f64vector make-c64vector make-c128vector"
+    " u8vector s8vector u16vector s16vector u32vector s32vector u64vector"
+    " s64vector f32vector f64vector c64vector c128vector"
+    " u8vector? s8vector? u16vector? s16vector? u32vector? s32vector?"
+    " u64vector? s64vector? f32vector? f64vector? c64vector? c128vector?"
+    " u8vector-length s8vector-length u16vector-length s16vector-length"
+    " u32vector-length s32vector-length u64vector-length s64vector-length"
+    " f32vector-length f64vector-length c64vector-length c128vector-length"
+    " u8vector-ref s8vector-ref u16vector-ref s16vector-ref u32vector-ref"
+    " s32vector-ref u64vector-ref s64vector-ref f32vector-ref f64vector-ref"
+    " c64vector-ref c128vector-ref"
+    " u8vector-set! s8vector-set! u16vector-set! s16vector-set!"
+    " u32vector-set! s32vector-set! u64vector-set! s64vector-set!"
+    " f32vector-set! f64vector-set! c64vector-set! c128vector-set!"
+    " u8vector->list s8vector->list u16vector->list s16vector->list"
+    " u32vector->list s32vector->list u64vector->list s64vector->list"
+    " f32vector->list f64vector->list c64vector->list c128vector->list"
+    " list->u8vector list->s8vector list->u16vector list->s16vector"
+    " list->u32vector list->s32vector list->u64vector list->s64vector"
+    " list->f32vector list->f64vector list->c64vector list->c128vector"
+    " u8? s8? u16? s16? u32? s32? u64? s64? f32? f64? c64? c128?"
+).split()
+
+#: (srfi 160 f64) — the SRFI-133-shaped operation set plus
+#: make-f64vector-generator and write-f64vector. `f64vector-comparator` is
+#: deliberately absent: it needs SRFI 128, which is not scheduled; the
+#: omission is documented, not shimmed.
+_SRFI160_F64_EXPORTS = (
+    "make-f64vector f64vector f64vector-unfold f64vector-unfold-right"
+    " f64vector-copy f64vector-reverse-copy f64vector-append"
+    " f64vector-concatenate f64vector-append-subvectors"
+    " f64? f64vector? f64vector-empty? f64vector="
+    " f64vector-ref f64vector-length"
+    " f64vector-take f64vector-take-right f64vector-drop f64vector-drop-right"
+    " f64vector-segment f64vector-fold f64vector-fold-right f64vector-map"
+    " f64vector-map! f64vector-for-each f64vector-count f64vector-cumulate"
+    " f64vector-take-while f64vector-take-while-right f64vector-drop-while"
+    " f64vector-drop-while-right f64vector-index f64vector-index-right"
+    " f64vector-skip f64vector-skip-right f64vector-any f64vector-every"
+    " f64vector-partition f64vector-filter f64vector-remove"
+    " f64vector-set! f64vector-swap! f64vector-fill! f64vector-reverse!"
+    " f64vector-copy! f64vector-reverse-copy! f64vector-unfold!"
+    " f64vector-unfold-right!"
+    " f64vector->list list->f64vector reverse-f64vector->list"
+    " reverse-list->f64vector f64vector->vector vector->f64vector"
+    " make-f64vector-generator write-f64vector"
 ).split()

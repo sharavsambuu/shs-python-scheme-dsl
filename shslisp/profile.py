@@ -24,6 +24,10 @@ DSL_PROFILE = [
     "(srfi 89)",
     "(srfi 197)",
     "(srfi 241)",
+    "(srfi 19)",
+    "(srfi 158)",
+    "(srfi 160 base)",
+    "(srfi 160 f64)",
 ]
 
 #: The strict R7RS profile: the conformance target. The core and the prelude
@@ -41,6 +45,9 @@ PROFILE_FEATURES = {
         "srfi-89",
         "srfi-197",
         "srfi-241",
+        "srfi-19",
+        "srfi-158",
+        "srfi-160",
     ],
     "r7rs": [],
 }

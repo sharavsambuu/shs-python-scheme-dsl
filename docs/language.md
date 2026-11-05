@@ -79,6 +79,10 @@ nothing existing changes meaning. It is exactly this import list:
 (srfi 89)
 (srfi 197)
 (srfi 241)
+(srfi 19)
+(srfi 158)
+(srfi 160 base)
+(srfi 160 f64)
 ```
 
 `(features)` reports what is true of the host and the dialect — under the
@@ -324,6 +328,10 @@ library either meets its SRFI's semantics — audited name by name, with the
 tests to show it — or fails loudly as "not implemented yet". Nothing is
 aliased into pretending.
 
+The trading layer landed as S10–S12: `(srfi 19)` time and date,
+`(srfi 160 base)`/`(srfi 160 f64)` numeric vectors, and the `(srfi 158)`
+audit of the generator prelude — all pre-imported by the default profile.
+
 | Library | What it gives you | Where it lives |
 | --- | --- | --- |
 | `(srfi 1)` | the list library: `fold`/`fold-right`/`reduce`, lset operations, `iota`, `count`, `find`, `partition`, `member`/`assoc` with an optional comparator | `shslisp/srfi1.scm` (pure Lisp) |
@@ -332,6 +340,9 @@ aliased into pretending.
 | `(srfi 89)` | `define*` / `lambda*`: optional positional and named parameters | `shslisp/srfi89.scm` (pure Lisp) |
 | `(srfi 197)` | the `chain` pipeline family | `shslisp/srfi197.scm` (pure Lisp) |
 | `(srfi 241)` | `match` — quasiquote-style pattern matching | core: `evaluator.py` |
+| `(srfi 19)` | time and date: `time-utc`/`date`, Julian day, `date->string`/`string->date` | core: `builtins.py`, `shslisp/srfi19.py` |
+| `(srfi 158)` | generators and accumulators: the combinators, drains, searching half, accumulators | `shslisp/generators.scm` (prelude) |
+| `(srfi 160 base)` / `(srfi 160 f64)` | homogeneous numeric vectors — the `f64vector` numpy bridge, `#f64(...)` literals | core: `builtins.py`, `shslisp/srfi160.py` |
 | `(srfi 204)` | **withdrawn** — importing it fails, naming SRFI 241 | — |
 
 A few examples (all verified against the interpreter):

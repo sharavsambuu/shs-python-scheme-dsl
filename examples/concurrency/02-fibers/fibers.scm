@@ -1,11 +1,11 @@
 #!/usr/bin/env shs
-;; fibers.scm — cooperative fibers over the S9 generator protocol.
+;; fibers.scm — cooperative fibers over the SRFI 158 generator protocol.
 ;;
-;; Run with:  python -m lisp run examples/concurrency/02-fibers/fibers.scm
+;; Run with:  python -m shslisp run examples/concurrency/02-fibers/fibers.scm
 ;;
 ;; A *fiber* here is a generator: call it, and it runs until its next
 ;; yield point, answers one value, and parks with all its local state
-;; intact (closures + set! are state enough). generator-end means the
+;; intact (closures + set! are state enough). The eof-object means the
 ;; fiber has returned. A scheduler that round-robins over a set of
 ;; generators is therefore a cooperative multitasking runtime — the same
 ;; shape modern runtimes use for coroutines, and the shape this dialect
@@ -25,7 +25,7 @@
     (lambda ()
       (let loop ()
         (if (>= n how-many)
-            generator-end
+            (eof-object)
             (let ((divides? (lambda (p) (= 0 (modulo candidate p)))))
               (cond ((any divides? found)
                      (set! candidate (+ candidate 1)) (loop))
@@ -42,7 +42,7 @@
   (let ((a 0) (b 1) (n 0))
     (lambda ()
       (if (>= n how-many)
-          generator-end
+          (eof-object)
           (let ((v a))
             (set! n (+ n 1))
             (set! a b)
@@ -58,7 +58,7 @@
   (let ((n 0))
     (lambda ()
       (if (>= n beats)
-          generator-end
+          (eof-object)
           (let ((v n))
             (set! n (+ n 1))
             (list 'beat v))))))
@@ -78,7 +78,7 @@
     (cond ((null? rest) (reverse alive))
           (else
            (let ((v ((car rest))))
-             (if (generator-end? v)
+             (if (eof-object? v)
                  (begin
                    (display "  [scheduler] a fiber finished")
                    (newline)

@@ -64,6 +64,10 @@ MUST_IMPORT = [
     "(srfi 89)",
     "(srfi 197)",
     "(srfi 241)",
+    "(srfi 19)",
+    "(srfi 158)",
+    "(srfi 160 base)",
+    "(srfi 160 f64)",
     COMBINED_IMPORT,
     "(scheme base) (rename (srfi 241) (match srfi-match))",
     "(only (srfi 1) map filter)",
@@ -79,6 +83,14 @@ MUST_BIND = [
     ("(srfi 89)", "define*"), ("(srfi 89)", "lambda*"),
     ("(srfi 197)", "chain"), ("(srfi 197)", "nest"),
     ("(srfi 241)", "match"),
+    ("(srfi 19)", "current-time"), ("(srfi 19)", "date->string"),
+    ("(srfi 19)", "string->date"), ("(srfi 19)", "time-utc->date"),
+    ("(srfi 158)", "gmap"), ("(srfi 158)", "gindex"),
+    ("(srfi 158)", "sum-accumulator"), ("(srfi 158)", "generator->string"),
+    ("(srfi 160 base)", "make-f64vector"), ("(srfi 160 base)", "f64?"),
+    ("(srfi 160 base)", "u8vector-ref"), ("(srfi 160 base)", "c128vector-set!"),
+    ("(srfi 160 f64)", "f64vector-map"), ("(srfi 160 f64)", "f64vector-fold"),
+    ("(srfi 160 f64)", "make-f64vector-generator"),
 ]
 
 

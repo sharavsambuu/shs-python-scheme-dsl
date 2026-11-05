@@ -28,6 +28,9 @@ uses R7RS-small as its base language, adds the standard SRFIs that make
 functional pipelines and typed domain code pleasant (`(srfi 1)`, `(srfi 26)`,
 `(srfi 88)`, `(srfi 89)`, `(srfi 197)`, `(srfi 241)`), and keeps a declared
 Python bridge so a host project can publish its own functions as primitives.
+The trading layer landed as S10–S12: `(srfi 19)` time/date, `(srfi 158)`
+generators and accumulators, and `(srfi 160 base)`/`(srfi 160 f64)` numeric
+vectors — the pandas/numpy bridge.
 The Python seam is a peer of the R7RS and SRFI layers, not an escape hatch. The
 Tetris game is the worked example, not the definition of the language.
 
@@ -134,7 +137,7 @@ not an accident.
 | Layer | What it gives | Where it is specified |
 | --- | --- | --- |
 | **R7RS-small subset** | Reader, evaluator, tail calls, closures, the base procedures, `(scheme base)`, `(scheme write)` | `docs/r7rs.md`, [`docs/R7RS_TASKS.md`](R7RS_TASKS.md) |
-| **SRFI layer** | SRFI 1, 26, 88, 89, 197, 241 | `docs/srfi.md`, [`docs/SRFI_TASKS.md`](SRFI_TASKS.md) |
+| **SRFI layer** | SRFI 1, 26, 88, 89, 197, 241, plus the trading layer: 19, 158, 160 base/f64 (S10–S12) | `docs/srfi.md`, [`docs/SRFI_TASKS.md`](SRFI_TASKS.md) |
 | **Python seam** | `install_primitives`, `install_extension`, `make_env`, `run`, `load_lisp` | `shslisp/embed.py`, chapter [28](lisp_tutorial/28-embedding-in-python.md) |
 
 ### R7RS-small: the honest claim

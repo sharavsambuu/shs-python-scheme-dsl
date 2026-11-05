@@ -2,7 +2,10 @@
 
 > **The claim, in one paragraph.** The SRFI layer is a set of R7RS *libraries*
 > on top of the library system (A13): `(srfi 1)`, `(srfi 26)`, `(srfi 88)`,
-> `(srfi 89)`, `(srfi 197)`, and `(srfi 241)`. A library either meets its
+> `(srfi 89)`, `(srfi 197)`, and `(srfi 241)` — plus the trading layer landed
+> as S10–S12: `(srfi 19)` (time and date), `(srfi 158)` (generators and
+> accumulators), and `(srfi 160 base)` + `(srfi 160 f64)` (numeric vectors).
+> A library either meets its
 > SRFI's semantics — audited name by name, with the tests to show it — or it
 > fails loudly as "not implemented yet". Nothing is aliased into pretending.
 > The plan and the per-name audit live in
@@ -22,6 +25,10 @@
 | `(srfi 89)` | supported | `shslisp/srfi89.scm` (pure Lisp, `defmacro`) | `tests/test_srfi.py` |
 | `(srfi 197)` | supported | `shslisp/srfi197.scm` (pure Lisp, `defmacro`) | `tests/test_srfi.py` |
 | `(srfi 241)` | supported | core: `evaluator.py` (the global `match`) | `tests/test_srfi.py`, `tests/test_rop.py` |
+| `(srfi 19)` | supported | core: `builtins.py` + `shslisp/srfi19.py` | `tests/test_srfi19.py` |
+| `(srfi 158)` | supported | prelude: `shslisp/generators.scm` | `tests/test_generators.py` |
+| `(srfi 160 base)` | supported | core: `builtins.py` + `shslisp/srfi160.py` | `tests/test_srfi160.py` |
+| `(srfi 160 f64)` | supported | core: `builtins.py` + `shslisp/srfi160.py` | `tests/test_srfi160.py` |
 | `(srfi 204)` | withdrawn | — | importing it fails, naming SRFI 241 |
 
 ## Layout and the "supported subset" rule
@@ -269,6 +276,41 @@ appears here with a reason.
 - The dotted list patterns of SRFI 241 match a proper list's tail; an
   improper `Pair` is not a sequence in this dialect, so `(1 . 2)` patterns
   match no value here.
+- **`(srfi 19)`** is the workhorse subset the ledger scoped (S10), audited
+  against the final specification. The constants `time-tai` and `time-thread`
+  exist, but `current-time` **refuses them loudly** — there is no
+  leap-second table here and no thread clocks in this interpreter, and
+  pretending UTC seconds are TAI seconds would be a silent lie. No leap
+  seconds: `date-second` is 0..59. No `time-monotonic`↔UTC conversions: the
+  monotonic clock is a stopwatch with an arbitrary origin — differences
+  only. Zone offsets are SRFI 19's integer seconds east of UTC; there is no
+  zone-name vocabulary and no `date-zone-name`/`date-dst?` (the reference
+  surface does not require them). `date->string` supports `~~ ~a ~A ~b ~B
+  ~c ~d ~D ~e ~h ~H ~I ~j ~k ~l ~m ~M ~n ~N ~p ~r ~S ~T ~U ~w ~W ~x ~X ~y
+  ~Y ~z ~1 ~2 ~3 ~4 ~5` with C-locale English names; `string->date`
+  implements Table 2's required converters (`~~ ~a ~A ~b ~B ~d ~e ~h ~H ~k
+  ~m ~M ~S ~y ~Y ~z`), with unset fields defaulting to 1900-01-01 UTC and
+  `~y` pivoting within 50 years of the current year. Unknown directives fail
+  loudly.
+- **`(srfi 158)`** is the final export list, audited name by name. Two
+  constructors — `make-coroutine-generator` and `make-for-each-generator` —
+  are bound but **fail loudly**: suspending a body mid-computation needs
+  re-entrant continuations, which this dialect deliberately does not have
+  (`r7rs.md`, Tier 1); build a stateful closure generator instead. The S9
+  `generator-end` sentinel is still defined and every library consumer still
+  accepts it, so pre-S12 code keeps running; new code uses the eof-object.
+  The final SRFI has no `max`/`min` accumulators, and none are claimed.
+- **`(srfi 160)`** ships `(srfi 160 base)` (all twelve types) and
+  `(srfi 160 f64)` (the full SRFI-133-shaped set, plus
+  `make-f64vector-generator` and `write-f64vector`); the other ten per-type
+  full libraries do not exist yet, and importing one — `(srfi 160 u8)` —
+  fails loudly. `@vector-comparator` is **omitted**: it requires SRFI 128,
+  which is not scheduled; the omission is documented, not shimmed. Element
+  domains are the spec's, enforced loudly: exact integers in range for the
+  integer vectors, an *inexact* real for `f32`/`f64`, an inexact complex for
+  `c64`/`c128` — an exact `1` is not an `f64` element. The reader tags
+  cover eleven types; `#u8(` stays the R7RS bytevector. `fold`'s `kons`
+  receives the state first, exactly as SRFIs 43/133 spell it.
 
 ## The generator library: prelude, not an SRFI (S9)
 
@@ -285,26 +327,66 @@ continuations, shipped in both profiles as part of the prelude.
 - **Drains:** `generator->list` (optional `k`), `generator->vector`,
   `generator-fold`, `generator-for-each`.
 
-It is deliberately **not** claimed as `(srfi 158)`: that import still fails
-loudly, and will until the library is audited against SRFI 158's semantics
-name by name — the same gate every SRFI here passes. The tests are
-[`tests/test_generators.py`](../tests/test_generators.py).
+It is claimed as **`(srfi 158)`** since S12: the import binds the audited
+surface — the eof-object protocol, the full combinator set, and the
+accumulators — over these same prelude bindings. The tests are
+[`tests/test_generators.py`](../tests/test_generators.py); the deviations
+(that two coroutine-shaped constructors fail loudly; that the S9
+`generator-end` sentinel is still accepted) are under
+[Deviations](#deviations).
+
+## The trading layer: S10–S12
+
+Three libraries landed (2026-11-05; ledger entries S10–S12 in
+[`SRFI_TASKS.md`](SRFI_TASKS.md)) for the DSL's systematic-trading use —
+Quant Data Manager 1-minute bars through pandas/numpy, live strategies on
+MetaTrader 5. Each passed the same gate as the SRFIs above: audited name by
+name against the final specification, with the tests to show it.
+
+- **`(srfi 19)` — time and date (S10).** Core-backed Python primitives over
+  `datetime`/the proleptic Gregorian calendar: `time-utc`/`time-monotonic`/
+  `time-process`/`time-duration`, the immutable `date`, the comparison and
+  duration arithmetic, `time-utc->date`/`date->time-utc`, the Julian Day
+  family, and `date->string`/`string->date`. The deviations are listed under
+  [Deviations](#deviations) — no TAI, no leap seconds, integer offsets.
+- **`(srfi 160)` — numeric vectors (S11).** `(srfi 160 base)` covers all
+  twelve types with the SRFI-4 eight and the `@?` predicates;
+  `(srfi 160 f64)` is the full SRFI-133-shaped operation set. The payload is
+  a Python `array.array` — the buffer protocol is the numpy bridge, and the
+  reader/printer round-trip `#f64(...)`-style literals.
+- **`(srfi 158)` — generators and accumulators (S12).** The S9 prelude,
+  audited against the final SRFI 158 surface: the eof-object exhaustion
+  protocol, the full combinator set, the multi-generator drains, the
+  searching half, and the accumulators.
+
+The default DSL profile pre-imports all of them (plus the feature identifiers
+`srfi-19`, `srfi-158`, `srfi-160`); the strict `r7rs` profile leaves them as
+import-only libraries, like every other SRFI.
 
 ## How to verify
 
 From a checkout of this project:
 
 ```bash
-# the full suite (the count below is the recorded run)
+# the full suite
 python -m pytest -q
 
-# the SRFI gate
-python -m pytest tests/test_srfi.py -q
+# the SRFI gate (plus the docs drift guard)
+python -m pytest tests/test_srfi.py tests/test_generators.py tests/test_docs.py -q
+
+# the trading-layer libraries' own suites (S10-S12)
+python -m pytest tests/test_srfi19.py tests/test_srfi160.py tests/test_generators.py -q
 ```
 
-Last recorded run: **872 passed** — the C3 landing of the complex literals
-took the count from 865 with no failures. If the count drifts, update this
-section in the same change.
+Last recorded run (2026-11-05, a Windows checkout, after S10-S12 landed): the
+extended SRFI gate — `tests/test_srfi.py`, `tests/test_generators.py`,
+`tests/test_srfi19.py`, `tests/test_srfi160.py`, plus the docs drift guard —
+is **224 passed**. The full suite has grown past 1,110 tests since the
+872-passed C3 recording; its ten failures there are pre-existing
+environment issues, not claim drift — nine file-path tests fail on Windows
+path handling (`include`, the file ports, `file-exists?`) and one timing-based
+linearity test flakes under load. If the count drifts, update this section in
+the same change.
 
 ## The profiles
 

@@ -100,8 +100,9 @@ def test_install_tetris_false_never_installs_game_bindings(dsl) -> None:
 def test_the_profile_features_are_introspectable(dsl) -> None:
     names = run(dsl, "(features)")
     spelled = [str(n) for n in names]
-    assert spelled[-7:] == [
+    assert spelled[-10:] == [
         "dsl-profile", "srfi-1", "srfi-26", "srfi-88", "srfi-89", "srfi-197", "srfi-241",
+        "srfi-19", "srfi-158", "srfi-160",
     ]
     assert "srfi-204" not in spelled
 

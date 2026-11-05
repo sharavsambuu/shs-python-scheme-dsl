@@ -542,6 +542,16 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     define("assert", _assert)
     define("gensym", _gensym())
 
+    # -- SRFI 19 (S10) and SRFI 160 (S11): core-backed libraries ------------- #
+    # Python primitives over the stdlib, registered the (srfi 88) way: bound
+    # here, scoped by the library entries in shslisp/library.py. Their names
+    # join the core floor below, so an import cannot silently replace them.
+    from .srfi160 import install as _install_srfi160
+    from .srfi19 import install as _install_srfi19
+
+    _install_srfi19(env)
+    _install_srfi160(env)
+
     # The floor's own names, remembered once: this is the set the library
     # system protects from silent replacement (see shslisp/library.py). Prelude
     # aliases of these objects (`fold = foldl`, `reduce = foldl`) are *not*
