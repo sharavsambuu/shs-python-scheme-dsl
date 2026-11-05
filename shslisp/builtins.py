@@ -543,14 +543,12 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     define("gensym", _gensym())
 
     # -- SRFI 19 (S10) and SRFI 160 (S11): core-backed libraries ------------- #
-    # Python primitives over the stdlib, registered the (srfi 88) way: bound
-    # here, scoped by the library entries in shslisp/library.py. Their names
-    # join the core floor below, so an import cannot silently replace them.
-    from .srfi160 import install as _install_srfi160
-    from .srfi19 import install as _install_srfi19
-
-    _install_srfi19(env)
-    _install_srfi160(env)
+    # Their Python primitives are deliberately NOT bound here: they install
+    # into the libraries' own private scopes on first import
+    # (shslisp/library.py's `_core_backed_builder`), so the strict r7rs
+    # profile sees them only through (import ...) — like every other SRFI —
+    # while the default profile's pre-import binds the same objects. The
+    # core floor below stays (scheme base) plus the prelude's own names.
 
     # The floor's own names, remembered once: this is the set the library
     # system protects from silent replacement (see shslisp/library.py). Prelude

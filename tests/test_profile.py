@@ -166,3 +166,89 @@ def test_the_lint_rejects_a_missing_import(tmp_path: Path) -> None:
     failures = lint([(legacy, False)])
     assert len(failures) == 1
     assert "typo.scm" in failures[0]
+
+
+def test_the_strict_env_leaves_the_trading_srfis_import_only() -> None:
+    # docs/srfi.md: the strict r7rs profile leaves (srfi 19) and (srfi 160)
+    # import-only, like every other SRFI — their primitives install into the
+    # libraries' own scopes on first import, never into the core floor.
+    env = make_env(install_tetris=False, profile="r7rs")
+    names = (
+        "current-time", "time-resolution", "make-date", "date->string",
+        "string->date", "make-f64vector", "f64vector", "f64vector-map", "time-utc",
+    )
+    assert all(env.find(intern(name)) is None for name in names)
+    run(env, "(import (srfi 19) (srfi 160 base) (srfi 160 f64))")
+    assert all(env.find(intern(name)) is not None for name in names)
+    assert run(env, '(date->string (make-date 0 0 0 12 1 1 2026 0) "~4")') == (
+        "2026-01-01T12:00:00Z"
+    )
+
+
+def test_the_two_160_libraries_share_one_primitive_set() -> None:
+    # Both export lists name make-f64vector: one private scope, one object —
+    # importing both in a single form is a re-export, not a collision.
+    env = make_env(install_tetris=False)
+    run(env, "(import (srfi 160 base) (srfi 160 f64))")
+    from shslisp.library import get_library
+
+    base = get_library(env, ("srfi", "160", "base")).instantiate()
+    f64 = get_library(env, ("srfi", "160", "f64")).instantiate()
+    assert base.find(intern("make-f64vector")) is f64.find(intern("make-f64vector"))
+
+
+def test_the_bare_core_also_leaves_the_trading_srfis_import_only() -> None:
+    # profile=None is the bare core + prelude: no profile pre-imports at all,
+    # so the trading libraries must behave exactly as they do under r7rs.
+    env = make_env(install_tetris=False, profile=None)
+    names = (
+        "current-time", "make-date", "date->string", "string->date",
+        "make-f64vector", "f64vector", "f64vector-map", "time-utc",
+    )
+    assert all(env.find(intern(name)) is None for name in names)
+    run(env, "(import (srfi 19) (srfi 160 f64))")
+    assert all(env.find(intern(name)) is not None for name in names)
+    assert run(env, "(f64vector->list (f64vector 1.0 2.0))") == [1.0, 2.0]
+
+
+def test_importing_one_trading_library_does_not_bind_the_other() -> None:
+    # (srfi 19) and (srfi 160) own separate private scopes: importing one
+    # must not smuggle the other's names into the strict environment.
+    env = make_env(install_tetris=False, profile="r7rs")
+    run(env, "(import (srfi 19))")
+    assert env.find(intern("date->string")) is not None
+    assert env.find(intern("f64vector")) is None
+    run(env, "(import (srfi 160 base))")
+    assert env.find(intern("f64vector")) is not None
+    assert env.find(intern("f64vector-map")) is None
+    run(env, "(import (srfi 160 f64))")
+    assert env.find(intern("f64vector-map")) is not None
+
+
+def test_every_binding_shared_by_the_two_160_libraries_is_the_same_object() -> None:
+    env = make_env(install_tetris=False)
+    run(env, "(import (srfi 160 base) (srfi 160 f64))")
+    from shslisp.library import get_library
+
+    base = get_library(env, ("srfi", "160", "base")).instantiate()
+    f64 = get_library(env, ("srfi", "160", "f64")).instantiate()
+    for name in (
+        "make-f64vector", "f64vector", "f64vector?", "f64?",
+        "f64vector-ref", "f64vector-length", "f64vector-set!",
+        "f64vector->list", "list->f64vector",
+    ):
+        assert base.lookup(intern(name)) is f64.lookup(intern(name)), name
+
+
+def test_the_default_profile_preimports_the_library_objects_themselves() -> None:
+    # The DSL profile's pre-import is the same import: the objects the
+    # libraries expose and the objects in the environment have one identity.
+    dsl = make_env(install_tetris=False, profile="dsl")
+    from shslisp.library import get_library
+
+    lib19 = get_library(dsl, ("srfi", "19")).instantiate()
+    lib160 = get_library(dsl, ("srfi", "160", "f64")).instantiate()
+    for name in ("current-time", "date->string", "string->date"):
+        assert dsl.lookup(intern(name)) is lib19.lookup(intern(name)), name
+    for name in ("make-f64vector", "f64vector-map", "f64?"):
+        assert dsl.lookup(intern(name)) is lib160.lookup(intern(name)), name

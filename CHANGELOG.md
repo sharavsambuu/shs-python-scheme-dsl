@@ -66,6 +66,42 @@ A conformance review of the R7RS-small surface, run from the CLI against the
   profiles, pre-imported by the default DSL profile, with the `srfi-19`/
   `srfi-158`/`srfi-160` feature identifiers. Tests: `tests/test_srfi19.py`,
   `tests/test_srfi160.py`, and the grown `tests/test_generators.py`.
+- **The trading-layer audit pass (S13): sixteen review findings fixed.**
+  `(srfi 160)`: `make-@vector` validates its fill like every other insert
+  (an exact `1`, `#t`, or an out-of-range integer now raises a Lisp type
+  error instead of silently coercing — or leaking a host `OverflowError`);
+  `f64vector-copy!`/`f64vector-reverse-copy!` handle self-overlap "as if the
+  source is first copied into a temporary vector" (SRFI 133); the f64
+  operations require f64vectors and `f64vector-map` answers an f64vector;
+  `f64vector-any` on an empty vector returns `#t`, `f64vector=` with zero or
+  one vector returns `#t`, `f64vector-concatenate` refuses a non-list,
+  `list->f64vector` of the empty list is the empty vector,
+  `f64vector-index-right`/`skip-right` require equal lengths, and
+  `f64vector-partition` calls the predicate once per element. `(srfi 19)`:
+  `string->date` range-checks hour/minute/second like `make-date`, caps the
+  readers' widths like the reference's, and requires the whole input to
+  match the template; `date-week-number` matches the SRFI 19 reference
+  implementation and `~U`/`~W` are zero-padded with the partial-first-week
+  rule; `time-resolution` validates its type argument and the Julian Day
+  converters require a `time-utc`. `(srfi 158)`: `gmerge` is lazy — it
+  consumes nothing from its sources until the merged generator is first
+  called. **Profile:** the strict `r7rs` profile no longer carries the
+  `(srfi 19)`/`(srfi 160)` names in its core floor — they are import-only
+  there, exactly as `docs/srfi.md` has always claimed (the default DSL
+  profile still pre-imports them). Doc drift: "the other ten per-type full
+  libraries" is eleven. **The review-regression pass** adds two more loud
+  fixes: `f64vector-copy!`/`f64vector-reverse-copy!` reject a negative or
+  oversized target index before the first write (Python's negative indexing
+  no longer leaks, and a failed copy leaves the target untouched), and
+  `time-resolution` refuses `time-duration` — a duration is not a clock.
+  **The final audit sweep** closes the remaining edges: every base
+  `list-><type>vector` accepts `()`, and every `<type>vector->list` (and the
+  f64 slices and reverse conversion) answers `()` as `NIL`, so `null?`,
+  `list?` and `equal?` behave; the Julian Day and date converters reject
+  non-finite or out-of-range values with a Lisp type error instead of
+  leaking a host `OverflowError`; `date->string` defaults to `~c` and prints
+  `Z` at a zero offset; `string->date` distinguishes abbreviated from long
+  weekday/month names and requires `~z` to be exactly `HHMM` or `HH:MM`.
 
 ## 0.2.0 — 2026-11-04
 

@@ -572,6 +572,28 @@ def environment_from_specs(
 #  Installing the built-in libraries                                          #
 # --------------------------------------------------------------------------- #
 
+def _core_backed_builder(env: Environment, installers: tuple) -> Callable[[], Environment]:
+    """A builder for a core-*backed* library: its Python primitives are
+    installed into one private child scope the first time an import needs
+    them — never into the core floor. The strict ``r7rs`` profile therefore
+    sees these names only through ``(import ...)``, like every other SRFI,
+    while the default profile's pre-import binds the very same objects.
+    Libraries sharing a builder share the scope, so ``(srfi 160 base)`` and
+    ``(srfi 160 f64)`` hand back the *same* primitive objects — the collision
+    rule compares bindings by identity (see ``_same_binding``)."""
+    cache: list = []
+
+    def build() -> Environment:
+        if not cache:
+            scope = Environment(parent=env)
+            for installer in installers:
+                installer(scope)
+            cache.append(scope)
+        return cache[0]
+
+    return build
+
+
 def install(env: Environment) -> None:
     """Register the built-in ``(scheme ...)`` libraries and the SRFI stubs.
 
@@ -641,10 +663,25 @@ def install(env: Environment) -> None:
         builder=lambda: env,
         note="Pattern matcher.",
     )
+    # The trading-layer libraries (S10, S11) are core-*backed*, not
+    # core-*bound*: their primitives install into a private scope on first
+    # import (see `_core_backed_builder`), so the strict r7rs profile leaves
+    # them import-only — the docs' promise — while the default profile's
+    # pre-import binds the same objects.
+    def _install_srfi19(scope: Environment) -> None:
+        from .srfi19 import install as installer
+
+        installer(scope)
+
+    def _install_srfi160(scope: Environment) -> None:
+        from .srfi160 import install as installer
+
+        installer(scope)
+
     registry[("srfi", "19")] = Library(
         ("srfi", "19"),
         exports=frozenset(_SRFI19_EXPORTS),
-        builder=lambda: env,
+        builder=_core_backed_builder(env, (_install_srfi19,)),
         note="Time and date (S10): core-backed Python primitives.",
     )
     registry[("srfi", "158")] = Library(
@@ -653,16 +690,17 @@ def install(env: Environment) -> None:
         builder=lambda: env,
         note="Generators and accumulators (S12): the prelude's audited surface.",
     )
+    srfi160_builder = _core_backed_builder(env, (_install_srfi160,))
     registry[("srfi", "160", "base")] = Library(
         ("srfi", "160", "base"),
         exports=frozenset(_SRFI160_BASE_EXPORTS),
-        builder=lambda: env,
+        builder=srfi160_builder,
         note="Homogeneous numeric vectors (S11): the SRFI-4 eight + @?, x12 types.",
     )
     registry[("srfi", "160", "f64")] = Library(
         ("srfi", "160", "f64"),
         exports=frozenset(_SRFI160_F64_EXPORTS),
-        builder=lambda: env,
+        builder=srfi160_builder,
         note="The f64vector operation set (S11), the numpy bridge.",
     )
 

@@ -438,3 +438,57 @@ def test_srfi_158_ships_in_both_profiles(env, dsl) -> None:
         read_all("(let ((acc (count-accumulator))) (acc 1) (acc 2) (acc (eof-object)))"),
         dsl,
     ) == 2
+
+
+def test_gmerge_consumes_nothing_until_the_merged_generator_is_called(ev) -> None:
+    # SRFI 158: generator operations "return a new generator without
+    # consuming any elements from the source generator(s)". Constructing the
+    # merge pulls nothing; the first call arms the two heads.
+    assert ev(
+        "(define calls 0)"
+        "(define (counting-gen)"
+        "  (let ((n 0))"
+        "    (lambda ()"
+        "      (set! calls (+ calls 1))"
+        "      (set! n (+ n 1))"
+        "      (if (< n 3) n (eof-object)))))"
+        "(define merged (gmerge < (counting-gen) (counting-gen)))"
+        "(define before calls)"
+        "(list before (generator->list merged) calls)"
+    ) == [0, [1, 1, 2, 2], 6]
+
+
+def test_variadic_gmerge_is_lazy_at_every_pairing_step(ev) -> None:
+    # The variadic branch builds pairwise merges before returning; none of
+    # those constructions may pull a value. Three generators, built ahead of
+    # the first call, still see zero calls.
+    assert ev(
+        "(define calls 0)"
+        "(define (counting-gen)"
+        "  (let ((n 0))"
+        "    (lambda ()"
+        "      (set! calls (+ calls 1))"
+        "      (set! n (+ n 1))"
+        "      (if (< n 3) n (eof-object)))))"
+        "(define merged (gmerge < (counting-gen) (counting-gen) (counting-gen)))"
+        "(define before calls)"
+        "(list before (generator->list merged) calls)"
+    ) == [0, [1, 1, 1, 2, 2, 2], 9]
+
+
+def test_gmerge_ties_go_left_and_the_empty_edges_terminate(ev) -> None:
+    # The comparator is strict (<): equal heads keep the left generator's
+    # value first, so the merge is stable.
+    assert ev(
+        "(generator->list (gmerge (lambda (a b) (< (car a) (car b)))"
+        "  (generator '(1 10) '(2 10))"
+        "  (generator '(1 20) '(3 20))))"
+    ) == [[1, 10], [1, 20], [2, 10], [3, 20]]
+    # One generator is returned untouched; both-empty answers EOF at once.
+    assert ev("(generator->list (gmerge < (generator 1 2)))") == [1, 2]
+    assert ev("(generator->list (gmerge < (generator)))") is NIL
+    assert ev("(generator->list (gmerge < (generator) (generator)))") is NIL
+    assert ev("(generator->list (gmerge < (generator 1) (generator)))") == [1]
+    assert ev("(generator->list (gmerge < (generator) (generator 2)))") == [2]
+    with pytest.raises(LispError, match="at least one generator"):
+        ev("(gmerge <)")

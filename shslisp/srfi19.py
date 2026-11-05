@@ -144,12 +144,21 @@ def _normalize(total_ns: int) -> tuple:
 
 
 def _utc_sec_to_date(second: int, nanosecond: int, zone_offset: int) -> Srfi19Date:
-    year, month, day, hour, minute, sec = _sec_to_fields(second + zone_offset)
+    try:
+        year, month, day, hour, minute, sec = _sec_to_fields(second + zone_offset)
+    except (OverflowError, ValueError):
+        # A huge second or zone offset is a Lisp type error at this boundary,
+        # never a leaked host OverflowError/ValueError from datetime.
+        raise LispTypeError("date out of range") from None
     return Srfi19Date(nanosecond, sec, minute, hour, day, month, year, zone_offset)
 
 
 def _time_to_jd(t: Srfi19Time) -> float:
-    return _JD_OF_EPOCH + (t.second + t.nanosecond / 1e9) / 86400.0
+    try:
+        return _JD_OF_EPOCH + (t.second + t.nanosecond / 1e9) / 86400.0
+    except OverflowError:
+        # int too large to convert to float: no finite Julian Day exists.
+        raise LispTypeError("julian day out of range") from None
 
 
 def _jd_to_time_utc(jd: float) -> Srfi19Time:
@@ -187,6 +196,13 @@ def _current_time(*args: Any) -> Srfi19Time:
 def _time_resolution(*args: Any) -> int:
     if len(args) > 1:
         raise LispArityError("time-resolution", "at most 1", len(args))
+    # The optional time-type is validated like the reference's: junk is an
+    # error, not a silent default. One host clock answers for every type —
+    # but a duration is not a clock at all.
+    if args:
+        type_name = _expect_type_name(args[0], "time-resolution")
+        if type_name == "time-duration":
+            raise LispTypeError("time-resolution: time-duration is not a clock")
     # The wall clock's resolution, in nanoseconds — the host's own figure.
     info = _time.get_clock_info("time")
     return max(1, int(round(info.resolution * 1e9)))
@@ -307,6 +323,30 @@ def _date_week_day(d: Srfi19Date) -> int:
     return (_date(d.year, d.month, d.day).weekday() + 1) % 7
 
 
+def _quotient(a: int, b: int) -> int:
+    """Scheme's ``quotient``: truncation toward zero (Python's ``//`` floors)."""
+    q = a // b
+    if q < 0 and q * b != a:
+        q += 1
+    return q
+
+
+def _days_before_first_week(d: Srfi19Date, start: int) -> int:
+    """The partial first week's length — the SRFI 19 reference's
+    ``tm:days-before-first-week``: ``(start - Jan-1's weekday) mod 7``."""
+    first_week_day = (_date(d.year, 1, 1).weekday() + 1) % 7
+    return (start - first_week_day) % 7
+
+
+def _week_text(d: Srfi19Date, start: int) -> str:
+    """A ``~U``/``~W`` figure: zero-padded to two digits per Table 1, with
+    the reference's rule that a partial first week bumps the numbering."""
+    week = _date_week_number(d, start)
+    if _days_before_first_week(d, start) > 0:
+        week += 1
+    return f"{week:02d}"
+
+
 def _date_week_number(*args: Any) -> int:
     if len(args) != 2:
         raise LispArityError("date-week-number", 2, len(args))
@@ -316,8 +356,11 @@ def _date_week_number(*args: Any) -> int:
         raise LispTypeError(
             f"date-week-number: day-of-week-starting-week must be 0..6, got {start}"
         )
-    offset = (_date_week_day(d) - start) % 7
-    return ((_date_year_day(d) - 1) + 7 - offset) // 7
+    # The reference's formula: weeks counted from the year's first start-day,
+    # the partial first week sharing week 0 (``quotient`` truncates toward
+    # zero, so the days before the first full week stay at 0).
+    days_before = _days_before_first_week(d, start)
+    return _quotient(_date_year_day(d) - days_before, 7)
 
 
 def _date_to_time_utc(d: Srfi19Date) -> Srfi19Time:
@@ -346,6 +389,11 @@ def _julian(name: str, from_time: bool, modified: bool) -> Any:
     def fn(value: Any) -> Any:
         if from_time:
             t = _expect_time(value, name)
+            if t.type != "time-utc":
+                # SRFI 19 spells one converter per type: time-utc->julian-day
+                # takes a time-utc. A duration or a monotonic stopwatch has
+                # no epoch to answer with.
+                raise LispTypeError(f"{name}: expected a time-utc, got a {t.type}")
         else:
             t = _date_to_time_utc(_expect_date(value, name))
         jd = _time_to_jd(t)
@@ -361,7 +409,18 @@ def _jd_to(name: str, to_date: bool, modified: bool) -> Any:
         jd = args[0]
         if isinstance(jd, bool) or not isinstance(jd, (int, float)):
             raise LispTypeError(f"{name}: expected a real Julian Day, got {jd!r}")
-        t = _jd_to_time_utc(float(jd) + (_MJD_OFFSET if modified else 0.0))
+        try:
+            value = float(jd)
+        except OverflowError:
+            raise LispTypeError(f"{name}: Julian Day is out of range: {jd!r}") from None
+        if not math.isfinite(value):
+            raise LispTypeError(
+                f"{name}: expected a finite Julian Day, got {jd!r}"
+            )
+        try:
+            t = _jd_to_time_utc(value + (_MJD_OFFSET if modified else 0.0))
+        except (OverflowError, ValueError) as exc:
+            raise LispTypeError(f"{name}: Julian Day is out of range: {jd!r}") from None
         if to_date:
             offset = _expect_int(args[1], name) if len(args) > 1 else _local_offset()
             return _utc_sec_to_date(t.second, t.nanosecond, offset)
@@ -383,7 +442,10 @@ def _month_abbrev(d: Srfi19Date) -> str:
 
 
 def _zone_text(d: Srfi19Date) -> str:
-    sign = "+" if d.zone_offset >= 0 else "-"
+    # The reference prints a bare Z for UTC and +HHMM/-HHMM otherwise.
+    if d.zone_offset == 0:
+        return "Z"
+    sign = "+" if d.zone_offset > 0 else "-"
     total = abs(d.zone_offset)
     return f"{sign}{total // 3600:02d}{total % 3600 // 60:02d}"
 
@@ -418,13 +480,14 @@ def _directives(d: Srfi19Date) -> dict:
         "r": "~I:~M:~S ~p",
         "S": f"{d.second:02d}",
         "T": "~H:~M:~S",
-        "U": str(_date_week_number(d, 0)),
+        "U": _week_text(d, 0),
         "w": str(_date_week_day(d)),
-        "W": str(_date_week_number(d, 1)),
+        "W": _week_text(d, 1),
         "x": "~m/~d/~y",
         "X": "~H:~M:~S",
         "y": f"{d.year % 100:02d}",
-        "Y": str(d.year),
+        # Table 1 says four digits; the reference's padding gives ~Y "0001".
+        "Y": f"{d.year:04d}",
         "z": _zone_text(d),
         "1": "~Y-~m-~d",
         "2": "~H:~M:~S~z",
@@ -472,15 +535,20 @@ def _date_to_string(*args: Any) -> str:
         if not isinstance(args[1], str):
             raise LispTypeError("date->string: expected a format string")
         return format_date(d, args[1])
-    return format_date(d, "~4")
+    # The reference's default, and the SRFI's documented one.
+    return format_date(d, "~c")
 
 
-_WEEKDAY_WORDS = tuple(word.lower() for word in _WEEKDAYS)
-_MONTH_WORDS = tuple(word.lower() for word in _MONTHS)
+_MONTH_ABBREVS = tuple(word[:3] for word in _MONTHS)
+_WEEKDAY_ABBREVS = tuple(word[:3] for word in _WEEKDAYS)
 
 
 def _parse_zone(text: str, pos: int) -> tuple:
-    """``~z``: ``+HHMM``/``-HHMM``/``+HH:MM``/``Z``/``UTC``/``GMT``."""
+    """``~z``: ``+HHMM``/``-HHMM``/``+HH:MM``/``Z``/``UTC``/``GMT``.
+
+    The numeric offsets are exactly ``HHMM`` or ``HH:MM`` after the sign —
+    the reference's four-digit reader — and the fields are range-checked.
+    """
     upper = text[pos:].upper()
     for word in ("UTC", "GMT", "UT"):
         if upper.startswith(word):
@@ -491,14 +559,25 @@ def _parse_zone(text: str, pos: int) -> tuple:
         raise LispError("string->date: ~z expected a zone offset")
     sign = 1 if text[pos] == "+" else -1
     pos += 1
-    digits = ""
-    while pos < len(text) and (text[pos].isdigit() or text[pos] == ":"):
-        digits += text[pos]
+    if pos + 2 > len(text) or not text[pos:pos + 2].isdigit():
+        raise LispError("string->date: ~z expected a two-digit zone hour")
+    hours = int(text[pos:pos + 2])
+    pos += 2
+    if pos < len(text) and text[pos] == ":":
         pos += 1
-    digits = digits.replace(":", "")
-    if len(digits) < 3:
-        raise LispError(f"string->date: ~z could not read a zone offset near {digits!r}")
-    hours, minutes = int(digits[:-2]), int(digits[-2:])
+        if pos + 2 > len(text) or not text[pos:pos + 2].isdigit():
+            raise LispError("string->date: ~z expected a two-digit zone minute")
+        minutes = int(text[pos:pos + 2])
+        pos += 2
+    elif pos + 2 <= len(text) and text[pos:pos + 2].isdigit():
+        minutes = int(text[pos:pos + 2])
+        pos += 2
+    else:
+        raise LispError("string->date: ~z expected a two-digit zone minute")
+    if hours > 23 or minutes > 59:
+        raise LispError(
+            f"string->date: ~z zone offset out of range: {hours:02d}:{minutes:02d}"
+        )
     return sign * (hours * 3600 + minutes * 60), pos
 
 
@@ -520,11 +599,15 @@ def _string_to_date(*args: Any) -> Srfi19Date:
         while pos < tlen and predicate(text[pos]):
             pos += 1
 
-    def read_int() -> int:
+    def read_int(limit: int = 0) -> int:
         nonlocal pos
         start = pos
-        skip_while(str.isdigit)
-        if start == pos:
+        # Width-capped like the reference's readers (~d/~e/~H/~k/~m/~M/~S/~y
+        # read at most two digits, ~Y four): concatenated templates parse and
+        # the rest of the input stays for the next directive — or the match.
+        while pos < tlen and text[pos].isdigit() and (limit == 0 or pos - start < limit):
+            pos += 1
+        if pos == start:
             raise LispError(f"string->date: expected digits at position {pos}")
         return int(text[start:pos])
 
@@ -549,33 +632,49 @@ def _string_to_date(*args: Any) -> Srfi19Date:
             else:
                 raise LispError("string->date: expected ~ in the input")
         elif spec in ("a", "A"):
+            # ~a reads the abbreviated name and ~A the long one; exact
+            # (case-insensitive) matches, as in the reference's indexers.
+            start = pos
             skip_while(str.isalpha)  # the weekday name sets nothing
+            word = text[start:pos]
+            if not word:
+                raise LispError("string->date: expected a weekday name")
+            names = _WEEKDAYS if spec == "A" else _WEEKDAY_ABBREVS
+            if not any(word.lower() == name.lower() for name in names):
+                raise LispError(f"string->date: unknown weekday name {word!r}")
         elif spec in ("b", "B", "h"):
+            # ~b/~h are the abbreviated month, ~B the long name — the
+            # reference keeps two separate indexers, so a prefix match is
+            # not enough (and would accept "November" for ~b).
             start = pos
             skip_while(str.isalpha)
-            word = text[start:pos].lower()
+            word = text[start:pos]
             if not word:
                 raise LispError("string->date: expected a month name")
-            for index, name in enumerate(_MONTH_WORDS):
-                if name.startswith(word):
+            names = _MONTHS if spec == "B" else _MONTH_ABBREVS
+            for index, name in enumerate(names):
+                if word.lower() == name.lower():
                     fields["month"] = index + 1
                     break
             else:
-                raise LispError(f"string->date: unknown month name {word!r}")
+                kind = "long" if spec == "B" else "abbreviated"
+                raise LispError(
+                    f"string->date: unknown {kind} month name {word!r}"
+                )
         elif spec in ("d", "e"):
             skip_while(str.isspace)
-            fields["day"] = read_int()
+            fields["day"] = read_int(2)
         elif spec in ("H", "k"):
             skip_while(str.isspace)
-            fields["hour"] = read_int()
+            fields["hour"] = read_int(2)
         elif spec == "m":
-            fields["month"] = read_int()
+            fields["month"] = read_int(2)
         elif spec == "M":
-            fields["minute"] = read_int()
+            fields["minute"] = read_int(2)
         elif spec == "S":
-            fields["second"] = read_int()
+            fields["second"] = read_int(2)
         elif spec == "y":
-            value = read_int()
+            value = read_int(2)
             current = _datetime_now_local().year
             year = current // 100 * 100 + value
             if year > current + 50:
@@ -584,7 +683,7 @@ def _string_to_date(*args: Any) -> Srfi19Date:
                 year += 100
             fields["year"] = year
         elif spec == "Y":
-            fields["year"] = read_int()
+            fields["year"] = read_int(4)
         elif spec == "z":
             offset, pos = _parse_zone(text, pos)
             fields["zone_offset"] = offset
@@ -593,6 +692,22 @@ def _string_to_date(*args: Any) -> Srfi19Date:
                 f"string->date: ~{spec} is not a supported converter — "
                 "docs/srfi.md records the supported subset"
             )
+    # The whole input must match the template ("The input string must match
+    # the template string as is") — trailing garbage is an error, not silence.
+    if pos != tlen:
+        raise LispError(
+            f"string->date: {tlen - pos} trailing character(s) after the template match"
+        )
+    # The time-of-day fields obey the date type's ranges, like make-date:
+    # a parsed date is a date, never a near-miss. (~N is not a supported
+    # converter, so the nanosecond field is always its 0 default.)
+    for value, low, high, what in (
+        (fields["second"], 0, 59, "second"),
+        (fields["minute"], 0, 59, "minute"),
+        (fields["hour"], 0, 23, "hour"),
+    ):
+        if not low <= value <= high:
+            raise LispError(f"string->date: {what} out of range: {value}")
     # Validate the assembled day loudly.
     try:
         _date(fields["year"], fields["month"], fields["day"])

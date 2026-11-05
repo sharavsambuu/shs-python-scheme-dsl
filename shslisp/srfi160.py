@@ -25,7 +25,7 @@ walker. ``docs/SRFI_TASKS.md`` (S11) is the plan this implements.
   the integer vectors, an *inexact* real (a Python ``float``) for ``f32``/
   ``f64``, an inexact complex for ``c64``/``c128``. An exact ``1`` is not an
   ``f64`` element — write ``1.0``.
-* The other ten per-type full libraries do not exist yet; importing
+* The other eleven per-type full libraries do not exist yet; importing
   ``(srfi 160 u8)`` fails loudly. The kernel underneath is generic, so they
   are mechanical to add.
 """
@@ -142,11 +142,18 @@ def _set(vec: Srfi160Vector, index: int, value: Any) -> None:
 
 
 def _new(typecode: str, length: int, fill: Any) -> Srfi160Vector:
-    if typecode in _COMPLEX_TYPES:
-        number = complex(fill)
-        data = array(_TYPE_CODES[typecode], [number.real, number.imag] * length)
-    else:
-        data = array(_TYPE_CODES[typecode], [fill] * length)
+    try:
+        if typecode in _COMPLEX_TYPES:
+            number = complex(fill)
+            data = array(_TYPE_CODES[typecode], [number.real, number.imag] * length)
+        else:
+            data = array(_TYPE_CODES[typecode], [fill] * length)
+    except OverflowError:
+        # A backstop for every construction path: a value that cannot fit the
+        # storage type is a Lisp type error, never a host exception.
+        raise LispTypeError(
+            f"{typecode}vector: {fill!r} does not fit the storage type"
+        ) from None
     return Srfi160Vector(typecode, data)
 
 
@@ -218,17 +225,43 @@ def _op_copy_into(
     to: Srfi160Vector, at: int, from_vec: Srfi160Vector,
     start: int, end: int, reverse: bool = False,
 ) -> None:
+    count = end - start
+    # Validate the whole window before the first write: a copy that cannot
+    # fit leaves the target untouched, and a negative `at` is not Python's
+    # "index from the end" — it is out of range like any other bad index.
+    if at < 0 or at + count > len(to):
+        raise LispTypeError(
+            f"{to.typecode}vector-copy!: the target has no room for "
+            f"{count} element(s) at index {at}"
+        )
     indices = range(end - 1, start - 1, -1) if reverse else range(start, end)
+    # SRFI 133: "if the source and destination overlap, copying takes place
+    # as if the source is first copied into a temporary vector." A self-copy
+    # whose windows intersect therefore snapshots the source window before
+    # the first write; disjoint copies keep the direct loop.
+    if to is from_vec and start < end and at < end and start < at + count:
+        pending = [_get(from_vec, i) for i in indices]
+        for offset, value in enumerate(pending):
+            _set(to, at + offset, value)
+        return
     for offset, i in enumerate(indices):
-        if at + offset >= len(to):
-            raise LispTypeError(
-                f"{to.typecode}vector-copy!: the target has no room at index {at + offset}"
-            )
         _set(to, at + offset, _get(from_vec, i))
 
 
+def _op_concatenate(vecs: Any, typecode: str) -> Srfi160Vector:
+    # The empty list is NIL at this boundary; any other non-list is an error.
+    if vecs is NIL:
+        vecs = []
+    elif not isinstance(vecs, list):
+        raise LispTypeError(
+            f"{typecode}vector-concatenate: expected a list of "
+            f"{typecode}vectors, got {vecs!r}"
+        )
+    return _op_append(vecs, typecode, f"{typecode}vector-concatenate")
+
+
 def _op_append(vecs: Any, typecode: str, who: str) -> Srfi160Vector:
-    checked = [_expect_vector(v, who) for v in vecs]
+    checked = [_checked_tc(v, typecode, who) for v in vecs]
     total = sum(len(v) for v in checked)
     result = _new(typecode, total, _default_fill(typecode))
     at = 0
@@ -244,7 +277,7 @@ def _op_append_subvectors(args: Any, typecode: str, who: str) -> Srfi160Vector:
     spans = []
     total = 0
     for i in range(0, len(args), 3):
-        vec = _expect_vector(args[i], who)
+        vec = _checked_tc(args[i], typecode, who)
         start, end = _range_args(args[i + 1:i + 3], who, len(vec))
         spans.append((vec, start, end))
         total += end - start
@@ -264,9 +297,11 @@ def _numbers_equal(a: Any, b: Any) -> bool:
 
 
 def _op_equal(vecs: Any) -> bool:
-    checked = [_expect_vector(v, "@vector=") for v in vecs]
+    checked = [_checked(v, "@vector=") for v in vecs]
     if len(checked) < 2:
-        raise LispArityError("@vector=", "at least 2", len(checked))
+        # SRFI 133: "If there are only zero or one vector arguments, #t is
+        # automatically returned."
+        return True
     first = checked[0]
     return all(
         len(v) == len(first)
@@ -290,7 +325,7 @@ def _op_take_drop(vec: Srfi160Vector, n: Any, who: str, take: bool, right: bool)
     return result
 
 
-def _op_segment(vec: Srfi160Vector, n: Any) -> list:
+def _op_segment(vec: Srfi160Vector, n: Any) -> Any:
     size = _expect_int(n, "@vector-segment")
     if size <= 0:
         raise LispError(f"@vector-segment: length must be a positive integer, got {size}")
@@ -302,11 +337,13 @@ def _op_segment(vec: Srfi160Vector, n: Any) -> list:
         _op_copy_into(chunk, 0, vec, i, end)
         chunks.append(chunk)
         i = end
-    return chunks
+    return make_list(chunks)
 
 
 def _op_fold(kons: Any, knil: Any, vecs: list, who: str, right: bool) -> Any:
-    checked = [_expect_vector(v, who) for v in vecs]
+    checked = [_checked(v, who) for v in vecs]
+    if not checked:
+        raise LispArityError(who, "at least 1", 0)
     length = min(len(v) for v in checked)
     indices = range(length - 1, -1, -1) if right else range(length)
     acc = knil
@@ -316,33 +353,42 @@ def _op_fold(kons: Any, knil: Any, vecs: list, who: str, right: bool) -> Any:
 
 
 def _op_map(f: Any, vecs: list, who: str, in_place: bool) -> Any:
-    checked = [_expect_vector(v, who) for v in vecs]
+    checked = [_checked(v, who) for v in vecs]
+    if not checked:
+        raise LispArityError(who, "at least 1", 0)
     length = min(len(v) for v in checked)
     if in_place:
         target = checked[0]
         for v in checked:
-            _check_typecode_of(v, target.typecode, who)
+            _check_typecode_of(v, _TC, who)
         for i in range(length):
             _set(target, i, apply_procedure(f, [_get(v, i) for v in checked]))
         return NIL
-    result = _new(checked[0].typecode, length, _default_fill(checked[0].typecode))
+    # The result's type is the library's, not the first argument's: an
+    # f64vector-map answers an f64vector, period.
+    result = _new(_TC, length, _default_fill(_TC))
     for i in range(length):
         _set(result, i, apply_procedure(f, [_get(v, i) for v in checked]))
     return result
 
 
-def _op_count(pred: Any, vecs: list) -> int:
-    length = min(len(v) for v in vecs)
+def _op_count(pred: Any, vecs: list, who: str = "@vector-count") -> int:
+    checked = [_checked(v, who) for v in vecs]
+    if not checked:
+        raise LispArityError(who, "at least 1", 0)
+    length = min(len(v) for v in checked)
     total = 0
     for i in range(length):
-        if is_true(apply_procedure(pred, [_get(v, i) for v in vecs])):
+        if is_true(apply_procedure(pred, [_get(v, i) for v in checked])):
             total += 1
     return total
 
 
 def _op_for_each(f: Any, vecs: list, who: str) -> Any:
     """Iterate without collecting: the procedure's return value is ignored."""
-    checked = [_expect_vector(v, who) for v in vecs]
+    checked = [_checked(v, who) for v in vecs]
+    if not checked:
+        raise LispArityError(who, "at least 1", 0)
     length = min(len(v) for v in checked)
     for i in range(length):
         apply_procedure(f, [_get(v, i) for v in checked])
@@ -358,26 +404,43 @@ def _op_cumulate(f: Any, knil: Any, vec: Srfi160Vector) -> Srfi160Vector:
     return result
 
 
-def _op_index(pred: Any, vecs: list, right: bool) -> Any:
-    length = min(len(v) for v in vecs)
+def _op_index(pred: Any, vecs: list, right: bool, who: str = "") -> Any:
+    who = who or ("@vector-index-right" if right else "@vector-index")
+    checked = [_checked(v, who) for v in vecs]
+    if not checked:
+        raise LispArityError(who, "at least 1", 0)
+    if right and len({len(v) for v in checked}) > 1:
+        # SRFI 160: "Lengths of vectors must be the same for
+        # @vector-index-right" — silently using the shortest is not ours.
+        raise LispTypeError(f"{who}: the vectors must have equal lengths")
+    length = min(len(v) for v in checked)
     indices = range(length - 1, -1, -1) if right else range(length)
     for i in indices:
-        if is_true(apply_procedure(pred, [_get(v, i) for v in vecs])):
+        if is_true(apply_procedure(pred, [_get(v, i) for v in checked])):
             return i
     return False
 
 
-def _op_any(pred: Any, vecs: list) -> Any:
-    length = min(len(v) for v in vecs)
+def _op_any(pred: Any, vecs: list, who: str = "@vector-any") -> Any:
+    checked = [_checked(v, who) for v in vecs]
+    if not checked:
+        raise LispArityError(who, "at least 1", 0)
+    length = min(len(v) for v in checked)
+    if length == 0:
+        # SRFI 160: "If @vec is empty, returns #t."
+        return True
     for i in range(length):
-        result = apply_procedure(pred, [_get(v, i) for v in vecs])
+        result = apply_procedure(pred, [_get(v, i) for v in checked])
         if is_true(result):
             return result
     return False
 
 
-def _op_every(pred: Any, vecs: list) -> Any:
-    length = min(len(v) for v in vecs)
+def _op_every(pred: Any, vecs: list, who: str = "@vector-every") -> Any:
+    checked = [_checked(v, who) for v in vecs]
+    if not checked:
+        raise LispArityError(who, "at least 1", 0)
+    length = min(len(v) for v in checked)
     last: Any = True
     for i in range(length):
         result = apply_procedure(pred, [_get(v, i) for v in vecs])
@@ -388,11 +451,19 @@ def _op_every(pred: Any, vecs: list) -> Any:
 
 
 def _op_partition(pred: Any, vec: Srfi160Vector) -> Values:
-    yes = _op_filter(pred, vec, keep=True)
-    no = _op_filter(pred, vec, keep=False)
+    # One pass: the predicate answers once per element (a two-filter version
+    # would run it twice). Yes-part first; both parts keep their order.
+    yes: list = []
+    no: list = []
+    for i in range(len(vec)):
+        value = _get(vec, i)
+        if is_true(apply_procedure(pred, [value])):
+            yes.append(value)
+        else:
+            no.append(value)
     result = _new(vec.typecode, len(vec), _default_fill(vec.typecode))
-    _op_copy_into(result, 0, yes, 0, len(yes))
-    _op_copy_into(result, len(yes), no, 0, len(no))
+    for i, value in enumerate(yes + no):
+        _set(result, i, value)
     return Values((result, len(yes)))
 
 
@@ -461,6 +532,11 @@ def _make_prim(typecode: str) -> Any:
         if n < 0:
             raise LispTypeError(f"{_name}: negative length {n}")
         fill = _default_fill(_tc) if len(args) < 2 else args[1]
+        if not is_valid_element(_tc, fill):
+            # SRFI 160's blanket rule: "it is an error to attempt to insert
+            # an invalid value into a homogeneous vector" — the fill is an
+            # insert, so it is validated exactly like set!.
+            raise LispTypeError(f"{_name}: {fill!r} is not a valid {_tc} element")
         return _new(_tc, n, fill)
 
     return fn
@@ -501,13 +577,17 @@ def install_base(env: Environment) -> None:
             _set(vec, _expect_index(i, f"{_tc}vector-set!", len(vec)), value)
             return NIL
 
-        def to_list_fn(v: Any, *args: Any, _tc: str = tc) -> list:
+        def to_list_fn(v: Any, *args: Any, _tc: str = tc) -> Any:
             vec = _checked_tc(v, _tc, f"{_tc}vector->list")
             start, end = _range_args(args, f"{_tc}vector->list", len(vec))
-            return [_get(vec, i) for i in range(start, end)]
+            # The empty list is NIL, not Python's [] — (null? ...) and
+            # (equal? ... '()) must answer like every other list producer.
+            return make_list(_get(vec, i) for i in range(start, end))
 
         def from_list_fn(lst: Any, _tc: str = tc) -> Srfi160Vector:
-            if not isinstance(lst, list):
+            if lst is NIL:
+                lst = []
+            elif not isinstance(lst, list):
                 raise LispTypeError(f"list->{_tc}vector: expected a list, got {lst!r}")
             result = _new(_tc, len(lst), _default_fill(_tc))
             for i, value in enumerate(lst):
@@ -590,10 +670,10 @@ def _copy_bang(to: Any, at: Any, frm: Any, *rest: Any, reverse: bool = False) ->
     return NIL
 
 
-def _op_to_list(vec: Srfi160Vector, args: Any, who: str, reverse: bool = False) -> list:
+def _op_to_list(vec: Srfi160Vector, args: Any, who: str, reverse: bool = False) -> Any:
     start, end = _range_args(args, who, len(vec))
     indices = range(end - 1, start - 1, -1) if reverse else range(start, end)
-    return [_get(vec, i) for i in indices]
+    return make_list(_get(vec, i) for i in indices)
 
 
 def _op_to_vector(vec: Srfi160Vector, args: Any, who: str) -> Any:
@@ -612,7 +692,11 @@ def _reverse_list_to(lst: Any) -> Srfi160Vector:
 
 
 def _from_python_list(lst: Any, who: str, reverse: bool) -> Srfi160Vector:
-    if not isinstance(lst, list):
+    # The empty list is NIL at this boundary — (list->f64vector '()) is the
+    # empty vector, per SRFI 133's list->vector.
+    if lst is NIL:
+        lst = []
+    elif not isinstance(lst, list):
         raise LispTypeError(f"{who}: expected a list, got {lst!r}")
     values = list(reversed(lst)) if reverse else lst
     result = _new(_TC, len(values), _default_fill(_TC))
@@ -688,8 +772,7 @@ def install_f64(env: Environment) -> None:
     define("f64vector-reverse-copy", unary(
         "f64vector-reverse-copy", lambda v, rest, w: _op_copy(v, rest, w, reverse=True)))
     define("f64vector-append", lambda *vs: _op_append(vs, _TC, "f64vector-append"))
-    define("f64vector-concatenate", lambda vs: _op_append(
-        vs if isinstance(vs, list) else [], _TC, "f64vector-concatenate"))
+    define("f64vector-concatenate", lambda vs: _op_concatenate(vs, _TC))
     define("f64vector-append-subvectors", lambda *args: _op_append_subvectors(
         args, _TC, "f64vector-append-subvectors"))
 
@@ -724,7 +807,7 @@ def install_f64(env: Environment) -> None:
     define("f64vector-map", lambda f, *vs: _op_map(f, list(vs), "f64vector-map", in_place=False))
     define("f64vector-map!", lambda f, *vs: _op_map(f, list(vs), "f64vector-map!", in_place=True))
     define("f64vector-for-each", lambda f, *vs: _op_for_each(f, list(vs), "f64vector-for-each"))
-    define("f64vector-count", lambda pred, *vs: _op_count(pred, list(vs)))
+    define("f64vector-count", lambda pred, *vs: _op_count(pred, list(vs), "f64vector-count"))
     define("f64vector-cumulate", lambda f, knil, v: _op_cumulate(
         f, knil, _checked(v, "f64vector-cumulate")))
 
@@ -737,12 +820,16 @@ def install_f64(env: Environment) -> None:
         pred, _checked(v, "f64vector-drop-while"), right=False))
     define("f64vector-drop-while-right", lambda pred, v: _op_drop_while(
         pred, _checked(v, "f64vector-drop-while-right"), right=True))
-    define("f64vector-index", lambda pred, *vs: _op_index(pred, list(vs), right=False))
-    define("f64vector-index-right", lambda pred, *vs: _op_index(pred, list(vs), right=True))
-    define("f64vector-skip", lambda pred, *vs: _op_index(_negated(pred), list(vs), right=False))
-    define("f64vector-skip-right", lambda pred, *vs: _op_index(_negated(pred), list(vs), right=True))
-    define("f64vector-any", lambda pred, *vs: _op_any(pred, list(vs)))
-    define("f64vector-every", lambda pred, *vs: _op_every(pred, list(vs)))
+    define("f64vector-index", lambda pred, *vs: _op_index(
+        pred, list(vs), right=False, who="f64vector-index"))
+    define("f64vector-index-right", lambda pred, *vs: _op_index(
+        pred, list(vs), right=True, who="f64vector-index-right"))
+    define("f64vector-skip", lambda pred, *vs: _op_index(
+        _negated(pred), list(vs), right=False, who="f64vector-skip"))
+    define("f64vector-skip-right", lambda pred, *vs: _op_index(
+        _negated(pred), list(vs), right=True, who="f64vector-skip-right"))
+    define("f64vector-any", lambda pred, *vs: _op_any(pred, list(vs), "f64vector-any"))
+    define("f64vector-every", lambda pred, *vs: _op_every(pred, list(vs), "f64vector-every"))
     define("f64vector-partition", lambda pred, v: _op_partition(pred, _checked(v, "f64vector-partition")))
     define("f64vector-filter", lambda pred, v: _op_filter(pred, _checked(v, "f64vector-filter"), keep=True))
     define("f64vector-remove", lambda pred, v: _op_filter(pred, _checked(v, "f64vector-remove"), keep=False))

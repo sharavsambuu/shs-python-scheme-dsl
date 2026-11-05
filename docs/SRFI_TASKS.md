@@ -26,6 +26,7 @@
 | S10 | `(srfi 19)` time and date, core-backed on the Python stdlib, both profiles, documented deviations | [`srfi.md`](srfi.md), [`shslisp/srfi19.py`](../shslisp/srfi19.py), [`tests/test_srfi19.py`](../tests/test_srfi19.py) |
 | S11 | `(srfi 160 base)` + `(srfi 160 f64)` — the buffer-protocol numeric vectors and the numpy bridge, `#f64(...)` reader/printer round-trip | [`srfi.md`](srfi.md), [`shslisp/srfi160.py`](../shslisp/srfi160.py), [`tests/test_srfi160.py`](../tests/test_srfi160.py) |
 | S12 | The `(srfi 158)` audit-and-complete: eof-object protocol, the full combinator set, the accumulators | [`srfi.md`](srfi.md), [`shslisp/generators.scm`](../shslisp/generators.scm), [`tests/test_generators.py`](../tests/test_generators.py) |
+| S13 | The audit pass over S10–S12: the sixteen review findings fixed — fill validation, overlap-safe copies, loud `string->date`, a lazy `gmerge`, f64 type strictness, the spec corners, and the strict-profile scoping — each with the test that pins it | [`tests/test_srfi160.py`](../tests/test_srfi160.py), [`tests/test_srfi19.py`](../tests/test_srfi19.py), [`tests/test_generators.py`](../tests/test_generators.py), [`tests/test_profile.py`](../tests/test_profile.py) |
 
 `(srfi 204)` is recorded in the matrix as *withdrawn*: it is never
 implemented, and importing it fails, naming `(srfi 241)`.
@@ -89,7 +90,7 @@ the tree walker. `u8vector` joins when binary plumbing needs it.
 
 **Deviations, decided up front.** `@vector-comparator` is omitted — it
 requires SRFI 128, which stays unscheduled; the omission is documented, not
-shimmed. The remaining ten numeric types ride the same generic kernel later.
+shimmed. The remaining eleven numeric types ride the same generic kernel later.
 
 ### ~~S12 — the `(srfi 158)` audit-and-complete of the generator prelude~~ — landed
 
@@ -117,6 +118,73 @@ constructors, `gappend`, `gcombine`, `gfilter-map`, `gindex`, `gselect`, the
 **Landing.** Each task flips its `srfi.md` matrix row from *scheduled* to
 *supported* in the same change that binds it, and adds its feature identifier
 to `shslisp/profile.py`.
+
+### ~~S13 — the audit pass over S10–S12 (the review findings)~~ — landed
+
+A post-landing review of the trading layer (2026-11-05) found sixteen
+semantic defects the first tests missed; all sixteen are fixed, each with
+the test that would have caught it. The findings, by library:
+
+- **`(srfi 160)`.** `make-@vector` passed its fill straight to the
+  `array.array` payload, silently coercing invalid elements (an exact `1`
+  became `1.0`; `#t` became `1.0`; an out-of-range integer leaked a host
+  `OverflowError`) — the fill is now validated like every other insert, and
+  the storage backstop raises a Lisp type error. `@vector-copy!`/
+  `@vector-reverse-copy!` always copied forward, so a self-overlapping copy
+  smeared — they now copy "as if the source is first copied into a temporary
+  vector" (SRFI 133). The f64 operations accepted any homogeneous vector
+  (an `f64vector-map` over a `u8vector` answered a *u8vector*!) — they now
+  require f64vectors and `f64vector-map` answers an f64vector. The spec
+  corners: `@vector-any` on an empty vector returns `#t` (SRFI 160's
+  explicit rule); `@vector=` with zero or one vector returns `#t` (SRFI
+  133's); `@vector-concatenate` refuses a non-list instead of quietly
+  returning an empty vector, and `list->f64vector` of the empty list is the
+  empty vector; `@vector-index-right`/`skip-right` require equal lengths;
+  `@vector-partition` answers the predicate once per element.
+- **`(srfi 19)`.** `string->date` validated only the calendar day — it now
+  range-checks hour/minute/second like `make-date`, caps the readers' widths
+  like the reference's (so `~Y~m~d` parses concatenated input field by
+  field), and requires the whole input to match the template. `date-week-number`
+  now matches the SRFI 19 reference implementation (`quotient(year-day −
+  days-before-first-week, 7)`, the partial first week sharing week 0), and
+  `~U`/`~W` are zero-padded per Table 1 with the reference's rule that a
+  partial first week bumps the numbering. `time-resolution` validates its
+  optional time-type instead of answering any junk; `time-utc->julian-day`/
+  `time-utc->modified-julian-day` require a `time-utc`.
+- **`(srfi 158)`.** `gmerge` pulled one value from every source at
+  construction time, against the SRFI's rule that generator operations
+  "return a new generator without consuming any elements from the source
+  generator(s)" — the merge is lazy now: heads are pulled on the first call
+  of the returned generator.
+- **The strict profile.** `install_core` bound the `(srfi 19)`/`(srfi 160)`
+  primitives into the core floor unconditionally, so `make_env(profile="r7rs")`
+  had `current-time`, `f64vector`, and `date->string` without any import —
+  contradicting the docs. They are core-*backed* now, not core-*bound*: the
+  primitives install into the libraries' own private scopes on first import
+  (`shslisp/library.py`'s `_core_backed_builder`), the default profile's
+  pre-import binds the same objects, and `(srfi 160 base)`/`(srfi 160 f64)`
+  share one scope so both export lists hand back identical bindings. `(srfi
+  158)` deliberately rides the prelude in both profiles, as documented.
+- **The doc drift.** "The other ten per-type full libraries" is eleven (twelve
+  types, f64 ships) — corrected in `srfi.md`, this ledger, the module
+  docstring, and the test docstring.
+
+**The follow-up sweep** then closed the remaining edges the sixteen findings
+did not cover. Every base `list-><type>vector` accepts `()`, and every
+`<type>vector->list` (plus the f64 slices, reverse conversion, and
+`f64vector-segment`) answers an empty list as `NIL`, so `null?`, `list?`, and
+`equal?` behave. The Julian Day and date converters reject non-finite or
+out-of-range inputs with a Lisp type error instead of leaking a host
+`OverflowError`, and `~Y` is four digits per Table 1. `date->string` defaults
+to `~c` and prints `Z` at a zero offset, as the reference does; `string->date`
+now distinguishes abbreviated from long weekday and month names (exact,
+case-insensitive matches, not prefixes) and reads `~z` as exactly `HHMM` or
+`HH:MM` after the sign. Each edge has a regression test in
+`tests/test_srfi19.py`/`tests/test_srfi160.py`.
+
+Truth: the audit-pass tests in `tests/test_srfi160.py`, `tests/test_srfi19.py`,
+`tests/test_generators.py` (the `gmerge` laziness pin), and
+`tests/test_profile.py` (the strict-profile and shared-scope pins).
 
 ### ~~S9 — generators / lazy sequences~~ — landed
 

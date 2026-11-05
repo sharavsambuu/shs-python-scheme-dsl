@@ -267,14 +267,21 @@
             (else (loop (gen) (cons item result) (- count 1)))))))
 
 ;; A stable merge of sorted generators: each step answers the smaller head
-;; (`<?` decides; ties go left). Variadic by pairwise merging.
+;; (`<?` decides; ties go left). Variadic by pairwise merging. Lazy like every
+;; generator operation (SRFI 158: "return a new generator without consuming
+;; any elements from the source generator(s)") — the two heads are pulled on
+;; the first call of the returned generator, never at construction.
 (define gmerge
   (case-lambda
     ((<?) (error "gmerge: at least one generator is required"))
     ((<? gen) gen)
     ((<? genleft genright)
-     (let ((left (genleft)) (right (genright)))
+     (let ((left #f) (right #f) (armed? #f))
        (lambda ()
+         (if (not armed?)
+             (begin (set! left (genleft))
+                    (set! right (genright))
+                    (set! armed? #t)))
          (cond ((and (%end? left) (%end? right)) left)
                ((%end? left) (let ((obj right)) (set! right (genright)) obj))
                ((%end? right) (let ((obj left)) (set! left (genleft)) obj))

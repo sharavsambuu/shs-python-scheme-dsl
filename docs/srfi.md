@@ -287,11 +287,20 @@ appears here with a reason.
   zone-name vocabulary and no `date-zone-name`/`date-dst?` (the reference
   surface does not require them). `date->string` supports `~~ ~a ~A ~b ~B
   ~c ~d ~D ~e ~h ~H ~I ~j ~k ~l ~m ~M ~n ~N ~p ~r ~S ~T ~U ~w ~W ~x ~X ~y
-  ~Y ~z ~1 ~2 ~3 ~4 ~5` with C-locale English names; `string->date`
-  implements Table 2's required converters (`~~ ~a ~A ~b ~B ~d ~e ~h ~H ~k
-  ~m ~M ~S ~y ~Y ~z`), with unset fields defaulting to 1900-01-01 UTC and
-  `~y` pivoting within 50 years of the current year. Unknown directives fail
-  loudly.
+  ~Y ~z ~1 ~2 ~3 ~4 ~5` with C-locale English names; with no format
+  argument it defaults to `~c`, as the reference does, and `~z` prints `Z`
+  for a zero offset (the reference's spelling) and `+HHMM`/`-HHMM`
+  otherwise. `string->date` implements Table 2's required converters
+  (`~~ ~a ~A ~b ~B ~d ~e ~h ~H ~k ~m ~M ~S ~y ~Y ~z`), with unset fields
+  defaulting to 1900-01-01 UTC and `~y` pivoting within 50 years of the
+  current year. `~a`/`~A` and `~b`/`~h`/`~B` distinguish abbreviated from
+  long names (matched exactly, case-insensitively, not by prefix), and `~z`
+  reads exactly `HHMM` or `HH:MM` after the sign — also `Z`/`z`, and, as an
+  extension, `UTC`/`GMT`/`UT`. The readers are width-capped like the
+  reference's (`~d`/`~H`/`~M`/`~S` read at most two digits, `~Y` four), the
+  time-of-day fields are range-checked like `make-date`, and the whole
+  input must match the template — trailing garbage fails. Unknown
+  directives fail loudly.
 - **`(srfi 158)`** is the final export list, audited name by name. Two
   constructors — `make-coroutine-generator` and `make-for-each-generator` —
   are bound but **fail loudly**: suspending a body mid-computation needs
@@ -302,7 +311,7 @@ appears here with a reason.
   The final SRFI has no `max`/`min` accumulators, and none are claimed.
 - **`(srfi 160)`** ships `(srfi 160 base)` (all twelve types) and
   `(srfi 160 f64)` (the full SRFI-133-shaped set, plus
-  `make-f64vector-generator` and `write-f64vector`); the other ten per-type
+  `make-f64vector-generator` and `write-f64vector`); the other eleven per-type
   full libraries do not exist yet, and importing one — `(srfi 160 u8)` —
   fails loudly. `@vector-comparator` is **omitted**: it requires SRFI 128,
   which is not scheduled; the omission is documented, not shimmed. Element
@@ -360,8 +369,11 @@ name against the final specification, with the tests to show it.
   searching half, and the accumulators.
 
 The default DSL profile pre-imports all of them (plus the feature identifiers
-`srfi-19`, `srfi-158`, `srfi-160`); the strict `r7rs` profile leaves them as
-import-only libraries, like every other SRFI.
+`srfi-19`, `srfi-158`, `srfi-160`); the strict `r7rs` profile leaves `(srfi 19)`
+and `(srfi 160)` import-only — their primitives install into the libraries'
+own scopes on first import, never the core floor — while `(srfi 158)` rides
+the prelude in both profiles, as [the generator section](#the-generator-library-prelude-not-an-srfi-s9)
+records.
 
 ## How to verify
 

@@ -266,3 +266,292 @@ def test_the_default_profile_preimports_srfi_19() -> None:
     assert run(dsl, "(time? (current-time))") is True
     assert run(dsl, "(procedure? string->date)") is True
 
+
+# --------------------------------------------------------------------------- #
+#  The audit pass (S13): loud validation, and weeks that match the reference   #
+# --------------------------------------------------------------------------- #
+
+def test_string_to_date_validates_the_time_of_day_and_the_whole_input(ev) -> None:
+    with pytest.raises(LispError, match="hour out of range"):
+        ev('(string->date "99" "~H")')
+    with pytest.raises(LispError, match="minute out of range"):
+        ev('(string->date "99" "~M")')
+    with pytest.raises(LispError, match="second out of range"):
+        ev('(string->date "99" "~S")')
+    # the whole input must match the template: trailing garbage is an error
+    with pytest.raises(LispError, match="trailing character"):
+        ev('(string->date "2026junk" "~Y")')
+    # the readers are width-capped like the reference's, so concatenated
+    # templates parse field by field
+    d = ev('(string->date "20261105" "~Y~m~d")')
+    assert (d.year, d.month, d.day) == (2026, 11, 5)
+
+
+def test_time_resolution_validates_its_type_argument(ev) -> None:
+    with pytest.raises(LispTypeError, match="not a time type"):
+        ev("(time-resolution 'garbage)")
+    with pytest.raises(LispTypeError, match="expected a symbol"):
+        ev("(time-resolution 42)")
+    assert isinstance(ev("(time-resolution 'time-utc)"), int)
+    assert isinstance(ev("(time-resolution)"), int)
+
+
+def test_the_julian_day_converters_demand_a_time_utc(ev) -> None:
+    with pytest.raises(LispTypeError, match="expected a time-utc"):
+        ev("(time-utc->julian-day (make-time 'time-duration 0 1))")
+    with pytest.raises(LispTypeError, match="expected a time-utc"):
+        ev("(time-utc->modified-julian-day (make-time 'time-monotonic 0 5))")
+
+
+def test_week_numbers_match_the_srfi_19_reference(ev) -> None:
+    # The reference's formula: quotient(year-day - days-before-first-week, 7),
+    # the partial first week sharing week 0. 2026-01-01 is a Thursday.
+    assert ev("(date-week-number (make-date 0 0 0 12 1 1 2026 0) 0)") == 0
+    assert ev("(date-week-number (make-date 0 0 0 12 4 1 2026 0) 0)") == 0
+    assert ev("(date-week-number (make-date 0 0 0 12 11 1 2026 0) 0)") == 1
+    # ~U / ~W are zero-padded, and a partial first week bumps the numbering
+    assert ev('(date->string (make-date 0 0 0 12 1 1 2026 0) "~U")') == "01"
+    assert ev('(date->string (make-date 0 0 0 12 11 1 2026 0) "~U")') == "02"
+    assert ev('(date->string (make-date 0 0 0 12 4 1 2026 0) "~W")') == "01"
+    # a year starting on the week's own first day has no partial week:
+    # 2023-01-01 was a Sunday
+    assert ev('(date->string (make-date 0 0 0 12 1 1 2023 0) "~U")') == "00"
+
+
+# --------------------------------------------------------------------------- #
+#  Regression coverage beyond the S13 pins: template shapes, day boundaries,   #
+#  zone spellings, week numbers across years, and every clock type             #
+# --------------------------------------------------------------------------- #
+
+
+def test_string_to_date_parses_every_supported_template_shape(ev) -> None:
+    # Concatenated numeric fields: each reader stops at its width cap.
+    d = ev('(string->date "20261105214217" "~Y~m~d~H~M~S")')
+    assert (d.year, d.month, d.day, d.hour, d.minute, d.second) == (
+        2026, 11, 5, 21, 42, 17,
+    )
+    # The same fields with literals between them.
+    d = ev('(string->date "2026 11 05 21 42 17" "~Y ~m ~d ~H ~M ~S")')
+    assert (d.year, d.month, d.day, d.hour, d.minute, d.second) == (
+        2026, 11, 5, 21, 42, 17,
+    )
+    # The month-name and weekday converters, abbreviated and long.
+    d = ev('(string->date "05 Nov 2026" "~d ~b ~Y")')
+    assert (d.year, d.month, d.day) == (2026, 11, 5)
+    d = ev('(string->date "Thursday, 05 November 2026" "~A, ~d ~B ~Y")')
+    assert (d.year, d.month, d.day) == (2026, 11, 5)
+    # ~e and ~k consume the reference's space padding.
+    d = ev('(string->date " 5  9" "~e ~k")')
+    assert (d.day, d.hour) == (5, 9)
+
+
+def test_string_to_date_validates_real_days_and_time_of_day_boundaries(ev) -> None:
+    for text, template, message in (
+        ("2026-13-01", "~Y-~m-~d", "real day"),
+        ("2026-00-01", "~Y-~m-~d", "real day"),
+        ("2026-02-30", "~Y-~m-~d", "real day"),
+        ("0000-01-01", "~Y-~m-~d", "real day"),
+        ("24", "~H", "hour out of range"),
+        ("60", "~M", "minute out of range"),
+        ("60", "~S", "second out of range"),
+    ):
+        with pytest.raises(LispError, match=message):
+            ev(f'(string->date "{text}" "{template}")')
+    # The boundaries themselves are legal, including a leap day.
+    d = ev('(string->date "2026-12-31 23:59:59" "~Y-~m-~d ~H:~M:~S")')
+    assert (d.day, d.hour, d.minute, d.second) == (31, 23, 59, 59)
+    d = ev('(string->date "2024-02-29" "~Y-~m-~d")')
+    assert (d.year, d.month, d.day) == (2024, 2, 29)
+
+
+def test_string_to_date_reads_every_supported_zone_spelling(ev) -> None:
+    for text, expected in (
+        ("+0200", 7200), ("-0400", -14400),
+        ("+02:00", 7200), ("-01:30", -5400),
+        ("Z", 0), ("z", 0), ("UTC", 0), ("GMT", 0),
+    ):
+        assert ev(f'(date-zone-offset (string->date "{text}" "~z"))') == expected
+
+
+def test_string_to_date_rejects_missing_literals_digits_and_trailing_input(ev) -> None:
+    with pytest.raises(LispError, match="trailing character"):
+        ev('(string->date "+0200junk" "~z")')
+    with pytest.raises(LispError, match="expected 'T'"):
+        ev('(string->date "2026-01-01x" "~Y-~m-~dT")')
+    with pytest.raises(LispError, match="expected digits"):
+        ev('(string->date "x" "~d")')
+
+
+def test_date_week_numbers_across_years_start_days_and_leap_day(ev) -> None:
+    # The SRFI 19 reference formula: quotient(year-day - partial-first-week, 7).
+    # Values computed from the reference's tm:days-before-first-week /
+    # tm:week-day pair, over several years and start days.
+    week_cases = (
+        ((2023, 1, 1), 0, 0),
+        ((2024, 1, 1), 0, 0),   # Monday: start=0 leaves a partial week
+        ((2024, 1, 1), 1, 0),
+        ((2025, 1, 1), 3, 0),
+        ((2026, 1, 1), 4, 0),
+        ((2027, 1, 1), 5, 0),
+        ((2024, 2, 29), 0, 7),  # leap day
+        ((2024, 12, 31), 0, 51),
+        ((2024, 12, 31), 2, 52),
+        ((2026, 1, 11), 0, 1),
+        ((2026, 1, 11), 2, 0),
+    )
+    for (year, month, day), start, week in week_cases:
+        date_src = f"(make-date 0 0 0 12 {day} {month} {year} 0)"
+        assert ev(f"(date-week-number {date_src} {start})") == week
+    # ~U is the Sunday-start week number, padded to two digits and bumped by
+    # one when the year opens with a partial week (the reference's rule).
+    u_cases = (
+        ((2023, 1, 1), "00"), ((2024, 1, 1), "01"),
+        ((2025, 1, 1), "01"), ((2026, 1, 1), "01"),
+        ((2027, 1, 1), "01"), ((2024, 2, 29), "08"),
+        ((2024, 12, 31), "52"), ((2026, 1, 11), "02"),
+    )
+    for (year, month, day), utext in u_cases:
+        date_src = f"(make-date 0 0 0 12 {day} {month} {year} 0)"
+        assert ev(f'(date->string {date_src} "~U")') == utext
+    # ~W is the Monday-start sibling with its own padding/bump.
+    w_cases = (
+        ((2024, 1, 1), "00"), ((2023, 1, 1), "01"),
+        ((2025, 1, 1), "01"), ((2024, 12, 31), "52"),
+    )
+    for (year, month, day), wtext in w_cases:
+        date_src = f"(make-date 0 0 0 12 {day} {month} {year} 0)"
+        assert ev(f'(date->string {date_src} "~W")') == wtext
+    # The start day is a 0..6 field, checked like any other index.
+    for start in (-1, 7):
+        with pytest.raises(LispTypeError, match="must be 0..6"):
+            ev(f"(date-week-number (make-date 0 0 0 12 1 1 2026 0) {start})")
+
+
+def test_time_resolution_and_julian_converters_check_their_types(ev) -> None:
+    # Every clock type is accepted; a duration is not a clock.
+    for type_name in (
+        "time-utc", "time-monotonic", "time-process", "time-tai", "time-thread",
+    ):
+        assert isinstance(ev(f"(time-resolution '{type_name})"), int)
+    with pytest.raises(LispTypeError, match="not a clock"):
+        ev("(time-resolution 'time-duration)")
+    with pytest.raises(LispTypeError, match="not a clock"):
+        ev("(current-time 'time-duration)")
+    # The Julian converters accept time-utc, and refuse every other time type.
+    assert ev("(time-utc->julian-day (make-time 'time-utc 0 0))") == 2440587.5
+    assert ev(
+        "(time-utc->modified-julian-day (make-time 'time-utc 0 0))"
+    ) == 40587.0
+    for type_name in ("time-duration", "time-monotonic", "time-process", "time-tai"):
+        with pytest.raises(LispTypeError, match="expected a time-utc"):
+            ev(f"(time-utc->julian-day (make-time '{type_name} 0 1))")
+        with pytest.raises(LispTypeError, match="expected a time-utc"):
+            ev(f"(time-utc->modified-julian-day (make-time '{type_name} 0 1))")
+    # A boolean is not a real Julian Day, even though Python bool is an int.
+    with pytest.raises(LispTypeError, match="real Julian Day"):
+        ev("(julian-day->time-utc #t)")
+
+
+
+# --------------------------------------------------------------------------- #
+#  The second audit pass: Julian overflow leaks, strict names, ~z shape, and   #
+#  the reference's default date->string format.                               #
+# --------------------------------------------------------------------------- #
+
+
+def test_julian_day_converters_reject_non_finite_values_loudly(ev) -> None:
+    for source in (
+        "(julian-day->time-utc +inf.0)",
+        "(julian-day->time-utc -inf.0)",
+        "(julian-day->time-utc +nan.0)",
+        "(julian-day->date +inf.0 0)",
+        "(modified-julian-day->date -inf.0 0)",
+    ):
+        with pytest.raises(LispTypeError, match="finite Julian Day"):
+            ev(source)
+    # A finite value too large for float arithmetic is still a Lisp error.
+    with pytest.raises(LispTypeError, match="out of range"):
+        ev("(julian-day->time-utc 1e308)")
+    with pytest.raises(LispTypeError, match="date out of range"):
+        ev("(julian-day->date 1e300 0)")
+    with pytest.raises(LispTypeError, match="date out of range"):
+        ev("(modified-julian-day->date -1e300 0)")
+
+
+def test_date_conversions_never_leak_host_overflow(ev) -> None:
+    # Huge seconds and huge zone offsets reach datetime's limits; the
+    # boundary must translate that into a Lisp type error, not OverflowError.
+    for source in (
+        "(time-utc->date (make-time 'time-utc 0 (expt 10 30)))",
+        "(time-utc->date (make-time 'time-utc 0 0) (expt 10 30))",
+        "(current-date (expt 10 30))",
+        "(julian-day->date 1e300 0)",
+    ):
+        with pytest.raises(LispTypeError, match="date out of range"):
+            ev(source)
+    with pytest.raises(LispTypeError, match="julian day out of range"):
+        ev("(time-utc->julian-day (make-time 'time-utc 0 (expt 10 400)))")
+
+
+def test_date_string_defaults_to_the_reference_locale_format(ev) -> None:
+    # SRFI 19's date->string defaults to ~c ("~a ~b ~d ~H:~M:~S~z ~Y").
+    assert ev("(date->string (make-date 0 7 5 9 14 7 2000 -14400))") == (
+        "Fri Jul 14 09:05:07-0400 2000"
+    )
+    assert ev("(date->string (make-date 0 0 0 12 1 1 2026 0))") == (
+        "Thu Jan 01 12:00:00Z 2026"
+    )
+    # And ~z prints Z at offset zero, like the reference; it still parses.
+    assert ev('(date->string (make-date 0 0 0 12 1 1 2026 0) "~z")') == "Z"
+    assert ev('(date->string (make-date 0 0 0 12 1 1 2026 0) "~4")') == (
+        "2026-01-01T12:00:00Z"
+    )
+    assert ev(
+        '(date-zone-offset (string->date "2026-01-01T12:00:00Z"'
+        ' "~Y-~m-~dT~H:~M:~S~z"))'
+    ) == 0
+
+
+def test_string_to_date_distinguishes_abbreviated_and_long_names(ev) -> None:
+    assert ev('(date-month (string->date "5 Nov 2026" "~d ~b ~Y"))') == 11
+    assert ev('(date-month (string->date "5 November 2026" "~d ~B ~Y"))') == 11
+    # Exact names, case-insensitively; not prefixes, and not the wrong width.
+    assert ev('(date-month (string->date "5 nov 2026" "~d ~b ~Y"))') == 11
+    for text, template, message in (
+        ("5 November 2026", "~d ~b ~Y", "abbreviated month"),
+        ("5 Nov 2026", "~d ~B ~Y", "long month"),
+        ("Thu", "~A", "unknown weekday"),
+        ("Thursday", "~a", "unknown weekday"),
+        ("Thurs", "~A", "unknown weekday"),
+        ("", "~a", "expected a weekday"),
+    ):
+        with pytest.raises(LispError, match=message):
+            ev(f'(string->date "{text}" "{template}")')
+
+
+def test_string_to_date_zone_offsets_are_exactly_hhmm_or_hh_colon_mm(ev) -> None:
+    for text, expected in (
+        ("+0200", 7200), ("-0400", -14400),
+        ("+02:00", 7200), ("-01:30", -5400), ("+00:00", 0),
+    ):
+        assert ev(f'(date-zone-offset (string->date "{text}" "~z"))') == expected
+    # Three digits, a dangling colon, one digit, and overlong offsets are
+    # all refused — the reference reads exactly four digits (or HH:MM).
+    for text, message in (
+        ("+020", "zone minute"),
+        ("+02:0", "zone minute"),
+        ("+0200:", "trailing character"),
+        ("+02000", "trailing character"),
+        ("+2", "zone hour"),
+        ("+2400", "out of range"),
+        ("+0260", "out of range"),
+    ):
+        with pytest.raises(LispError, match=message):
+            ev(f'(date-zone-offset (string->date "{text}" "~z"))')
+
+
+def test_date_string_year_is_four_digits(ev) -> None:
+    # Table 1: ~Y is the year in four digits, zero-padded like the reference's
+    # tm:padding — not Python's bare str(year).
+    for year, text in ((1, "0001"), (42, "0042"), (999, "0999"), (2026, "2026")):
+        assert ev(f'(date->string (make-date 0 0 0 0 1 1 {year} 0) "~Y")') == text
