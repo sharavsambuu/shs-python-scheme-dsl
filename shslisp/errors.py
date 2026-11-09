@@ -8,8 +8,36 @@ wrong" (let it crash).
 from __future__ import annotations
 
 
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class SourceLocation:
+    """A 1-based line/column position in a source text (H9).
+
+    Attached to errors and returned alongside forms by the ``*_located``
+    readers. ``file`` is the host's name for the text (``<string>`` by
+    default). Column counts Unicode code points, not bytes.
+    """
+
+    file: str = "<string>"
+    line: int = 1
+    col: int = 1
+
+    def __str__(self) -> str:  # pragma: no cover - exercised via str()
+        return f"{self.file}:{self.line}:{self.col}"
+
+
 class LispError(Exception):
     """Base class for every error a Lisp program can raise."""
+
+    source: SourceLocation | None = None
+
+    def __init__(self, message: str = "", source: SourceLocation | None = None) -> None:
+        super().__init__(message)
+        self.source = source
+        if source is not None and message:
+            super().__init__(f"{source}: {message}")
 
 
 class LispSyntaxError(LispError):

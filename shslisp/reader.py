@@ -232,6 +232,66 @@ def tokenize(text: str) -> Iterator[str]:
         yield text[start:i]
 
 
+def tokenize_located(text: str) -> list[tuple[str, int]]:
+    """Tokens with byte offsets (code-point offsets) for :func:`tokenize`.
+
+    ``[(token, offset), ...]`` — the offsets feed :func:`read_all_located`
+    line/column computation (H9). Kept separate so the common ``tokenize``
+    path stays allocation-light.
+    """
+    # Re-run the same tokenizer but capture offsets: the tokenizer's
+    # ``yield`` order matches offsets taken from the raw scan.
+    # Simplest faithful way: replay ``tokenize`` and search offsets
+    # sequentially — tokens are substrings of the text, so a moving cursor
+    # finds each token's start.
+    tokens = list(tokenize(text))
+    out: list[tuple[str, int]] = []
+    cursor = 0
+    for tok in tokens:
+        idx = text.find(tok if tok not in ("\x01", "\x00", "\x02", "\x03") else tok[1:], cursor)
+        # tokens with markers (string/char/quoted) include the marker; find
+        # the visible part instead.
+        search = tok
+        if tok.startswith(("\x01", "\x00", "\x02", "\x03")):
+            search = tok[1:]
+        elif tok == "#u8(":
+            search = "#u8("
+        elif tok == "#u8(":
+            search = "#u8("
+        # For delimiters handled specially, find is exact.
+        start = text.find(search, cursor)
+        if start < 0:  # pragma: no cover - tokenizer guarantees inclusion
+            start = cursor
+        out.append((tok, start))
+        cursor = start + max(1, len(search))
+    return out
+
+
+def _locator(text: str, file: str = "<string>"):
+    """Return a callable offset -> SourceLocation (1-based line/col)."""
+    # Precompute line-start offsets.
+    starts = [0]
+    for i, ch in enumerate(text):
+        if ch == "\n":
+            starts.append(i + 1)
+
+    def locate(offset: int):
+        # Binary search the line.
+        line = 1
+        col = 1
+        lo = 0
+        for idx in range(len(starts) - 1, -1, -1):
+            if starts[idx] <= offset:
+                line = idx + 1
+                col = offset - starts[idx] + 1
+                break
+        from .errors import SourceLocation
+
+        return SourceLocation(file=file, line=line, col=col)
+
+    return locate
+
+
 def _skip_block_comment(text: str, i: int) -> int:
     """Consume ``#| ... |#`` starting at *i*; return the index past it."""
     depth = 1
@@ -649,11 +709,40 @@ def _atom(token: str):
 class Reader:
     """A pull-based recursive-descent parser over a token list."""
 
-    def __init__(self, text: str) -> None:
-        self.tokens = list(tokenize(text))
+    def __init__(self, text: str, file: str = "<string>") -> None:
+        self.file = file
+        self.text = text
+        self._located = tokenize_located(text)
+        self.tokens = [tok for tok, _ in self._located]
+        self.offsets = [off for _, off in self._located]
         self.pos = 0
         #: ``#!fold-case`` / ``#!no-fold-case``; R7RS's default is off.
         self.fold_case = False
+
+    def _loc_at(self, index: int):
+        from .errors import SourceLocation
+
+        locate = _locator(self.text, self.file)
+        try:
+            offset = self.offsets[index]
+        except Exception:
+            offset = 0
+        return locate(offset)
+
+    def _attach_loc(self, exc: Exception) -> Exception:
+        from .errors import LispError
+
+        if isinstance(exc, LispError) and getattr(exc, "source", None) is None:
+            try:
+                loc = self._loc_at(max(0, self.pos - 1))
+                exc.source = loc
+                # Re-prefix the message so `str(err)` shows the location.
+                if exc.args and isinstance(exc.args[0], str):
+                    if not exc.args[0].startswith(f"{loc}:"):
+                        exc.args = (f"{loc}: {exc.args[0]}",)
+            except Exception:
+                pass
+        return exc
 
     def at_end(self) -> bool:
         return self.pos >= len(self.tokens)
@@ -807,8 +896,27 @@ class Reader:
             self._skip_noise()
             if self.at_end():
                 break
-            forms.append(self.read_form())
+            start = max(0, self.pos - 1)
+            try:
+                forms.append(self.read_form())
+            except Exception as exc:
+                raise self._attach_loc(exc) from exc
         return forms
+
+    def read_all_located(self) -> list[tuple[Any, Any]]:
+        """Every form with its start location: ``[(form, SourceLocation), ...]``."""
+        pairs: list[tuple[Any, Any]] = []
+        while True:
+            self._skip_noise()
+            if self.at_end():
+                break
+            loc = self._loc_at(self.pos)
+            try:
+                form = self.read_form()
+            except Exception as exc:
+                raise self._attach_loc(exc) from exc
+            pairs.append((form, loc))
+        return pairs
 
 
 #: The ``#!`` case-folding directives — the only ``#!`` lines with a meaning
@@ -834,9 +942,26 @@ def _strip_shebang(text: str) -> str:
     return text
 
 
-def read_all(text: str) -> list:
+def read_all(text: str, file: str = "<string>") -> list:
     """Parse *text* into a list of forms."""
-    return Reader(_strip_shebang(text)).read_all()
+    return Reader(_strip_shebang(text), file=file).read_all()
+
+
+def read_all_located(text: str, file: str = "<string>") -> list[tuple[Any, Any]]:
+    """Parse *text* into ``[(form, SourceLocation), ...]``.
+
+    The location is the form's first token. ``file`` names the text for the
+    location and any error it raises (H9).
+    """
+    return Reader(_strip_shebang(text), file=file).read_all_located()
+
+
+def read_one_located(text: str, file: str = "<string>") -> tuple[Any, Any]:
+    """Parse exactly one form with its location: ``(form, SourceLocation)``."""
+    reader = Reader(_strip_shebang(text), file=file)
+    loc = reader._loc_at(reader.pos)
+    form = reader.read_form()
+    return form, loc
 
 
 def read_one(text: str, fold_case: bool = False):
@@ -1027,9 +1152,12 @@ def read_one_at(
 __all__ = [
     "Reader",
     "read_all",
+    "read_all_located",
     "read_one",
     "read_one_at",
+    "read_one_located",
     "tokenize",
+    "tokenize_located",
     "Symbol",
     "NIL",
 ]

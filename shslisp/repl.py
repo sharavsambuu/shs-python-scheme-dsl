@@ -13,6 +13,7 @@ in :mod:`shslisp.errors` exist to prevent.
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from typing import Any, Iterable, List, Optional, TextIO
 
 from .env import Environment
@@ -80,11 +81,60 @@ class Repl:
         out: Optional[TextIO] = None,
         prompt: str = "lisp> ",
         banner: bool = True,
+        history_file: Optional[str] = None,
     ) -> None:
         self.out = out if out is not None else sys.stdout
         self.env = env if env is not None else make_env(out=self.out)
         self.prompt = prompt
         self.banner = banner
+        self.history_file = history_file
+        self._history: list[str] = []
+        self._load_history()
+        self._install_readline_history()
+
+    def _load_history(self) -> None:
+        p = self.history_file
+        if p is None:
+            try:
+                p = str(Path.home() / ".shs_history")
+            except Exception:
+                return
+            self.history_file = p
+        try:
+            path = Path(p)
+            if path.is_file():
+                self._history = path.read_text(encoding="utf-8").splitlines()[-500:]
+        except Exception:
+            pass
+
+    def _save_history(self) -> None:
+        if self.history_file is None:
+            return
+        try:
+            Path(self.history_file).write_text(
+                "\n".join(self._history[-500:]) + ("\n" if self._history else ""),
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
+
+    def _install_readline_history(self) -> None:
+        try:
+            import readline  # type: ignore
+        except Exception:
+            return
+        try:
+            history_file = self.history_file
+            if history_file and Path(history_file).is_file():
+                readline.read_history_file(history_file)
+            # No custom completer — readline history is the win here; keep
+            # it optional so non-interactive embedding is unaffected.
+        except Exception:
+            pass
+
+    def _remember(self, line: str) -> None:
+        if line.strip() and line not in self._history[-1:]:
+            self._history.append(line)
 
     def eval_source(self, source: str) -> List[str]:
         """Evaluate every form in *source*; return each value as text."""
@@ -140,11 +190,13 @@ class Repl:
                     continue
                 if stripped in ("quit", "exit"):
                     return 0
+            self._remember(line)
             buffer += line
             if not _complete(buffer):
                 continue
             source, buffer = buffer, ""
             self._echo(source)
+            self._save_history()
 
     def _command(self, line: str) -> bool:
         """Run a ``,command``; return True to leave the REPL."""
@@ -170,7 +222,7 @@ class Repl:
 
 
 def run_repl(
-    install_tetris: Optional[bool] = None,
+    install_tetris: bool = False,
     out: Optional[TextIO] = None,
     in_stream: Optional[TextIO] = None,
     search_paths: Iterable[Any] = (),
@@ -178,8 +230,8 @@ def run_repl(
 ) -> int:
     """Build an environment and hand it to a :class:`Repl`.
 
-    *install_tetris* defaults to ``None`` — *auto* — so the REPL carries the
-    game when a host edition is installed and is a plain Scheme anywhere else.
+    *install_tetris* defaults to ``False`` — opt-in (H6) — so the REPL is a
+    plain Scheme unless explicitly given a host edition.
     *search_paths* let a host put its own library directory in front of the
     working directory. *profile* selects the pre-imported SRFI layer (see
     :func:`shslisp.runtime.make_env`).

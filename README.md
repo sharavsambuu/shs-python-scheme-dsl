@@ -51,7 +51,7 @@ pip install .
 pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git
 
 # pinned to a tag/commit, for a project that depends on it
-pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.2.1
+pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.2.2
 ```
 
 No runtime dependencies: the interpreter is pure Python standard library
@@ -129,6 +129,15 @@ SRFI 197 pipeline, and Python exceptions caught as Lisp conditions via `guard`.
   with the measured cost of the seam and the step-budget limits.
 - **The release history** — [`CHANGELOG.md`](CHANGELOG.md): what each
   release changed, honestly.
+
+## Security / trust model
+
+Lisp code is **trusted code** — there is no sandbox. A script can `load`,
+read/write files via ports, `eval`, and call any primitive you expose with
+`install_primitives`. The host is the trust boundary: only publish primitives
+you want Lisp to reach, and do not `run`/`load` untrusted input — it has the
+same privilege as your Python process. This is by design for embedded DSL use
+(game logic, policy layers, config). Hardening ledger: [`docs/HARDENING_TASKS.md`](docs/HARDENING_TASKS.md) H1.
 
 ## Embed it in your own Python project
 

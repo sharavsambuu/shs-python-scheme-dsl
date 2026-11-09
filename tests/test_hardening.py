@@ -27,6 +27,29 @@ def run(env, source: str):
     return evaluate_program(read_all(source), env)
 
 
+# -- H6: host edition is opt-in, not auto-discovered (docs/HARDENING_TASKS.md)
+def test_make_env_default_does_not_auto_discover_tetris() -> None:
+    """make_env() with no args must not try to import tetris.env (H6)."""
+    import inspect
+
+    sig = inspect.signature(make_env)
+    default = sig.parameters["install_tetris"].default
+    assert default is False, f"expected opt-in default False, got {default!r}"
+    # And a bare make_env() must succeed without tetris.env present.
+    env = make_env()
+    assert env is not None
+
+
+def test_make_env_none_is_deprecated_but_false() -> None:
+    import warnings
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        env = make_env(install_tetris=None)  # type: ignore[arg-type]
+    assert any(issubclass(w.category, DeprecationWarning) for w in caught)
+    assert env is not None
+
+
 # --------------------------------------------------------------------------- #
 #  Booleans are not numbers — arithmetic must agree with number?              #
 # --------------------------------------------------------------------------- #
@@ -170,3 +193,34 @@ def test_tail_loop_beyond_the_budget_raises(env, monkeypatch) -> None:
     with pytest.raises(Exception, match="steps"):
         run(env, "(let loop ((n 100000)) (if (= n 0) 'done (loop (- n 1))))")
     assert STEPS_BUDGET  # the real default is untouched by this test
+
+
+# -- H3: host primitives must not leak host exceptions (docs/HARDENING_TASKS.md)
+def test_host_primitive_zero_division_becomes_lisp_error() -> None:
+    """A host lambda doing 1/0 must surface as LispError, not ZeroDivisionError.
+
+    evaluator.apply_procedure wraps ValueError/TypeError/IndexError/KeyError
+    but had missed ZeroDivisionError/OverflowError/ArithmeticError, so an
+    embedder's primitive leaked a Python traceback (H3).
+    """
+    from shslisp.embed import install_primitives
+    from shslisp.runtime import make_env, run as lisp_run
+
+    env = make_env()
+    install_primitives(env, [("bad-div", lambda a, b: a / b)])
+    with pytest.raises(LispError):
+        lisp_run("(bad-div 1 0)", env)
+
+
+def test_host_primitive_overflow_becomes_lisp_error() -> None:
+    from shslisp.embed import install_primitives
+    from shslisp.runtime import make_env, run as lisp_run
+
+    env = make_env()
+
+    def boom() -> None:
+        raise OverflowError("host overflow")
+
+    install_primitives(env, [("boom", boom)])
+    with pytest.raises(LispError):
+        lisp_run("(boom)", env)

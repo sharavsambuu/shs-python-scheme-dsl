@@ -98,7 +98,7 @@ def make_env(
     search_paths: Iterable[Any] = (),
     loader: Optional[Loader] = None,
     extensions: Iterable[Extension] = (),
-    install_tetris: Optional[bool] = None,
+    install_tetris: bool = False,
     profile: Optional[str] = "dsl",
 ) -> Environment:
     """Build a global environment: core, prelude, then the requested extensions.
@@ -109,10 +109,11 @@ def make_env(
     (see :func:`shslisp.embed.install_extension`).
 
     *install_tetris* selects the Tetris edition — ``True`` to require it,
-    ``False`` to omit it, and the default ``None`` for *auto*: include it when
-    the ``tetris`` package can be imported. Auto is what makes ``make_env()``
-    just work both in this repository (the game is installed) and in a foreign
-    project that copied ``shslisp/`` (it is not).
+    ``False`` (the default since hardening H6) to omit it. Only an explicit
+    ``True`` installs the game bindings; host editions should be installed
+    via *extensions* (see :func:`shslisp.embed.install_extension`) — a
+    general-purpose library must not auto-discover a host package by import
+    (``docs/HARDENING_TASKS.md`` H6).
 
     *profile* selects which SRFI layer is pre-imported: ``"dsl"`` (the
     default) installs every mandatory SRFI with the collision resolutions
@@ -150,20 +151,31 @@ def make_env(
             ),
         )
 
-    if install_tetris is None:
-        install_tetris = _game_available()
+    # Backward-compat: callers that explicitly passed None (the old auto
+    # default) get a deprecation warning and the new opt-in behaviour.
+    if install_tetris is None:  # type: ignore[comparison-overlap]
+        import warnings
+
+        warnings.warn(
+            "make_env(install_tetris=None) is deprecated; pass "
+            "install_tetris=True to require the host edition or False (default) "
+            "to omit it — see docs/HARDENING_TASKS.md H6.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        install_tetris = False
     if install_tetris:
-        # The host edition's own installer — this module knows the *name*, the
-        # edition knows the vocabulary. Deferred so the language imports no
-        # host package until a caller actually asks for one.
+        # The host edition's own installer — opt-in only. Host projects
+        # should prefer extensions=[...] (embed.install_extension); this
+        # path is retained for the in-repo game.
         try:
             from tetris.env import install as install_game
         except ImportError as exc:
             raise LispError(
                 "no host edition is installed: the 'tetris.env' package is "
                 "not importable. make_env(install_tetris=True) requires the "
-                "host project; use install_tetris=False to forbid it, or "
-                "leave the default (auto) to include a host when present"
+                "host project; leave the default (False) to omit it, or "
+                "install your host via extensions=[...]"
             ) from exc
         install_game(env)
 

@@ -49,11 +49,12 @@ from .errors import (
     LispRecursionError,
     LispSyntaxError,
     LispTypeError,
+    SourceLocation,
 )
 from .evaluator import apply_procedure, equal, evaluate, evaluate_program
 from .loader import Loader
 from .printer import to_string
-from .reader import read_all, read_one
+from .reader import read_all, read_all_located, read_one, read_one_located
 from .runtime import load_file, make_env, run
 from .stack import STACK_BYTES, on_deep_stack, run_with_deep_stack
 from .types import (
@@ -102,7 +103,10 @@ __all__ = [
     "evaluate_program",
     "to_string",
     "read_all",
+    "read_all_located",
     "read_one",
+    "read_one_located",
+    "SourceLocation",
     "install_primitives",
     "install_extension",
     "load_lisp",

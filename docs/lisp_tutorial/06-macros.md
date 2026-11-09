@@ -297,6 +297,35 @@ with `rest ...`, a stacked `x ... ...`, a vector pattern, a `let-syntax`, and on
    Then ask what `letrec-syntax` would change — and why a sibling macro is
    invisible to a `let-syntax` template.
 
+## Library macros: what an exported `syntax-rules` cannot see (H7)
+
+A `syntax-rules` macro exported from a `define-library` expands in the
+importing program, but its hygiene aliases live in the library's own scope,
+which that program cannot see. A template that names a library-private
+helper fails with `LispNameError` naming the written identifier — and so
+does one that names a library import like `+`. At the top level the same
+shape works because the alias resolves in the root scope. The rule for host
+editions:
+
+- Keep macros at the top level, or
+- Export helpers and build the form with `defmacro` (which expands without
+  the hygiene alias), or
+- Inline the helper into the template.
+
+```scheme
+(define-library (h-helpers)
+  (export use-helper)
+  (import (scheme base))
+  (begin (define (private-helper x) (* x 2))
+         (define-syntax use-helper (syntax-rules () ((_ a) (private-helper a))))))
+(import (h-helpers))
+(use-helper 21)  ; => LispNameError: unbound symbol: private-helper
+```
+
+The working shape (helpers exported, `defmacro` builds the form) is pinned by
+`tests/test_h7_library_macros.py`. There is no `syntax-case` and no custom
+ellipsis in this dialect — see `shslisp/syntax.py`.
+
 ## The shape you copy
 
 > If two things must not collide, let the *language* rename one of them. Hygiene

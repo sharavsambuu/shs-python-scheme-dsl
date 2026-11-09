@@ -29,13 +29,13 @@ pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git
 Pinned to a tag or commit, for a project that depends on a known version:
 
 ```sh
-pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.2.1
+pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.2.2
 ```
 
 In your project's requirements.txt, the same line without the leading `pip install`:
 
 ```
-shs @ git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.2.1
+shs @ git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.2.2
 ```
 
 ### From PyPI — not us (yet, and never under this name)
@@ -56,7 +56,7 @@ Until then, install from GitHub as shown above.
 Both the command and the importable module are installed together:
 
 ```sh
-shs --version                      # shs 0.2.1
+shs --version                      # shs 0.2.2
 shs -e "(fold + 0 (iota 5 1))"     # 15  (SRFI 1 is pre-imported)
 
 python -c "import shslisp; print(shslisp.run('(+ 40 2)'))"   # 42

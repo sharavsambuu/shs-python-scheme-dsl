@@ -47,7 +47,7 @@ PROGRAM = "shs"
 
 #: Fallback version when the distribution metadata is absent (a source tree
 #: run in place rather than installed).
-_FALLBACK_VERSION = "0.2.1"
+_FALLBACK_VERSION = "0.2.2"
 
 
 def _version() -> str:
@@ -92,7 +92,7 @@ def _search_paths() -> List[Path]:
 def run_script(
     path: str,
     out: Optional[TextIO] = None,
-    tetris: Optional[bool] = None,
+    tetris: bool = False,
     profile: str = "dsl",
     script_args: Optional[List[str]] = None,
 ):
@@ -113,10 +113,10 @@ def run_script(
     *script_args* — when given — become the Scheme list bound to
     ``*command-line-args*`` inside the script.
 
-    *tetris* defaults to ``None`` — *auto*: a host edition (a package with an
-    ``install(env)`` vocabulary installer) is installed when importable, so a
-    script written for a host sees the host and the same call is a plain
-    Scheme elsewhere.
+    *tetris* defaults to ``False`` — *opt-in*: a host edition (a package
+    with an ``install(env)`` vocabulary installer) is installed only on
+    request, so a plain `shs run` is a general-purpose Scheme. Pass
+    ``True`` for the in-repo game edition.
     """
     return run_with_deep_stack(_run_script, path, out, tetris, profile, script_args)
 
@@ -124,7 +124,7 @@ def run_script(
 def _run_script(
     path: str,
     out: Optional[TextIO],
-    tetris: Optional[bool],
+    tetris: bool,
     profile: str,
     script_args: Optional[List[str]],
 ):

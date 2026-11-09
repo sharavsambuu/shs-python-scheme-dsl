@@ -469,7 +469,7 @@ def apply_procedure(proc: Any, args: List[Any]) -> Any:
             return proc.fn(*args)
         except LispError:
             raise
-        except (TypeError, ValueError, IndexError, KeyError) as exc:
+        except (TypeError, ValueError, IndexError, KeyError, ZeroDivisionError, OverflowError, ArithmeticError) as exc:
             raise LispTypeError(f"{proc.name}: {exc}") from exc
     if isinstance(proc, Closure):
         return _apply_closure(proc, args)

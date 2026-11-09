@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.2 — 2026-11-10
+
+Hardening release. The 2026-11 review findings land as the `docs/HARDENING_TASKS.md`
+ledger (H0–H12), with durable tests for every behaviour change:
+
+- **H1 trust model** — `README.md` Security section + `capabilities.md` wall 6: Lisp is trusted code, no sandbox.
+- **H2 performance** — `tests/test_perf_smoke.py` (tail 10k, fib 20, map 1k bounds).
+- **H3 host leakage** — `evaluator.apply_procedure` wraps `ZeroDivision/Overflow/ArithmeticError` → `LispTypeError`; host primitives no longer leak Python tracebacks.
+- **H4 tooling** — `pyproject.toml` `[tool.mypy]/[tool.ruff]` + `.github/workflows/ci.yml`.
+- **H5 REPL** — `~/.shs_history` + `readline`, `run_repl(install_tetris=False)`.
+- **H6 opt-in host** — `make_env(install_tetris: bool=False)`; `None` → `DeprecationWarning`. General-purpose library no longer auto-discovers `tetris.env`.
+- **H7 library macros** — decision (a): exported `syntax-rules` cannot reach library-private helpers/imports; documented in `docs/lisp_tutorial/06-macros.md`, pinned in `tests/test_h7_library_macros.py` (workaround: export helpers + `defmacro`).
+- **H8 continuations** — `call/cc` escape-only contract pinned in `tests/test_h8_continuations.py`; stays Tier-1 deliberate gap.
+- **H9 locations** — `errors.SourceLocation`, `reader.tokenize_located`/`read_all_located`/`read_one_located`, `Result.source` on errors. Tests in `tests/test_locations.py`.
+- **H10 formatter/LSP** — tech-debt recorded, `capabilities.md` wall 7; no code this round.
+- **H11 build hygiene** — `.gitignore` verified (`build/`, `*.egg-info/`, `env/` ignored); stale artifacts removed from disk.
+- **H12 numeric** — `tests/test_complex_property.py` (exact/inxact complex property).
+
+Suite: 1186 passed (was 1159 on 0.2.1).
+
 ## 0.2.1 — 2026-11-06
 
 The trading layer. `(srfi 19)`, `(srfi 158)` and `(srfi 160)` land, so a

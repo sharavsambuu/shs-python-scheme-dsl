@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 # way `lisp` eventually would. The CLI stays `shs`: that name is taken on PyPI
 # ("Security Hygiene Scanner"), but the *command* is ours and documented.
 name = "shslisp"
-version = "0.2.1"
+version = "0.2.2"
 description = "shs — a small Scheme-flavored DSL over Python, with SRFIs 1/26/88/89/197/241 and a gosh-like CLI."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -35,7 +35,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "mypy>=1.8", "ruff>=0.4"]
 
 [project.scripts]
 # The gosh-shaped CLI. `shs` is the name; `lisppy` is kept as an alias.
@@ -54,3 +54,20 @@ packages = ["shslisp"]
 [tool.setuptools.package-data]
 # The standard library and the ROP library are Lisp, and ship as data.
 shslisp = ["*.scm"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = false
+warn_return_any = false
+# The interpreter deliberately crosses the Lisp/Python seam with `Any`;
+# the important check is that Lisp-facing functions do not silently
+# change shape — see docs/HARDENING_TASKS.md H4.
+files = ["shslisp"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+# Keep rule set minimal for personal use; parser errors are not pedantry.
+[tool.ruff.lint]
+select = ["E", "F", "W", "UP", "B"]
+ignore = ["E501"]

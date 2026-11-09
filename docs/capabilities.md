@@ -199,6 +199,15 @@ hatch the question assumes is not a workaround; it is the design.
    step (the recommendation below).
 5. **An ecosystem of one.** The SRFI layer covers the useful core; you will
    be writing libraries, not downloading them.
+6. **Trust model — no sandbox (H1).** Lisp is trusted code with the host's
+   full privilege (`load`, file I/O, any `install_primitives` primitive,
+   `eval`). Do not run untrusted input. Hardening ledger:
+   [`HARDENING_TASKS.md`](HARDENING_TASKS.md).
+7. **Formatter / LSP (H10) — tech-debt, unscheduled.** No formatter, no
+   go-to-definition, no symbol index; `prelude.scm` / `generators.scm` are
+   hand-formatted. The outline is in [`HARDENING_TASKS.md`](HARDENING_TASKS.md)
+   H10 — a located reader (H9, landed) is the first step, a formatter is the
+   second, LSP is the third; none blocks personal use.
 
 ### The escape hatch, precisely
 

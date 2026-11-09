@@ -78,7 +78,8 @@ def test_an_unbalanced_form_at_eof_is_reported_not_dropped() -> None:
 def test_a_stray_paren_is_an_error_and_the_loop_goes_on() -> None:
     rc, out = drive(")", "(+ 3 4)")
     assert rc == 0
-    assert "error: unexpected )" in out
+    # H9: error text now carries a source prefix like "<string>:1:1:"
+    assert "error:" in out and "unexpected )" in out
     assert "7" in out
 
 
@@ -119,7 +120,7 @@ def test_a_stale_continuation_is_an_error_and_the_loop_goes_on() -> None:
 def test_a_bad_number_literal_is_an_error_and_the_loop_goes_on() -> None:
     rc, out = drive("1/0", "(+ 1 2)")
     assert rc == 0
-    assert "error: bad number literal: 1/0" in out
+    assert "error:" in out and "bad number literal: 1/0" in out
     assert "3" in out
 
 
