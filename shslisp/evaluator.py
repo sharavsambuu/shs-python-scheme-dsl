@@ -254,6 +254,29 @@ def _attach_eval_source(exc: "LispError", budget: _Budget) -> None:
             return
 
 
+def measure_steps(thunk: Any) -> tuple[Any, int]:
+    """Run zero-argument *thunk* under a FRESH step budget; return (result, steps).
+
+    The thread-local budget is swapped for one private :class:`_Budget`, so the
+    caller's own evaluation is neither charged nor disturbed. ``depth`` starts
+    at 1 — "already inside a root" — which makes the first nested ``evaluate``
+    reuse this budget instead of creating another. The usual
+    :data:`STEPS_BUDGET` guard still applies: a runaway thunk raises
+    :class:`~shslisp.errors.LispBudgetError` exactly as it would normally.
+    """
+    previous = getattr(_local, "budget", None)
+    budget = _Budget()
+    budget.depth = 1
+    _local.budget = budget
+    try:
+        result = thunk()
+        steps = budget.steps
+    finally:
+        budget.depth = 0
+        _local.budget = previous
+    return result, steps
+
+
 def evaluate(expr: Any, env: Environment) -> Any:
     """Evaluate one form in *env*.
 
