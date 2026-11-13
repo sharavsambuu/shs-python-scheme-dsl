@@ -18,12 +18,15 @@ time anything is evaluated, quoting has already turned code into data.
 """
 from __future__ import annotations
 
+from collections import OrderedDict
 from fractions import Fraction
-from typing import Iterator, List, Optional
+import threading
+from typing import Any, Iterator, List, Optional
 
-from .errors import LispSyntaxError
+from .errors import LispSyntaxError, SourceLocation
 from .types import (
     NIL,
+    Pair,
     Symbol,
     from_cells,
     intern,
@@ -37,6 +40,73 @@ import cmath
 
 #: Characters that end an atom.
 _DELIMITERS = set("()'`\",; \t\r\n[]")
+
+
+# --------------------------------------------------------------------------- #
+#  Source spans: an IDENTITY side-table (never part of `equal?`)              #
+# --------------------------------------------------------------------------- #
+#
+# Every compound form the reader builds gets a `SourceLocation` recorded in
+# this bounded table. The key is `id(form)` and the entry holds a strong
+# reference to the form, so an id can never be reused while its span lives.
+# Nothing about the datum itself changes: `equal?` compares structure only.
+_SOURCE_LIMIT = 100_000
+_SOURCE_LOCK = threading.RLock()
+_SOURCE_TABLE: "OrderedDict[int, tuple[Any, SourceLocation]]" = OrderedDict()
+
+#: The file a host `load_file(...)` is currently reading. `read_all` falls back
+#: to it, so a loader threads the real file name without re-implementing the
+#: reader call. Nested host loads save/restore the previous value.
+_LOAD_CONTEXT = threading.local()
+
+
+def syntax_source(obj: Any) -> SourceLocation | None:
+    """The reader's recorded span for *obj*, or ``None``.
+
+    The lookup is by object identity, so a structurally equal copy (a macro
+    expansion, a rebuilt form) simply has no entry — and `equal?` never sees
+    the table at all. Entries are bounded: an evicted form loses its span
+    rather than growing the process forever.
+    """
+    entry = _SOURCE_TABLE.get(id(obj))
+    if entry is None or entry[0] is not obj:
+        return None
+    return entry[1]
+
+
+def _record_source(obj: Any, loc: SourceLocation | None) -> None:
+    """Record *loc* for a compound *obj*; atoms and empty lists are skipped."""
+    if loc is None:
+        return
+    if isinstance(obj, list):
+        if not obj:
+            return
+    elif not isinstance(obj, Pair):
+        return
+    key = id(obj)
+    with _SOURCE_LOCK:
+        _SOURCE_TABLE[key] = (obj, loc)
+        _SOURCE_TABLE.move_to_end(key)
+        while len(_SOURCE_TABLE) > _SOURCE_LIMIT:
+            _SOURCE_TABLE.popitem(last=False)
+
+
+def _current_file() -> str:
+    """The file a host load is reading right now (``<string>`` at a REPL)."""
+    return getattr(_LOAD_CONTEXT, "file", None) or "<string>"
+
+
+def _push_load_file(path: Any) -> Any:
+    """Make *path* the current file; return the previous value for restore."""
+    previous = getattr(_LOAD_CONTEXT, "file", None)
+    _LOAD_CONTEXT.file = str(path)
+    return previous
+
+
+def _pop_load_file(previous: Any) -> None:
+    """Restore the file context saved by :func:`_push_load_file`."""
+    _LOAD_CONTEXT.file = previous
+
 
 #: Quote-sugar token -> the symbol it expands to.
 _ABBREVIATIONS = {
@@ -709,8 +779,8 @@ def _atom(token: str):
 class Reader:
     """A pull-based recursive-descent parser over a token list."""
 
-    def __init__(self, text: str, file: str = "<string>") -> None:
-        self.file = file
+    def __init__(self, text: str, file: str | None = None) -> None:
+        self.file = _current_file() if file is None else file
         self.text = text
         self._located = tokenize_located(text)
         self.tokens = [tok for tok, _ in self._located]
@@ -718,16 +788,15 @@ class Reader:
         self.pos = 0
         #: ``#!fold-case`` / ``#!no-fold-case``; R7RS's default is off.
         self.fold_case = False
+        #: Line-start offsets are O(text); build them once, not per form.
+        self._locate = _locator(self.text, self.file)
 
     def _loc_at(self, index: int):
-        from .errors import SourceLocation
-
-        locate = _locator(self.text, self.file)
         try:
             offset = self.offsets[index]
         except Exception:
             offset = 0
-        return locate(offset)
+        return self._locate(offset)
 
     def _attach_loc(self, exc: Exception) -> Exception:
         from .errors import LispError
@@ -764,9 +833,21 @@ class Reader:
                 break
 
     def read_form(self):
+        """Read one form, recording the span of every compound datum.
+
+        `_read_form` owns the token walk; this wrapper captures the form's
+        first-token location. Nested calls (list elements, quote sugar) go
+        through this same wrapper, so every sub-expression gets its own span.
+        """
         self._skip_noise()
         if self.at_end():
             raise LispSyntaxError("unexpected end of input")
+        loc = self._loc_at(self.pos)
+        form = self._read_form()
+        _record_source(form, loc)
+        return form
+
+    def _read_form(self):
         token = self.tokens[self.pos]
         self.pos += 1
         if self.fold_case and not token.startswith(
@@ -782,8 +863,6 @@ class Reader:
             return self._read_bytevector()
         if token in _SRFI160_TAGS:
             return self._read_homogeneous_vector(token)
-        if token == ")":
-            raise LispSyntaxError("unexpected )")
         if token == ")":
             raise LispSyntaxError("unexpected )")
         if token in _ABBREVIATIONS:
@@ -942,12 +1021,17 @@ def _strip_shebang(text: str) -> str:
     return text
 
 
-def read_all(text: str, file: str = "<string>") -> list:
-    """Parse *text* into a list of forms."""
+def read_all(text: str, file: str | None = None) -> list:
+    """Parse *text* into a list of forms.
+
+    *file* names the text for every recorded span and any error it raises.
+    When omitted, a host ``load_file`` context supplies the real path;
+    otherwise the name is ``"<string>"``.
+    """
     return Reader(_strip_shebang(text), file=file).read_all()
 
 
-def read_all_located(text: str, file: str = "<string>") -> list[tuple[Any, Any]]:
+def read_all_located(text: str, file: str | None = None) -> list[tuple[Any, Any]]:
     """Parse *text* into ``[(form, SourceLocation), ...]``.
 
     The location is the form's first token. ``file`` names the text for the
@@ -956,7 +1040,7 @@ def read_all_located(text: str, file: str = "<string>") -> list[tuple[Any, Any]]
     return Reader(_strip_shebang(text), file=file).read_all_located()
 
 
-def read_one_located(text: str, file: str = "<string>") -> tuple[Any, Any]:
+def read_one_located(text: str, file: str | None = None) -> tuple[Any, Any]:
     """Parse exactly one form with its location: ``(form, SourceLocation)``."""
     reader = Reader(_strip_shebang(text), file=file)
     loc = reader._loc_at(reader.pos)

@@ -54,7 +54,13 @@ from .errors import (
 from .evaluator import apply_procedure, equal, evaluate, evaluate_program
 from .loader import Loader
 from .printer import to_string
-from .reader import read_all, read_all_located, read_one, read_one_located
+from .reader import (
+    read_all,
+    read_all_located,
+    read_one,
+    read_one_located,
+    syntax_source,
+)
 from .runtime import load_file, make_env, run
 from .stack import STACK_BYTES, on_deep_stack, run_with_deep_stack
 from .types import (
@@ -106,6 +112,7 @@ __all__ = [
     "read_all_located",
     "read_one",
     "read_one_located",
+    "syntax_source",
     "SourceLocation",
     "install_primitives",
     "install_extension",

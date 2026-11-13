@@ -39,7 +39,7 @@ from .evaluator import evaluate_program
 from .features import feature_symbols
 from .library import install as install_libraries
 from .loader import Loader
-from .reader import read_all
+from .reader import _pop_load_file, _push_load_file, read_all
 from .types import intern, make_list, Primitive
 
 __all__ = [
@@ -84,12 +84,17 @@ def load_file(env: Environment, path: Any) -> Any:
 
     When *env* carries a loader (every environment from :func:`make_env` does)
     the file is loaded through it: it joins the load-once cache, and its own
-    ``(load ...)`` calls resolve relative to *it*.
+    ``(load ...)`` calls resolve relative to *it*. The reader is told the real
+    path, so every recorded span and every ``LispError`` names the file.
     """
     if env.loader is not None:
-        return env.loader.load_one(path)
+        previous = _push_load_file(path)
+        try:
+            return env.loader.load_one(path)
+        finally:
+            _pop_load_file(previous)
     source = Path(path).read_text(encoding="utf-8")
-    return evaluate_program(read_all(source), env)
+    return evaluate_program(read_all(source, file=str(path)), env)
 
 
 def make_env(

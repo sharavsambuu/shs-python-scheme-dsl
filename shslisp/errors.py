@@ -39,6 +39,22 @@ class LispError(Exception):
         if source is not None and message:
             super().__init__(f"{source}: {message}")
 
+    def __str__(self) -> str:
+        """The message, prefixed with ``file:line:col`` when a source is known.
+
+        The evaluator may attach the innermost span AFTER construction (the
+        error is raised deep in the trampoline), so the prefix is computed at
+        render time. A message that already carries the prefix is untouched —
+        the text a caller matched before stays a substring.
+        """
+        message = super().__str__()
+        source = self.source
+        if source is not None:
+            prefix = f"{source}: "
+            if not message.startswith(prefix):
+                return prefix + message
+        return message
+
 
 class LispSyntaxError(LispError):
     """The reader could not turn text into forms (unbalanced parens, a

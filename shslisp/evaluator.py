@@ -39,6 +39,7 @@ from .reader import (
     QUOTE,
     UNQUOTE,
     UNQUOTE_SPLICING,
+    syntax_source,
 )
 from .types import (
     NIL,
@@ -112,11 +113,15 @@ MACROEXPAND_LIMIT = 1_000
 #: once per ``evaluate`` and threaded through ``_run`` so the per-step charge
 #: stays one attribute increment, not a thread-local lookup per trampoline step.
 class _Budget:
-    __slots__ = ("steps", "depth")
+    __slots__ = ("steps", "depth", "sources")
 
     def __init__(self) -> None:
         self.steps = 0
         self.depth = 0
+        #: Innermost-first source spans for the frames currently evaluating.
+        #: `evaluate` pushes one cell per nested call; the trampoline updates
+        #: the cell whenever a tail transition lands on a known form.
+        self.sources: list = []
 
 
 _local = threading.local()
@@ -223,6 +228,32 @@ def variant_of(tag: Any) -> Any:
 #  Public entry points                                                         #
 # --------------------------------------------------------------------------- #
 
+def _form_source(expr: Any):
+    """The reader span of a compound form, or ``None`` for atoms/empty lists."""
+    if isinstance(expr, list):
+        if not expr:
+            return None
+    elif not isinstance(expr, Pair):
+        return None
+    return syntax_source(expr)
+
+
+def _attach_eval_source(exc: "LispError", budget: _Budget) -> None:
+    """Attach the INNERMOST known span to *exc* (never overwrite one).
+
+    `budget.sources` is innermost-last: the current frame's cell is updated by
+    the trampoline on every tail transition, and nested `evaluate` calls push
+    their own cells. On the way out, the first non-``None`` cell from the end
+    is the form that actually failed.
+    """
+    if getattr(exc, "source", None) is not None:
+        return
+    for loc in reversed(budget.sources):
+        if loc is not None:
+            exc.source = loc
+            return
+
+
 def evaluate(expr: Any, env: Environment) -> Any:
     """Evaluate one form in *env*.
 
@@ -238,6 +269,9 @@ def evaluate(expr: Any, env: Environment) -> Any:
       The counter is per thread (and per root call): nested evaluations inside
       one walk share its budget, and a fresh root (depth returning to zero)
       resets it, without two threads stepping on each other's count.
+
+    Every call also pushes the form's reader span; a raised `LispError` leaves
+    with the innermost span attached when it did not already carry one.
     """
     _ensure_stack()
     budget = getattr(_local, "budget", None)
@@ -245,6 +279,7 @@ def evaluate(expr: Any, env: Environment) -> Any:
         budget = _Budget()      # a fresh root evaluation — its own budget
         _local.budget = budget
     budget.depth += 1
+    budget.sources.append(_form_source(expr))
     try:
         if budget.depth > DEPTH_LIMIT:
             raise LispRecursionError(
@@ -253,8 +288,15 @@ def evaluate(expr: Any, env: Environment) -> Any:
             )
         return _run(expr, env, budget)
     except RecursionError:
-        raise LispRecursionError("the host stack ran out") from None
+        exc = LispRecursionError("the host stack ran out")
+        _attach_eval_source(exc, budget)
+        raise exc from None
+    except LispError as exc:
+        _attach_eval_source(exc, budget)
+        raise
     finally:
+        if budget.sources:
+            budget.sources.pop()
         budget.depth -= 1
 
 
@@ -280,6 +322,9 @@ def _charge(budget: _Budget) -> None:
 def _run(expr: Any, env: Environment, budget: _Budget) -> Any:
     """The trampoline: evaluate *expr*, looping in tail position."""
     while True:
+        loc = _form_source(expr)
+        if loc is not None and budget.sources:
+            budget.sources[-1] = loc
         _charge(budget)
         if isinstance(expr, Symbol):
             value = env.lookup(expr)
@@ -1821,6 +1866,18 @@ def _describe_value(value: Any) -> str:
 _RERAISE = object()
 
 
+def _error_message(exc: LispError) -> str:
+    """The error's own text, without a span the EVALUATOR attached later.
+
+    A reader error already prefixes its message at construction, so ``args[0]``
+    is the historical in-language text. A runtime span attached by `evaluate`
+    lives in ``exc.source`` only, which keeps T-126's host-facing `str(exc)`
+    enrichment out of program-visible ``ErrorObject`` messages.
+    """
+    message = exc.args[0] if exc.args else ""
+    return message if isinstance(message, str) else str(message)
+
+
 def _as_condition(exc: LispError) -> Any:
     """The object a handler sees for *exc*: what was raised, or an error object."""
     if isinstance(exc, LispRaise):
@@ -1834,7 +1891,7 @@ def _as_condition(exc: LispError) -> Any:
         if isinstance(exc, ReadError)
         else None
     )
-    return ErrorObject(str(exc), kind=kind)
+    return ErrorObject(_error_message(exc), kind=kind)
 
 
 def _eval_guard(expr: list, env: Environment) -> Any:
