@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.3 — 2026-11-14
+
+Runtime, CLI & standard-library wave (`docs/TRADING_PLATFORM_TASKS.md`, `R-01`–`R-04` and `S14`–`S18`), plus tutorial and quant documentation updates:
+
+- **R-01 `--plugin` CLI & `SHS_PLUGINS`** — repeatable `--plugin MOD[:ATTR]` flag and `os.pathsep`-separated `SHS_PLUGINS` loader in `shslisp/__main__.py` for `run`, `-e`, and the REPL.
+- **R-02 Multi-frame traceback** — `LispError.traceback` (capped at `TRACEBACK_FRAMES = 32`) and `LispError.format_traceback()`, keeping `str(exc)` one-line; `evaluate_program` accepts `(form, SourceLocation)` pairs from `read_all_located`.
+- **R-03 Profiler & fast-path** — `measure_calls(thunk) -> (result, steps, counts)` in `shslisp/evaluator.py`, plus semantics-preserving `_run` dispatch and span-probe fast paths.
+- **R-04 Windows path & CWD hygiene** — `.as_posix()` in Scheme string test templates and repo-root fixture resolution.
+- **S14–S18 Standard-library wave (import-only in both profiles)** — `(srfi 125)` hash tables, `(srfi 132)` sorting, `(srfi 64)` testing, `(srfi 180)` JSON, `(srfi 28)` `format`, and `(srfi 152)` string utilities, with deviations documented in `docs/srfi.md`.
+- **Docs & tutorials** — updated `README.md`, `docs/capabilities.md`, `docs/lisp_tutorial/` (Ch. 13, Ch. 28, Appendix A, and new Ch. 29–30), `docs/practical_tutorial/` (`P1`, `P4`, `P5`, `P6`), and `docs/quant_stuffs/README.md`.
+
 ## 0.2.2 — 2026-11-10
 
 Hardening release. The 2026-11 review findings land as the `docs/HARDENING_TASKS.md`

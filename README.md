@@ -67,7 +67,7 @@ pip install .
 pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git
 
 # pinned to a tag/commit, for a project that depends on it
-pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.2.2
+pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.2.3
 ```
 
 No runtime dependencies: the interpreter is pure Python standard library

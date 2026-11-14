@@ -57,7 +57,7 @@ PROGRAM = "shs"
 
 #: Fallback version when the distribution metadata is absent (a source tree
 #: run in place rather than installed).
-_FALLBACK_VERSION = "0.2.2"
+_FALLBACK_VERSION = "0.2.3"
 
 
 def _version() -> str:
