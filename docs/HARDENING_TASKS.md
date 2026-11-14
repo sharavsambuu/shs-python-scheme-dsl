@@ -20,7 +20,7 @@
 | H0 | Baseline | `1159 passed` (Python 3.14), `py_compile` clean, manual smoke: `embed`, `tail-loop 100k`, `non-tail 200k`, hygiene `unless`, numeric tower `(/ 1 2)=1/2`, `(sqrt -1)=Complex(0,1)` |
 | H1 | Sandbox undocumented | `README.md` Security section + `capabilities.md` wall 6 (3 sentences, no code) |
 | H2 | Perf unmeasured | `tests/test_perf_smoke.py` bounded bounds (tail 10k <5s, fib20 <10s, map 1k <5s) |
-| H4 | No tooling gate | `pyproject.toml` `[tool.mypy]`/`[tool.ruff]` + `.github/workflows/ci.yml` |
+| H4 | No tooling gate | `pyproject.toml` `[tool.mypy]`/`[tool.ruff]` (the CI workflow is optional and not committed — run the same gate locally) |
 | H5 | REPL no history | `shslisp/repl.py` `~/.shs_history` + `readline`, `,load`/`run_repl(install_tetris=False)` |
 | H6 | Tetris auto-discovery | `runtime.py:make_env(install_tetris: bool=False)`, `None`→`DeprecationWarning`; `__main__.py`/`repl.py` updated |
 | H11 | Build hygiene | `.gitignore` already covers `build/`/`*.egg-info/`/`env/`; `git ls-files` empty (verified) |
@@ -92,9 +92,10 @@ output for the same inputs on main.
 in all modules) but never checked. A `mypy`/`ruff` gate would catch the next
 `bool`-as-`int` class bug at edit time.
 
-**Shape.** `pyproject.toml`: `[tool.mypy]`, `[tool.ruff]` minimal; optional
-`.github/workflows/ci.yml` running `mypy shslisp` + `ruff check shslisp` +
-`pytest -q`. Keep dev deps out of runtime deps (`dev = ["pytest"]` stays).
+**Shape.** `pyproject.toml`: `[tool.mypy]`, `[tool.ruff]` minimal; the CI
+workflow is **optional and not committed** to this repository — the same gate
+runs locally as `mypy shslisp`, `ruff check shslisp`, `pytest -q`. Keep dev
+deps out of runtime deps (`dev = ["pytest"]` stays).
 
 **Gate.** `mypy` zero errors on `shslisp/` (or documented ignores), `ruff`
 zero warnings.

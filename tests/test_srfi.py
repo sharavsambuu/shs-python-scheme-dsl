@@ -7,6 +7,8 @@ exported name is bound in the library's own environment.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from shslisp.errors import LispError, LispNameError, LispSyntaxError, LispTypeError
@@ -14,6 +16,10 @@ from shslisp.evaluator import evaluate_program
 from shslisp.reader import read_all
 from shslisp.runtime import make_env
 from shslisp.types import intern
+
+#: ``shs-python-scheme-dsl/`` — resolved from this file, never from the CWD, so
+#: the suite passes from any working directory (R-04).
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def run(env, source: str):
@@ -43,11 +49,10 @@ def srfi1():
 
 def test_every_srfi1_export_is_bound_in_the_library_env() -> None:
     from shslisp.library import _SRFI1_EXPORTS, lisp_file_library
-    from pathlib import Path
 
     env = make_env(install_tetris=False)
     library = lisp_file_library(
-        env, ("srfi", "1"), Path("shslisp/srfi1.scm"), _SRFI1_EXPORTS
+        env, ("srfi", "1"), REPO_ROOT / "shslisp" / "srfi1.scm", _SRFI1_EXPORTS
     )
     lib_env = library.instantiate()
     unbound = [n for n in _SRFI1_EXPORTS if lib_env.find(intern(n)) is None]

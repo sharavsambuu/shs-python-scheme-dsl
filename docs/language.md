@@ -44,6 +44,7 @@ shs run FILE                     # run a .scm file
 shs FILE                         # gosh-style: the file is the command
 shs run FILE arg1 arg2           # script args become *command-line-args*
 shs --profile r7rs               # strict R7RS-small: no SRFIs preloaded
+shs --plugin mypkg -e "(host-verb)"  # install a host plugin, then evaluate
 shs --version
 ```
 

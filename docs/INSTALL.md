@@ -79,7 +79,7 @@ shs run examples/fizzbuzz.scm      # from your clone of the project
 
 | Name | What it is |
 | --- | --- |
-| `shs` | the command: REPL, `run`, `-e`, `--profile` (an alias `lisppy` also exists) |
+| `shs` | the command: REPL, `run`, `-e`, `--profile`, `--plugin` (an alias `lisppy` also exists) |
 | `shslisp` | the Python package a host project imports (`make_env`, `run`, `install_primitives`) |
 | `SHS_PATH` | optional environment variable: extra module directories, `os.pathsep`-separated (`:` on Unix, `;` on Windows) |
 

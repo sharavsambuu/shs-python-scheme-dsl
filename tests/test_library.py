@@ -127,27 +127,31 @@ def test_define_library_export_renaming(env) -> None:
 
 
 def test_define_library_include(env, tmp_path) -> None:
-    (tmp_path / "helper.scm").write_text("(define from-include 42)\n", encoding="utf-8")
+    helper = tmp_path / "helper.scm"
+    helper.write_text("(define from-include 42)\n", encoding="utf-8")
     env.loader.add_search_paths([tmp_path])
+    # `.as_posix()`: a raw Windows path inside the Scheme string literal would
+    # be read as `\t`, `\b`, ... escape sequences (R-04).
     run(env, f"""
     (define-library (demo)
       (export from-include)
       (import (scheme base))
-      (include "{tmp_path / 'helper.scm'}"))
+      (include "{helper.as_posix()}"))
     """)
     run(env, "(import (demo))")
     assert run(env, "from-include") == 42
 
 
 def test_define_library_include_library_declarations(env, tmp_path) -> None:
-    (tmp_path / "decls.scm").write_text(
+    decls = tmp_path / "decls.scm"
+    decls.write_text(
         "(export from-decls)\n(begin (define from-decls 5))\n", encoding="utf-8"
     )
     env.loader.add_search_paths([tmp_path])
     run(env, f"""
     (define-library (demo)
       (import (scheme base))
-      (include-library-declarations "{tmp_path / 'decls.scm'}"))
+      (include-library-declarations "{decls.as_posix()}"))
     """)
     run(env, "(import (demo))")
     assert run(env, "from-decls") == 5

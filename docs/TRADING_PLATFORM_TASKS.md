@@ -15,14 +15,15 @@ Every task below records **what motivated it**, **the exact gap observed**, and
 
 | ID | Task | Priority | Status | Primary Files |
 |---|---|---|---|---|
-| `R-01` | Generic `--plugin <module[:attr]>` CLI flag & `SHS_PLUGINS` loader | P1 | OPEN | `shslisp/__main__.py`, `shslisp/embed.py` |
+| `R-01` | Generic `--plugin <module[:attr]>` CLI flag & `SHS_PLUGINS` loader | P1 | DONE | `shslisp/__main__.py`, `shslisp/embed.py` |
 | `R-02` | Multi-frame Scheme call-stack trace on `LispError` | P1 | OPEN | `shslisp/evaluator.py`, `shslisp/errors.py` |
 | `R-03` | Per-procedure step hotspot profiler (`measure_calls`) & `_run` macro/lookup fast-path | P1 | OPEN | `shslisp/evaluator.py`, `shslisp/builtins.py` |
-| `R-04` | Windows `tmp_path` backslash & CWD hygiene in `tests/` | P2 | OPEN | `tests/test_ports.py`, `tests/test_library.py`, `tests/test_r7rs.py`, `tests/test_srfi.py` |
+| `R-04` | Windows `tmp_path` backslash & CWD hygiene in `tests/` | P2 | DONE | `tests/test_ports.py`, `tests/test_library.py`, `tests/test_r7rs.py`, `tests/test_srfi.py` |
 
 ### `R-01` — Generic `--plugin` CLI & `SHS_PLUGINS`
 * **Motivation & Origin:** `shslisp/embed.py` already provides `install_extension(env, extension)` and `make_env(..., extensions=[...])`, yet `shslisp/__main__.py` only exposes a hardcoded `tetris: bool = False` toggle. Because of this gap, `shs-scheme-trading-exps` had to maintain its own `python -m host.scm` launcher wrapper instead of running scripts directly with `shs`.
 * **Target Design:** Add repeatable `--plugin module.path[:attr]` (default attribute `install`) and `SHS_PLUGINS` env var support in `shslisp/__main__.py` for `run`, `-e`, and `repl`, delegating to `install_extension`.
+* **Shipped:** `--plugin` is a repeatable top-level flag; `SHS_PLUGINS` (`os.pathsep`-separated) is merged with it (one install per spec), resolved eagerly by `load_plugins` (`MOD[:ATTR]`, default `install`), and passed to `make_env(..., extensions=...)` for `run`, `-e` and `repl`. A bad spec exits `1` with `shs: plugin 'SPEC': ...` on stderr. The gosh-style scan also skips option values now, so a plugin flag may sit between `shs` and the script path without hiding the script. Pinned by `test_r01_plugin_cli_tdd.py`.
 
 ### `R-02` — Multi-Frame Scheme Call-Stack Trace on `LispError`
 * **Motivation & Origin:** Combinator-heavy Scheme code (`define-strategy`, `wrap-pure-stake`, `step-bets`, `step-swarm`) nests multiple closures before hitting a runtime `LispTypeError` or `LispBudgetError`. `_Budget.sources` in `shslisp/evaluator.py` already tracks the active `SourceLocation` stack, but `_attach_eval_source` currently keeps only the single innermost location (`budget.sources[-1]`).
@@ -37,6 +38,7 @@ Every task below records **what motivated it**, **the exact gap observed**, and
 ### `R-04` — Windows Path & CWD Hygiene in `tests/`
 * **Motivation & Origin:** Running the full `shslisp` test suite on Windows showed 11 failures out of 1,186 tests: `test_ports.py`, `test_library.py`, and `test_r7rs.py` interpolate raw `tmp_path` strings containing `\` into Scheme string literals (turning `\t` or `\b` into control characters), and `test_srfi.py` assumes CWD is the `shs-python-scheme-dsl` root.
 * **Target Design:** Use `.as_posix()` or escaped paths in Scheme string templates and `Path(__file__).resolve().parents[1]` for repo-relative test fixtures.
+* **Shipped:** every `tmp_path`/`Path` interpolated into a Scheme string literal in `test_ports.py`, `test_library.py` and `test_r7rs.py` goes through `.as_posix()` (a raw Windows path would feed `\t`, `\b`, ... to the reader as escapes); `test_srfi.py` resolves `shslisp/srfi1.scm` from `REPO_ROOT = Path(__file__).resolve().parents[1]`; `docs/HARDENING_TASKS.md` no longer cites an uncommitted CI workflow as if it existed. Full suite green on Windows (1,194 passed).
 
 ---
 

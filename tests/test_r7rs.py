@@ -1221,11 +1221,14 @@ def test_read_bytevector_and_read_bytevector_bang(ev) -> None:
 
 def test_file_exists_delete_and_file_error(ev, tmp_path) -> None:
     target = tmp_path / "made-by-shslisp.txt"
-    assert ev(f'(file-exists? "{target}")') is False
+    # `.as_posix()` keeps a Windows path free of `\b`, `\t`, ... which the
+    # Scheme reader would otherwise decode as control characters (R-04).
+    posix = target.as_posix()
+    assert ev(f'(file-exists? "{posix}")') is False
     target.write_text("hi", encoding="utf-8")
-    assert ev(f'(file-exists? "{target}")') is True
-    ev(f'(delete-file "{target}")')
-    assert ev(f'(file-exists? "{target}")') is False
+    assert ev(f'(file-exists? "{posix}")') is True
+    ev(f'(delete-file "{posix}")')
+    assert ev(f'(file-exists? "{posix}")') is False
     assert (
         ev(
             """
@@ -1239,9 +1242,10 @@ def test_file_exists_delete_and_file_error(ev, tmp_path) -> None:
 
 def test_binary_file_round_trip(ev, tmp_path) -> None:
     target = tmp_path / "bytes.bin"
+    posix = target.as_posix()
     ev(
         f"""
-        (let ((p (open-binary-output-file "{target}")))
+        (let ((p (open-binary-output-file "{posix}")))
           (write-bytevector #u8(1 2 255) p)
           (close-port p))
         """
@@ -1250,7 +1254,7 @@ def test_binary_file_round_trip(ev, tmp_path) -> None:
         to_string(
             ev(
                 f"""
-                (let ((p (open-binary-input-file "{target}")))
+                (let ((p (open-binary-input-file "{posix}")))
                   (let ((b (read-bytevector 3 p)))
                     (close-port p)
                     b))

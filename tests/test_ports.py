@@ -100,13 +100,16 @@ def test_display_defaults_back_to_the_standard_port(buffered_env) -> None:
 
 def test_with_output_to_file_writes_and_closes(ev, tmp_path) -> None:
     path = tmp_path / "note.txt"
-    ev(f'(with-output-to-file "{path}" (lambda () (display "hello") (newline)))')
+    # `.as_posix()`: a raw Windows path would put `\n`, `\t`, ... inside the
+    # Scheme string literal and the reader would turn them into control
+    # characters (R-04).
+    ev(f'(with-output-to-file "{path.as_posix()}" (lambda () (display "hello") (newline)))')
     assert path.read_text() == "hello\n"
 
 
 def test_call_with_output_file_exposes_the_port(ev, tmp_path) -> None:
     path = tmp_path / "two.txt"
-    ev(f'(call-with-output-file "{path}" (lambda (p) (write-string "x" p)))')
+    ev(f'(call-with-output-file "{path.as_posix()}" (lambda (p) (write-string "x" p)))')
     assert path.read_text() == "x"
 
 
@@ -115,7 +118,7 @@ def test_with_input_from_file_reads_lines(ev, tmp_path) -> None:
     path.write_text("alpha\nbeta\n")
     ev(f"(define seen '())")
     ev(
-        f'(with-input-from-file "{path}"'
+        f'(with-input-from-file "{path.as_posix()}"'
         " (lambda () (set! seen (list (read-line) (read-line)))))"
     )
     assert ev("seen") == ["alpha", "beta"]
@@ -124,14 +127,14 @@ def test_with_input_from_file_reads_lines(ev, tmp_path) -> None:
 def test_call_with_input_file_exposes_the_port(ev, tmp_path) -> None:
     path = tmp_path / "one.txt"
     path.write_text("Q")
-    ev(f'(define c (call-with-input-file "{path}" (lambda (p) (read-char p))))')
+    ev(f'(define c (call-with-input-file "{path.as_posix()}" (lambda (p) (read-char p))))')
     assert ev("(char=? c #\\Q)") is True
 
 
 def test_opening_a_missing_file_names_the_failure(ev, tmp_path) -> None:
     missing = tmp_path / "nope.txt"
     with pytest.raises(LispError, match="open-input-file"):
-        ev(f'(open-input-file "{missing}")')
+        ev(f'(open-input-file "{missing.as_posix()}")')
 
 
 def test_a_file_port_closes_on_an_exception(ev, tmp_path) -> None:
@@ -139,7 +142,7 @@ def test_a_file_port_closes_on_an_exception(ev, tmp_path) -> None:
     ev(
         f'(define nope (guard (e (#t (string-append "caught "'
         f' (error-object-message e))))'
-        f' (call-with-output-file "{path}" (lambda (p) (error "boom")))))'
+        f' (call-with-output-file "{path.as_posix()}" (lambda (p) (error "boom")))))'
     )
     assert ev("nope").startswith("caught ")
     # The port was closed by the after-thunk even though the body raised, so the

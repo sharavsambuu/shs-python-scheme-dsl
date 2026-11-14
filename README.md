@@ -70,8 +70,17 @@ shs run program.scm              # run a script
 shs program.scm                  # the same, gosh-style: the file is the command
 shs run program.scm arg1 arg2    # args become *command-line-args*
 shs --profile r7rs               # strict R7RS-small: no SRFIs preloaded
+shs --plugin mypkg -e "(host-verb)"   # load a host vocabulary, then evaluate
 shs --version
 ```
+
+A *plugin* is the same extension shape `shslisp.embed` documents: an
+importable Python module whose `install(env)` function binds the host's
+primitives. `--plugin MOD[:ATTR]` is repeatable (`ATTR` defaults to
+`install`), and `SHS_PLUGINS` (an `os.pathsep`-separated list, like `PATH`)
+does the same for every invocation — `run`, `-e` and `repl`. A spec that does
+not import, or an attribute that is not callable, stops the command with a
+non-zero exit and an error naming the spec.
 
 Scripts may begin with a shebang and be executable directly:
 

@@ -227,6 +227,7 @@ def run_repl(
     in_stream: Optional[TextIO] = None,
     search_paths: Iterable[Any] = (),
     profile: Optional[str] = "dsl",
+    extensions: Iterable[Any] = (),
 ) -> int:
     """Build an environment and hand it to a :class:`Repl`.
 
@@ -234,12 +235,16 @@ def run_repl(
     plain Scheme unless explicitly given a host edition.
     *search_paths* let a host put its own library directory in front of the
     working directory. *profile* selects the pre-imported SRFI layer (see
-    :func:`shslisp.runtime.make_env`).
+    :func:`shslisp.runtime.make_env`). *extensions* are already-resolved host
+    plugins (``install(env)`` callables, see
+    :func:`shslisp.__main__.load_plugins`), installed after the profile so the
+    REPL opens with the host's vocabulary in place.
     """
     env = make_env(
         install_tetris=install_tetris,
         out=out,
         search_paths=search_paths,
         profile=profile,
+        extensions=extensions,
     )
     return Repl(env=env, out=out).run(in_stream=in_stream)
