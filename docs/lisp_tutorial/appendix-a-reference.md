@@ -13,8 +13,12 @@ shs -e "(+ 1 2)"                     # evaluate an expression
 shs run FILE                         # run a Lisp file
 shs run FILE arg1 arg2               # args become *command-line-args*
 shs --profile r7rs                   # strict R7RS-small, no SRFIs preloaded
+shs --plugin MOD[:ATTR]              # load a host plugin (repeatable)
 shs --version
 ```
+
+Plugins also load from `SHS_PLUGINS` (`os.pathsep`-separated); see chapter
+[28](28-embedding-in-python.md).
 
 The examples quote `-e` expressions with **double quotes** on purpose: on
 Windows, cmd and PowerShell treat single quotes as ordinary characters, so
@@ -157,9 +161,12 @@ Note `take`/`drop` take the list first: `(take xs n)`.
 
 ## SRFI libraries (`(import (srfi N))`)
 
-The language ingests six SRFIs; the default DSL profile pre-imports them
-(with the SRFI 1 `map`/`for-each` renamed), so programs need no preamble —
-strict (`profile="r7rs"`) programs say `(import (srfi N))`:
+The layer is a set of R7RS libraries. The default DSL profile pre-imports the
+core set (with the SRFI 1 `map`/`for-each` renamed), so those programs need no
+preamble; the trading layer and the standard-library wave are one import away,
+and strict (`profile="r7rs"`) programs import everything they use.
+
+**Pre-imported by the default profile:**
 
 - `(srfi 1)` — lists: `filter`, `member`, `assoc`, `fold-right`, `zip`,
   `iota`, `delete`, `set-car!`/`set-cdr!`, and the rest of the audited set.
@@ -175,6 +182,33 @@ strict (`profile="r7rs"`) programs say `(import (srfi N))`:
 - `(srfi 241)` — the standard `match` (comma-prefixed pattern variables,
   guards, ellipsis, vector patterns, catamorphism). The project's tag
   dispatch is the separate `variant-match`.
+- `(srfi 19)` — time and date: `current-time`, `make-time`, the immutable
+  `date`, duration arithmetic, the Julian Day family,
+  `date->string`/`string->date` (no TAI, no leap seconds).
+- `(srfi 158)` — generators and accumulators: the combinators, multi-generator
+  drains, the searching half, and the accumulator half.
+- `(srfi 160 base)` / `(srfi 160 f64)` — homogeneous numeric vectors: the
+  twelve types, the SRFI-133-shaped f64 operation set, `#f64(...)` literals.
+
+**Import-only in both profiles (the standard-library wave):**
+
+- `(srfi 125)` — hash tables: `make-hash-table`, `hash-table-ref`/`-set!`,
+  `hash-table-contains?`, `hash-table-size`, `alist->hash-table`. Chapter
+  [13](13-dictionaries-alists-and-hash-tables.md).
+- `(srfi 132)` — sorting: `list-sort`, `list-stable-sort`, `vector-sort`,
+  `vector-stable-sort`, `list-sorted?`, `vector-sorted?`. Chapter
+  [29](29-sorting-json-and-formatting.md).
+- `(srfi 64)` — a Scheme test API: `test-begin`/`test-end`/`test-group`, the
+  assertion macros, `test-error`, and the simple runner. Chapter
+  [30](30-testing-and-debugging-srfi-64.md).
+- `(srfi 180)` — JSON: `json-read`, `json-write` (objects ↔ string-keyed
+  alists, arrays ↔ vectors, `null` ↔ `'null`). Chapter
+  [29](29-sorting-json-and-formatting.md).
+- `(srfi 28)` — `format` with `~a`, `~s`, `~%`, `~~`. Chapter
+  [29](29-sorting-json-and-formatting.md).
+- `(srfi 152)` — strings: `string-split`, `string-join`, `string-contains`,
+  `string-trim`, `string-prefix?`, `string-suffix?`. Chapter
+  [29](29-sorting-json-and-formatting.md).
 
 The matrix and every deviation live in
 [docs/srfi.md](../srfi.md).
@@ -360,6 +394,22 @@ run("(double 21)", env)                # -> 42
 - `STEPS_BUDGET = 5_000_000` (trampoline steps) → `LispBudgetError`
 - `MACROEXPAND_LIMIT = 1_000` (steps `macroexpand` will take before it calls a
   macro divergent) → `LispBudgetError`
+- `TRACEBACK_FRAMES = 32` (frames a `LispError.format_traceback()` keeps)
+
+## Host-side diagnostics (`shslisp/errors.py`, `shslisp/evaluator.py`)
+
+- `exc.source` — the innermost `SourceLocation`; `str(exc)` renders
+  `file:line:col: message` on **one line** and is the program-facing contract.
+- `exc.traceback` / `exc.format_traceback()` — the deduplicated frames,
+  innermost first, bounded by `TRACEBACK_FRAMES`, then the one-line message.
+  Opt-in: nothing changes for a host that never calls it.
+- `measure_steps(thunk)` → `(result, steps)`; `measure_calls(thunk)` →
+  `(result, steps, counts)` — applications per named closure and primitive.
+  Both run the thunk under a private budget, so the caller's steps are
+  untouched and `STEPS_BUDGET` still applies inside.
+- `read_all_located(text, file=…)` / `read_one_located(…)` — read forms with
+  their spans; `evaluate_program` accepts those `(form, location)` pairs
+  directly, which is the shortest path from a file with spans to a run.
 
 ## Where to look next
 

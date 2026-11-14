@@ -13,8 +13,12 @@ on Python. The language is one pure-standard-library package (`shslisp`) you can
 install, script with, embed in your own Python projects, and read in an
 afternoon.
 
-It uses the following SRFIs,
-all pre-imported by the default profile:
+It uses the following SRFIs. The first group is pre-imported by the default
+profile, so a plain `make_env()` or `shs` already has it. The second group is
+one `(import (srfi N))` away — deliberately opt-in, so a program only pays for
+the toolbox it asked for.
+
+**Always on (the default profile):**
 
 | SRFI | Name | What you get |
 | --- | --- | --- |
@@ -28,11 +32,23 @@ all pre-imported by the default profile:
 | SRFI 158 | Generators and accumulators | the full combinator set, multi-generator drains, and the accumulator half |
 | SRFI 160 | Numeric vectors | `f64vector` and its cousins over the buffer protocol — the pandas/numpy bridge, `#f64(...)` literals |
 
+**On demand (the standard-library wave — `(import (srfi N))`):**
+
+| SRFI | What you get | Reach for it when |
+| --- | --- | --- |
+| SRFI 125 | Hash tables with the standard spelling — `hash-table-contains?`, `hash-table-size`, `alist->hash-table` | a lookup is hot or the key space is open; `O(1)` beats an `assoc` scan, and any value (a list, a record) can be a key |
+| SRFI 132 | `list-sort`, `vector-sort`, the `sorted?` predicates — Python Timsort behind your comparator | you need a sorted list or vector and do not want to hand-write a merge loop or spend trampoline steps on comparisons |
+| SRFI 64 | A Scheme test API: `test-begin`/`test-end`/`test-group`, `test-equal`/`test-assert`/`test-error`, a simple runner | you write Scheme specs in a host project and want the standard runner instead of local testing boilerplate |
+| SRFI 180 | `json-read` / `json-write` over the stdlib `json` module | a script emits or consumes machine-readable telemetry — no hand-concatenated JSON strings |
+| SRFI 28 | `format` with `~a`/`~s`/`~%`/`~~` | one line of output is assembled from several values, so `(display …)` chains stop earning their keep |
+| SRFI 152 | `string-split`, `string-join`, `string-contains`, `string-trim`, `string-prefix?`/`string-suffix?` | symbol lists, paths, and log lines need splitting, joining, searching, or trimming |
+
 > **Note on SRFI 204.** SRFI 204 (the Wright–Cartwright–Shinn matcher) is
 > *withdrawn* and is deliberately not implemented — `(srfi 204)` fails with a
 > pointer to `(srfi 241)`, which is the final matcher SRFI.
 
-The three trading-layer SRFIs (19, 158, 160) landed as S10–S12 in
+The three trading-layer SRFIs (19, 158, 160) landed as S10–S12, and the
+standard-library wave (125, 132, 64, 180, 28, 152) as S14–S18 — both in
 [`docs/SRFI_TASKS.md`](docs/SRFI_TASKS.md), each with its documented
 deviations in [`docs/srfi.md`](docs/srfi.md).
 
@@ -160,7 +176,7 @@ run("(double 21)", env)                # -> 42
 
 The seam is declared, total, and loud: a host publishes a plain list of
 `name -> callable` pairs; duplicates and non-callables are refused at install
-time. See chapter 27 of the tutorial.
+time. See chapter 28 of the tutorial.
 
 ## Development
 

@@ -75,6 +75,45 @@ That is the entire integration. No subclassing, no registry decorator, no
 `sys.modules` spelunking. The interpreter needed no change to "support"
 inventory, which is the test of a good embedding.
 
+## Ship the vocabulary with the command
+
+`install_primitives` is the Python-side seam. When the host is a *tool* rather
+than a library — a command a user runs — the same extension shape can be handed
+to `shs` itself. A **plugin** is an importable Python module whose
+`install(env)` binds the vocabulary, and the command installs it before it
+reads a script or an expression:
+
+```python
+# inventory_plugin.py — importable from the directory the command runs in
+from shslisp import install_primitives
+
+def stock_total(rows):
+    return sum(row["qty"] for row in rows)
+
+def install(env):
+    install_primitives(env, [("stock-total", stock_total)], source=__name__)
+```
+
+```sh
+shs --plugin inventory_plugin -e "(stock-total '())"   # -> 0
+shs --plugin inventory_plugin run policy.scm           # the script sees it too
+SHS_PLUGINS=inventory_plugin shs -e "(stock-total '())" # every invocation
+```
+
+`--plugin MOD[:ATTR]` is repeatable and `ATTR` defaults to `install`, so a
+module exporting a differently named installer is
+`--plugin inventory_plugin:extra`. `SHS_PLUGINS` is `os.pathsep`-separated
+(`:` on Unix, `;` on Windows) and is merged with the flags — one install per
+spec, in order. The same list reaches `run`, `-e`, and the REPL, so a REPL
+opened with a plugin has the vocabulary at the prompt. On PowerShell the
+environment form is `$env:SHS_PLUGINS = "inventory_plugin"`; in cmd it is
+`set SHS_PLUGINS=inventory_plugin`.
+
+Failure is loud and early: a spec that does not import, or an attribute that is
+not callable, stops the command with `shs: plugin 'SPEC': …` on stderr and a
+non-zero exit — *before* any Lisp is read, so a typo can never produce a
+half-configured session.
+
 ## Try it
 
 The standard library the host inherits is the point: because the language owns its
@@ -115,6 +154,63 @@ into 42
 `(current-output-port)` — a parameter — so rebinding it is all it takes to redirect
 them. That is the split the whole chapter is about: the *mechanism* (a port
 object, a `write`) is Python; the *policy* (which port is current) is Lisp.
+
+## Reading a failure: `format_traceback()`
+
+A `LispError` already knows where it happened: `exc.source` is the innermost
+reader span, and `str(exc)` renders it as one line — `file:line:col: message` —
+which is exactly what a script's stderr and the REPL should print. A host that
+wants *how it got there* asks for the frames:
+
+```python
+from shslisp import make_env, run
+from shslisp.errors import LispError
+
+try:
+    run("(car 1)", make_env())
+except LispError as exc:
+    print(str(exc))                # the one-line contract, unchanged
+    print(exc.format_traceback())  # the frames, innermost first, then that line
+```
+
+```text
+<string>:1:1: car: expected a non-empty list
+Scheme traceback (innermost first):
+  at <string>:1:1
+<string>:1:1: car: expected a non-empty list
+```
+
+The frames are deduplicated, bounded (`TRACEBACK_FRAMES = 32`), and captured by
+the deepest handler that sees the error, so the stack is as full as it can be.
+A form the reader never saw — a macro expansion, a form built with `list` — has
+no span and contributes no frame; an error with none formats as its message
+alone. `str(exc)` is deliberately untouched by all of this: a host that never
+calls `format_traceback()` pays nothing and keeps the old contract.
+
+## Where the steps went: `measure_calls`
+
+Two interpreter-level profilers live in `shslisp/evaluator.py`. `measure_steps`
+answers *how much* trampoline work a thunk spent; `measure_calls` also answers
+*which procedures* spent it:
+
+```python
+from shslisp import make_env, run
+from shslisp.evaluator import measure_calls
+
+env = make_env()
+run("(define (leaf x) (+ x 1))", env)
+run("(define (branch n) (if (= n 0) 0 (+ (leaf n) (branch (- n 1)))))", env)
+
+result, steps, counts = measure_calls(lambda: run("(branch 5)", env))
+print(result, steps)                          # 20 109
+print(counts["branch"], counts["leaf"])        # 6 5
+```
+
+Both hooks run the thunk under a **private** budget: the caller's own steps are
+neither charged nor disturbed, and the usual `STEPS_BUDGET` guard still ends a
+runaway excerpt with a clean `LispBudgetError`. The tally is read-only — with
+no profiler running, `_Budget.calls` is `None` and the hot path costs one
+`is not None` test — so measuring never changes what the program computes.
 
 ## What is not here, on purpose
 
@@ -174,6 +270,17 @@ Scheme — the default is *auto*.
    must come up empty — and what a "convenient" `import yourhost` shortcut
    inside `embed.py` would cost the next embedder.
 
-Next: [Appendix A — Reference](appendix-a-reference.md). The
-tutorial ends here — the chapters before this one already covered the
-language, the SRFI layer it ships, and the design track it enables.
+5. **Ship it as a plugin.** Take the inventory host above, put its `install(env)`
+   in a module named `inventory_plugin`, and run it with
+   `shs --plugin inventory_plugin -e "(stock-total '())"`. Then set
+   `SHS_PLUGINS` and run a script instead. What does the seam's "declared, not
+   discovered" rule look like from the CLI side — and who reviews the list?
+
+6. **Ask for the frames.** Trigger an error from one of your own primitives and
+   print both `str(exc)` and `exc.format_traceback()`. Why is the one-line form
+   the default, and what would the REPL lose if the multi-line form were the
+   default instead?
+
+Next: [29 Sorting, JSON, formatting, and strings](29-sorting-json-and-formatting.md).
+The language is embedded; the next two chapters are the toolbox a host script
+actually reaches for, and the test API to check it with — then the appendix.

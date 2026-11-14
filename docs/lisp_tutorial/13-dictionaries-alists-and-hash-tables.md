@@ -69,7 +69,40 @@ The surface, mapped to Python:
 | `hash-table-count h` | `len(d)` |
 | `hash-table-keys h` / `hash-table-values h` | `d.keys()` / `d.values()` |
 | `hash-table->alist h` | `list(d.items())` |
-| `hash-table->alist h` | `list(d.items())` |
+
+## SRFI 125: the standard spellings
+
+The table above is the dialect's *core* vocabulary. `(import (srfi 125))` gives
+the same storage under the standard names, plus the three procedures the core
+does not carry:
+
+```scheme
+(import (srfi 125))
+
+(define prices (alist->hash-table '((spy . 512) (qqq . 430))))
+(hash-table-size prices)                 ;=> 2
+(hash-table-contains? prices 'spy)       ;=> #t
+(hash-table-ref/default prices 'iwm 0)   ;=> 0
+```
+
+| SRFI 125 | Core spelling | Note |
+| --- | --- | --- |
+| `hash-table-contains?` | `hash-table-has-key?` | the same predicate; the SRFI name is the portable one |
+| `hash-table-size` | `hash-table-count` | the same answer |
+| `alist->hash-table` | a fold over `hash-table-set!` | accepts dotted `(k . v)` pairs *and* two-element `(k v)` lists |
+| `make-hash-table`, `hash-table-ref`, `hash-table-set!`, the rest | unchanged | the import binds the *same* objects the core has |
+
+Two reasons to import it: your program reads the way the SRFI text reads (so
+the code is portable and reviewable against a standard), and
+`alist->hash-table` saves the fold — `(alist->hash-table settings)` is the
+one-liner the exercise at the bottom of this chapter asks you to write by
+hand. What the import does *not* add is a second table type: `hash-table?`
+answers `#t` for the same objects, and a table built either way works with
+every procedure above.
+
+A missing key still raises, and that is the point of the pair
+`hash-table-ref` / `hash-table-ref/default`: reach for the defaulting one when
+absence is ordinary, and let the raising one catch a typo.
 
 ## The counting idiom: `hash-table-update!`
 
@@ -263,8 +296,10 @@ rook
 
 ## Exercises
 
-1. **Alist → table.** Write `(alist->hash-table alist)` as a fold over the
-   entries calling `hash-table-set!`. Round-trip it: `(hash-table->alist
+1. **Alist → table.** Write `(my-alist->hash-table alist)` yourself as a fold
+   over the entries calling `hash-table-set!`, then `(import (srfi 125))` and
+   compare it with the library's `(alist->hash-table alist)` — same table, one
+   fewer fold to trust. Round-trip it: `(hash-table->alist
    (alist->hash-table settings))` — what changed about the order, and why is
    the answer "nothing, for a fresh table"?
 2. **The thunk trap.** Call `(hash-table-update! counts "x" (lambda (n) (+ n 1))

@@ -53,7 +53,11 @@ capstone: one checkout pipeline where typed control flow, pattern matching,
 contracts, monadic pipelines, railway-oriented programming, bounded contexts,
 and the core/shell split all run in a single program. Chapter
 [28](28-embedding-in-python.md) is the way out: how to take this language and
-put it over a project of your own.
+put it over a project of your own. Chapters
+[29](29-sorting-json-and-formatting.md) and
+[30](30-testing-and-debugging-srfi-64.md) are the toolbox that comes with it:
+the standard-library wave (sorting, JSON, formatting, strings) and the test
+API, tracebacks, and profiler you will want once the code is real.
 
 ## The chapters
 
@@ -92,6 +96,9 @@ put it over a project of your own.
 | | [27 The gala: one checkout, eight ideas](27-the-gala-checkout.md) | The capstone: typed lifecycle, contracts, ROP, matched failures, contexts — one program |
 | **Part IV — out of the repository** | | |
 | | [28 Embedding in Python](28-embedding-in-python.md) | The host seam: `install_primitives`, extensions, packaging |
+| **Part V — the toolbox** | | |
+| | [29 Sorting, JSON, formatting, and strings](29-sorting-json-and-formatting.md) | SRFIs 132, 180, 28, and 152 — the wave a host script reaches for |
+| | [30 Testing and debugging: SRFI 64](30-testing-and-debugging-srfi-64.md) | A Scheme test API, `format_traceback()`, and `measure_calls` |
 | **Appendix** | [A Reference](appendix-a-reference.md) | Signatures, common mistakes, CLI |
 | | [B Glossary](appendix-b-glossary.md) | The terms, and where each one lives |
 
