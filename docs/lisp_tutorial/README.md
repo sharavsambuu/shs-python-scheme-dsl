@@ -99,6 +99,7 @@ API, tracebacks, and profiler you will want once the code is real.
 | **Part V — the toolbox** | | |
 | | [29 Sorting, JSON, formatting, and strings](29-sorting-json-and-formatting.md) | SRFIs 132, 180, 28, and 152 — the wave a host script reaches for |
 | | [30 Testing and debugging: SRFI 64](30-testing-and-debugging-srfi-64.md) | A Scheme test API, `format_traceback()`, and `measure_calls` |
+| | [31 Coroutines, fibers, and delimited control](31-coroutines-fibers-and-delimited-control.md) | Delimited prompts (`srfi 226`), `yield` (`srfi 190`), and cooperative threads (`srfi 18`) |
 | **Appendix** | [A Reference](appendix-a-reference.md) | Signatures, common mistakes, CLI |
 | | [B Glossary](appendix-b-glossary.md) | The terms, and where each one lives |
 

@@ -81,11 +81,11 @@ other infinitely many values were never computed.
 Since S12 this library **is** `(srfi 158)`: the export list was audited name
 by name against the final specification (the combinators, the multi-generator
 drains, the searching half, and the accumulators — `sum-accumulator` and
-friends). Two coroutine-shaped constructors, `make-coroutine-generator` and
-`make-for-each-generator`, fail loudly: suspending a body mid-computation
-needs re-entrant continuations, which this dialect deliberately does not have
-(chapter [07](07-code-is-data.md) and `docs/r7rs.md` record the
-limit). The deviations are in `docs/srfi.md`; the ledger entry is S12 in
+friends). The coroutine-shaped constructors, `make-coroutine-generator` and
+`make-for-each-generator`, are powered by `shslisp`'s baton-scheduled
+cooperative fibers (see chapter [31](31-coroutines-fibers-and-delimited-control.md)
+and `(srfi 190)` for `coroutine-generator` and `yield`). The S9 `generator-end`
+sentinel and other notes are in `docs/srfi.md`; the ledger entry is S12 in
 `docs/SRFI_TASKS.md`.
 
 ## Try it

@@ -207,6 +207,5 @@ which reach `leaf`.
 > give the host `format_traceback()`; when the failure is *slowness*, ask
 > `measure_calls` which procedure is spending the steps.
 
-Next: [Appendix A — Reference](appendix-a-reference.md). The tutorial ends here —
-the chapters before this one cover the language, the standard-library wave, and
-the design track it enables.
+Next: [31 — Coroutines, fibers, and delimited control](31-coroutines-fibers-and-delimited-control.md).
+If you want a quick lookup reference, see [Appendix A — Reference](appendix-a-reference.md).

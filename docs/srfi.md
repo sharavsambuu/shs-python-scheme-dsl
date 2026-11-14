@@ -7,8 +7,10 @@
 > accumulators), and `(srfi 160 base)` + `(srfi 160 f64)` (numeric vectors) —
 > plus the standard-library wave landed as S14–S18: `(srfi 125)` (hash
 > tables), `(srfi 132)` (sorting), `(srfi 64)` (a Scheme test API),
-> `(srfi 180)` (JSON), and `(srfi 28)` + `(srfi 152)` (formatting and
-> strings). A library either meets its
+> `(srfi 180)` (JSON), `(srfi 28)` + `(srfi 152)` (formatting and
+> strings) — plus the cooperative-concurrency wave: `(srfi 226)` (delimited
+> continuations), `(srfi 190)` (coroutine generators), and `(srfi 18)`
+> (cooperative threads, mutexes, and condition variables). A library either meets its
 > SRFI's semantics — audited name by name, with the tests to show it — or it
 > fails loudly as "not implemented yet". Nothing is aliased into pretending.
 > The plan and the per-name audit live in
@@ -38,6 +40,9 @@
 | `(srfi 132)` | supported | core: `shslisp/srfi132.py` (Python Timsort) | `tests/test_s14_to_s18_srfis_tdd.py` |
 | `(srfi 152)` | supported | core: `shslisp/srfi152.py` (seven names) | `tests/test_s14_to_s18_srfis_tdd.py` |
 | `(srfi 180)` | supported | core: `shslisp/srfi180.py` (stdlib `json`) | `tests/test_s14_to_s18_srfis_tdd.py` |
+| `(srfi 226)` | supported | core: `shslisp/srfi226.py` (baton-scheduled cooperative fibers) | `tests/test_c01_srfi226_tdd.py` |
+| `(srfi 190)` | supported | `shslisp/srfi190.scm` (`coroutine-generator`, `yield`) | `tests/test_c02_srfi158_190_tdd.py` |
+| `(srfi 18)` | supported | core: `shslisp/srfi18.py` (cooperative threads, mutexes, condvars) | `tests/test_c03_srfi18_tdd.py` |
 | `(srfi 204)` | withdrawn | - | importing it fails, naming SRFI 241 |
 
 ## Layout and the "supported subset" rule
@@ -314,11 +319,10 @@ appears here with a reason.
   time-of-day fields are range-checked like `make-date`, and the whole
   input must match the template — trailing garbage fails. Unknown
   directives fail loudly.
-- **`(srfi 158)`** is the final export list, audited name by name. Two
-  constructors — `make-coroutine-generator` and `make-for-each-generator` —
-  are bound but **fail loudly**: suspending a body mid-computation needs
-  re-entrant continuations, which this dialect deliberately does not have
-  (`r7rs.md`, Tier 1); build a stateful closure generator instead. The S9
+- **`(srfi 158)`** is the final export list, audited name by name. Its two
+  coroutine constructors — `make-coroutine-generator` and
+  `make-for-each-generator` — are powered by `shslisp`'s baton-scheduled
+  `CooperativeFiber` runtime (`tests/test_c02_srfi158_190_tdd.py`). The S9
   `generator-end` sentinel is still defined and every library consumer still
   accepts it, so pre-S12 code keeps running; new code uses the eof-object.
   The final SRFI has no `max`/`min` accumulators, and none are claimed.
@@ -397,10 +401,9 @@ continuations, shipped in both profiles as part of the prelude.
 It is claimed as **`(srfi 158)`** since S12: the import binds the audited
 surface — the eof-object protocol, the full combinator set, and the
 accumulators — over these same prelude bindings. The tests are
-[`tests/test_generators.py`](../tests/test_generators.py); the deviations
-(that two coroutine-shaped constructors fail loudly; that the S9
-`generator-end` sentinel is still accepted) are under
-[Deviations](#deviations).
+[`tests/test_generators.py`](../tests/test_generators.py) and
+[`tests/test_c02_srfi158_190_tdd.py`](../tests/test_c02_srfi158_190_tdd.py); the
+S9 `generator-end` sentinel note is under [Deviations](#deviations).
 
 ## The trading layer: S10–S12
 

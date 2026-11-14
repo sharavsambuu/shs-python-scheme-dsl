@@ -64,12 +64,14 @@ example.
 
 ### Tier 1 — structural, deliberate, documented
 
-- **No re-entrant `call/cc`.** Continuations are escape-only: the one-shot
+- **No re-entrant `call/cc`.** R7RS `call/cc` is escape-only: the one-shot
   exit shape works, re-entry after the `dynamic-wind` extent ends does not.
-  Consequence: no generators, coroutines, or green threads *built on
-  continuations*. Documented in `r7rs.md`.
-- **No concurrency or async.** The host could expose threads through the
-  seam, but the language itself has no story. Not begun.
+  For suspendable control flow, use `(srfi 226)` delimited prompts and
+  composable continuations, `(srfi 158)`/`(srfi 190)` coroutine generators,
+  or `(srfi 18)` cooperative fibers (all built on `CooperativeFiber`).
+- **Cooperative concurrency only.** `(srfi 18)` provides cooperative threads,
+  mutexes, and condition variables scheduled deterministically via a single
+  execution baton; there is no true multi-core parallelism inside Scheme.
 - **No object orientation.** No classes, inheritance, or generic dispatch.
   Records + variants + closures are the intended substitute; they hold up
   for DDD-style domain code, but there is no late-binding story.
@@ -199,8 +201,9 @@ hatch the question assumes is not a workaround; it is the design.
    slower than native Schemes for hot loops. The honest pattern is
    *Scheme orchestrates, Python computes* — push the compute into a
    primitive.
-2. **No threads.** Concurrency is generators-and-coroutines-shaped, not
-   parallel; an embedding must not share an env across OS threads.
+2. **Cooperative threads, not parallel.** `(srfi 18)` threads are
+   baton-scheduled cooperative fibers for deterministic concurrency; an
+   embedding must still not share an `Env` across uncoordinated OS threads.
 3. **The FFI is manual and loud.** Every Python capability is an explicit
    `install_primitives` registration (chapter
    [28](lisp_tutorial/28-embedding-in-python.md)) — a feature for safety,
