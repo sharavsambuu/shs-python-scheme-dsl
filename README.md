@@ -29,7 +29,7 @@ the toolbox it asked for.
 | SRFI 197 | Pipeline operators | `chain`, `chain-and`, `chain-when`, `chain-lambda`, `nest` |
 | SRFI 241 | Pattern matching | `match` with quasiquote patterns, guards, ellipsis, catamorphism |
 | SRFI 19 | Time and date | `time-utc`/`date`, duration arithmetic, Julian day, `date->string`/`string->date` |
-| SRFI 158 | Generators and accumulators | the full combinator set, multi-generator drains, and the accumulator half |
+| SRFI 158 | Generators and accumulators | the full combinator set, coroutine generators (`make-coroutine-generator`, `make-for-each-generator`), multi-generator drains, and the accumulator half |
 | SRFI 160 | Numeric vectors | `f64vector` and its cousins over the buffer protocol — the pandas/numpy bridge, `#f64(...)` literals |
 
 **On demand (the standard-library wave — `(import (srfi N))`):**
@@ -42,15 +42,19 @@ the toolbox it asked for.
 | SRFI 180 | `json-read` / `json-write` over the stdlib `json` module | a script emits or consumes machine-readable telemetry — no hand-concatenated JSON strings |
 | SRFI 28 | `format` with `~a`/`~s`/`~%`/`~~` | one line of output is assembled from several values, so `(display …)` chains stop earning their keep |
 | SRFI 152 | `string-split`, `string-join`, `string-contains`, `string-trim`, `string-prefix?`/`string-suffix?` | symbol lists, paths, and log lines need splitting, joining, searching, or trimming |
+| SRFI 226 | `make-continuation-prompt-tag`, `call-with-continuation-prompt`, `abort-current-continuation`, `call-with-composable-continuation`, `call-with-continuation-barrier` | you need explicit delimited control boundaries or one-shot suspend/resume over a `CooperativeFiber` |
+| SRFI 190 | `coroutine-generator`, `define-coroutine-generator`, `yield` | a lazy producer reads cleaner as sequential `yield` steps than as a manual state machine |
+| SRFI 18 | `make-thread`, `thread-start!`, `thread-yield!`, `thread-join!`, `make-mutex`, `make-condition-variable` | you want deterministic baton-scheduled cooperative fibers with mutex and condition-variable coordination |
 
 > **Note on SRFI 204.** SRFI 204 (the Wright–Cartwright–Shinn matcher) is
 > *withdrawn* and is deliberately not implemented — `(srfi 204)` fails with a
 > pointer to `(srfi 241)`, which is the final matcher SRFI.
 
-The three trading-layer SRFIs (19, 158, 160) landed as S10–S12, and the
-standard-library wave (125, 132, 64, 180, 28, 152) as S14–S18 — both in
-[`docs/SRFI_TASKS.md`](docs/SRFI_TASKS.md), each with its documented
-deviations in [`docs/srfi.md`](docs/srfi.md).
+The three trading-layer SRFIs (19, 158, 160) landed as S10–S12, the
+standard-library wave (125, 132, 64, 180, 28, 152) as S14–S18, and the
+cooperative-concurrency wave (226, 190, 18, plus coroutine support in 158) in
+`v0.3.0` — see [`docs/SRFI_TASKS.md`](docs/SRFI_TASKS.md) and
+[`docs/srfi.md`](docs/srfi.md).
 
 ## Install
 
@@ -67,7 +71,7 @@ pip install .
 pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git
 
 # pinned to a tag/commit, for a project that depends on it
-pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.2.3
+pip install git+https://github.com/sharavsambuu/shs-python-scheme-dsl.git@v0.3.0
 ```
 
 No runtime dependencies: the interpreter is pure Python standard library
