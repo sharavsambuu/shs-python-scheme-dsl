@@ -194,9 +194,66 @@ next value or the unique `generator-end` object — with `gmap`/`gfilter`/
 `gtake`/`gdrop` and the drains. No evaluator change, no re-entrant
 continuations. See the landed table above.
 
+### S14 — `(srfi 125)`: hash tables — OPEN
+
+**User value & origin.** Surfaced in `shs-scheme-trading-exps` (the swarm
+cross-symbol correlation matrices and per-symbol agent lookup), where `O(N)`
+`assoc`/`assq` list scans burn trampoline steps under the `5,000,000`-step
+budget.
+
+**Shape & scope.** Core-backed over Python `dict`: `make-hash-table`,
+`hash-table?`, `hash-table-ref`, `hash-table-ref/default`, `hash-table-set!`,
+`hash-table-delete!`, `hash-table-contains?`, `hash-table-size`,
+`hash-table-keys`, `hash-table-values`, `hash-table->alist`,
+`alist->hash-table`. Loud errors on missing keys without a default.
+
+### S15 — `(srfi 132)`: sort libraries — OPEN
+
+**User value & origin.** Surfaced by `sort-agents-desc` in the swarm
+module, where hand-written Scheme sorting loops spend unnecessary interpreter
+steps on every bar.
+
+**Shape & scope.** Core-backed over Python Timsort (`sorted`): `list-sorted?`,
+`list-sort`, `list-stable-sort`, `vector-sorted?`, `vector-sort`,
+`vector-stable-sort`.
+
+### S16 — `(srfi 64)`: a Scheme API for test suites — OPEN
+
+**User value & origin.** `shs-scheme-trading-exps` built a custom testing
+prelude (`T-127`) to write Scheme-native unit specs (`define-test-suite`,
+`check=`, `check-raises`, `check-match`). Providing `(srfi 64)` inside
+`shslisp` makes Scheme-native testing available to every host project without
+local boilerplate.
+
+**Shape & scope.** Core/prelude library exposing `test-begin`, `test-end`,
+`test-group`, `test-assert`, `test-equal`, `test-eqv`, `test-eq`, `test-error`,
+`test-runner-current`, `test-runner-simple`, and summary counts.
+
+### S17 — `(srfi 180)`: JSON — OPEN
+
+**User value & origin.** Surfaced by standalone CLI scripts (e.g. the swarm
+capstone script) that had to concatenate JSON strings by hand to emit
+structured machine-readable telemetry.
+
+**Shape & scope.** Core-backed over Python stdlib `json`: `json-read`,
+`json-write`, mapping JSON objects to alists (`symbol`/`string` keys), arrays to
+vectors, `null` to `'null`, and booleans/numbers faithfully.
+
+### S18 — `(srfi 28)` + `(srfi 152)`: basic format strings & string utilities — OPEN
+
+**User value & origin.** Eliminates repetitive `(display ...)` chains in CLI
+scripts and provides standard string splitting/joining/searching (`string-split`,
+`string-join`, `string-contains`, `string-trim`) for symbol and path handling.
+
+**Shape & scope.** `(srfi 28)` `format` (`~a`, `~s`, `~%`, `~~`) and a clean,
+core-backed `(srfi 152)` subset over Python `str`.
+
+*(See [`TRADING_PLATFORM_TASKS.md`](TRADING_PLATFORM_TASKS.md) for the companion
+Runtime/CLI tasks `R-01`–`R-04`.)*
+
 ## Deliberately not scheduled
 
-Everything else — 64, 125, 128, 132, 133, 146, 151, 152, 170, 173, 180, 193,
+Everything else — 128, 133, 146, 151, 170, 173, 193,
 and the rest of the catalog — has no open task. Breadth is not the goal.
 A candidate must state its user value, pass the "meets its semantics or
 fails loudly" gate, and enter this ledger as a task before any code. Deferring
