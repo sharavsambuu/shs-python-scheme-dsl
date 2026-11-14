@@ -27,6 +27,11 @@
 | S11 | `(srfi 160 base)` + `(srfi 160 f64)` — the buffer-protocol numeric vectors and the numpy bridge, `#f64(...)` reader/printer round-trip | [`srfi.md`](srfi.md), [`shslisp/srfi160.py`](../shslisp/srfi160.py), [`tests/test_srfi160.py`](../tests/test_srfi160.py) |
 | S12 | The `(srfi 158)` audit-and-complete: eof-object protocol, the full combinator set, the accumulators | [`srfi.md`](srfi.md), [`shslisp/generators.scm`](../shslisp/generators.scm), [`tests/test_generators.py`](../tests/test_generators.py) |
 | S13 | The audit pass over S10–S12: the sixteen review findings fixed — fill validation, overlap-safe copies, loud `string->date`, a lazy `gmerge`, f64 type strictness, the spec corners, and the strict-profile scoping — each with the test that pins it | [`tests/test_srfi160.py`](../tests/test_srfi160.py), [`tests/test_srfi19.py`](../tests/test_srfi19.py), [`tests/test_generators.py`](../tests/test_generators.py), [`tests/test_profile.py`](../tests/test_profile.py) |
+| S14 | `(srfi 125)` hash tables: core-backed over the `equal?`-keyed `HashTable`, twelve audited names, `O(1)` lookups; comparator accepted and ignored, missing key loud | [`srfi.md`](srfi.md), [`shslisp/srfi125.py`](../shslisp/srfi125.py), [`tests/test_s14_to_s18_srfis_tdd.py`](../tests/test_s14_to_s18_srfis_tdd.py) |
+| S15 | `(srfi 132)` sorting: Python Timsort behind the caller's comparator, the six non-destructive names, vector `[start end]` subranges | [`srfi.md`](srfi.md), [`shslisp/srfi132.py`](../shslisp/srfi132.py), [`tests/test_s14_to_s18_srfis_tdd.py`](../tests/test_s14_to_s18_srfis_tdd.py) |
+| S16 | `(srfi 64)` a Scheme API for test suites: assertion macros (`test-assert`/`-equal`/`-eqv`/`-eq`/`-error`), groups, and the simple runner with pass/fail counts | [`srfi.md`](srfi.md), [`shslisp/srfi64.scm`](../shslisp/srfi64.scm), [`tests/test_s14_to_s18_srfis_tdd.py`](../tests/test_s14_to_s18_srfis_tdd.py) |
+| S17 | `(srfi 180)` JSON: `json-read`/`json-write` over stdlib `json`, objects ↔ string-keyed alists, arrays ↔ vectors, `null` ↔ `'null`, loud on malformed input | [`srfi.md`](srfi.md), [`shslisp/srfi180.py`](../shslisp/srfi180.py), [`tests/test_s14_to_s18_srfis_tdd.py`](../tests/test_s14_to_s18_srfis_tdd.py) |
+| S18 | `(srfi 28)` `format` (`~a`, `~s`, `~%`, `~~`) + `(srfi 152)`'s seven string utilities; `string-trim` is both-ends (the locked test, documented) | [`srfi.md`](srfi.md), [`shslisp/srfi28.py`](../shslisp/srfi28.py), [`shslisp/srfi152.py`](../shslisp/srfi152.py), [`tests/test_s14_to_s18_srfis_tdd.py`](../tests/test_s14_to_s18_srfis_tdd.py) |
 
 `(srfi 204)` is recorded in the matrix as *withdrawn*: it is never
 implemented, and importing it fails, naming `(srfi 241)`.
@@ -35,9 +40,10 @@ implemented, and importing it fails, naming `(srfi 241)`.
 
 *(A new S-task enters here only after it states its user value and passes the
 "meets its semantics or fails loudly" gate. The trading layer was scheduled
-on 2026-11-05 and landed the same day — the three entries below are the
-record. Nothing else is open. The R7RS-track candidates — source locations,
-the numeric-tower follow-ups — live in [`R7RS_TASKS.md`](R7RS_TASKS.md).)*
+on 2026-11-05 and landed the same day; the standard-library wave (S14–S18)
+was scheduled and landed on 2026-11-14 — the entries below are the record.
+Nothing else is open. The R7RS-track candidates — source locations, the
+numeric-tower follow-ups — live in [`R7RS_TASKS.md`](R7RS_TASKS.md).)*
 
 ### ~~S10 — `(srfi 19)`: time and date~~ — landed
 
@@ -194,7 +200,14 @@ next value or the unique `generator-end` object — with `gmap`/`gfilter`/
 `gtake`/`gdrop` and the drains. No evaluator change, no re-entrant
 continuations. See the landed table above.
 
-### S14 — `(srfi 125)`: hash tables — OPEN
+### ~~S14 — `(srfi 125)`: hash tables~~ — landed
+
+Landed as `shslisp/srfi125.py`, core-backed over the existing `equal?`-keyed
+`HashTable`; ten names are the core's own bindings re-exported, three
+(`hash-table-contains?`, `hash-table-size`, `alist->hash-table`) are the new
+SRFI spellings. Truth: `tests/test_s14_to_s18_srfis_tdd.py`; the deviations
+(comparator ignored, missing key loud, `->alist` entry shape) are in
+[`srfi.md`](srfi.md#deviations).
 
 **User value & origin.** Surfaced in `shs-scheme-trading-exps` (the swarm
 cross-symbol correlation matrices and per-symbol agent lookup), where `O(N)`
@@ -207,7 +220,13 @@ budget.
 `hash-table-keys`, `hash-table-values`, `hash-table->alist`,
 `alist->hash-table`. Loud errors on missing keys without a default.
 
-### S15 — `(srfi 132)`: sort libraries — OPEN
+### ~~S15 — `(srfi 132)`: sort libraries~~ — landed
+
+Landed as `shslisp/srfi132.py`: the six non-destructive names, Python Timsort
+behind a three-way comparison derived from the caller's `less?`, and the
+vector variants' optional `[start end]`. Truth:
+`tests/test_s14_to_s18_srfis_tdd.py`; the mutation/merge/median omission is in
+[`srfi.md`](srfi.md#deviations).
 
 **User value & origin.** Surfaced by `sort-agents-desc` in the swarm
 module, where hand-written Scheme sorting loops spend unnecessary interpreter
@@ -217,7 +236,15 @@ steps on every bar.
 `list-sort`, `list-stable-sort`, `vector-sorted?`, `vector-sort`,
 `vector-stable-sort`.
 
-### S16 — `(srfi 64)`: a Scheme API for test suites — OPEN
+### ~~S16 — `(srfi 64)`: a Scheme API for test suites~~ — landed
+
+Landed as `shslisp/srfi64.scm` (pure Lisp): the assertion forms are
+`syntax-rules` macros wrapping each expression in a thunk, so `test-error` can
+receive `(car 1)` unevaluated and every assertion catches a raising expression
+as a test error. The runner is a vector with pass/fail/total, and
+`test-end` prints one summary line. Truth:
+`tests/test_s14_to_s18_srfis_tdd.py`; the deviations (predicate error-type,
+simple runner only, summary format) are in [`srfi.md`](srfi.md#deviations).
 
 **User value & origin.** `shs-scheme-trading-exps` built a custom testing
 prelude (`T-127`) to write Scheme-native unit specs (`define-test-suite`,
@@ -229,7 +256,13 @@ local boilerplate.
 `test-group`, `test-assert`, `test-equal`, `test-eqv`, `test-eq`, `test-error`,
 `test-runner-current`, `test-runner-simple`, and summary counts.
 
-### S17 — `(srfi 180)`: JSON — OPEN
+### ~~S17 — `(srfi 180)`: JSON~~ — landed
+
+Landed as `shslisp/srfi180.py`: `json-read` and `json-write` over the stdlib
+`json` module, with the ledger's mapping (objects ↔ string-keyed alists,
+arrays ↔ vectors, `null` ↔ `'null`, booleans/numbers preserved) and a loud
+error on malformed JSON. Truth: `tests/test_s14_to_s18_srfis_tdd.py`; the
+text-only deviation is in [`srfi.md`](srfi.md#deviations).
 
 **User value & origin.** Surfaced by standalone CLI scripts (e.g. the swarm
 capstone script) that had to concatenate JSON strings by hand to emit
@@ -239,7 +272,16 @@ structured machine-readable telemetry.
 `json-write`, mapping JSON objects to alists (`symbol`/`string` keys), arrays to
 vectors, `null` to `'null`, and booleans/numbers faithfully.
 
-### S18 — `(srfi 28)` + `(srfi 152)`: basic format strings & string utilities — OPEN
+### ~~S18 — `(srfi 28)` + `(srfi 152)`: basic format strings & string utilities~~ — landed
+
+Landed as `shslisp/srfi28.py` (`format`) and `shslisp/srfi152.py` (the seven
+string utilities). One deliberate departure: **`string-trim` trims both ends**
+— that is the dialect core's established meaning (`shslisp/builtins.py`) and
+what the locked S18 test pins; making the imported name left-only would
+silently change existing programs, so `string-trim-both` is its alias and the
+right-only spelling is not claimed. Truth:
+`tests/test_s14_to_s18_srfis_tdd.py`; the deviations are in
+[`srfi.md`](srfi.md#deviations).
 
 **User value & origin.** Eliminates repetitive `(display ...)` chains in CLI
 scripts and provides standard string splitting/joining/searching (`string-split`,

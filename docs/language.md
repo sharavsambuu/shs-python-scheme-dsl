@@ -332,6 +332,9 @@ aliased into pretending.
 The trading layer landed as S10–S12: `(srfi 19)` time and date,
 `(srfi 160 base)`/`(srfi 160 f64)` numeric vectors, and the `(srfi 158)`
 audit of the generator prelude — all pre-imported by the default profile.
+The standard-library wave (S14–S18) is the opt-in half: hash tables, sorting,
+a Scheme test API, JSON, formatting and strings, each reached with
+`(import …)` in either profile.
 
 | Library | What it gives you | Where it lives |
 | --- | --- | --- |
@@ -344,6 +347,12 @@ audit of the generator prelude — all pre-imported by the default profile.
 | `(srfi 19)` | time and date: `time-utc`/`date`, Julian day, `date->string`/`string->date` | core: `builtins.py`, `shslisp/srfi19.py` |
 | `(srfi 158)` | generators and accumulators: the combinators, drains, searching half, accumulators | `shslisp/generators.scm` (prelude) |
 | `(srfi 160 base)` / `(srfi 160 f64)` | homogeneous numeric vectors — the `f64vector` numpy bridge, `#f64(...)` literals | core: `builtins.py`, `shslisp/srfi160.py` |
+| `(srfi 125)` | hash tables: `make-hash-table`, `hash-table-ref`/`-set!`, `alist->hash-table` — `O(1)`, `equal?`-keyed | core: `shslisp/srfi125.py` |
+| `(srfi 132)` | sorting: `list-sort`, `vector-sort`, the `sorted?` predicates — Python Timsort | core: `shslisp/srfi132.py` |
+| `(srfi 64)` | a Scheme test API: `test-begin`/`test-end`/`test-group`, `test-equal`/`-assert`/`-error`, a simple runner | `shslisp/srfi64.scm` (pure Lisp) |
+| `(srfi 180)` | JSON: `json-read` / `json-write`, objects as string-keyed alists | core: `shslisp/srfi180.py` |
+| `(srfi 28)` | `format`: `~a`, `~s`, `~%`, `~~` | core: `shslisp/srfi28.py` |
+| `(srfi 152)` | strings: `string-split`, `string-join`, `string-contains`, `string-trim`, affixes | core: `shslisp/srfi152.py` |
 | `(srfi 204)` | **withdrawn** — importing it fails, naming SRFI 241 | — |
 
 A few examples (all verified against the interpreter):

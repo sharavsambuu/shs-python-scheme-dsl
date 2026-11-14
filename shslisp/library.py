@@ -703,6 +703,72 @@ def install(env: Environment) -> None:
         builder=srfi160_builder,
         note="The f64vector operation set (S11), the numpy bridge.",
     )
+    # The S14/S15/S17/S18 libraries are core-backed the same way: their
+    # primitives install into a private scope on first import, so the strict
+    # r7rs profile leaves them import-only. `(srfi 64)` is pure Lisp: its
+    # assertion forms are macros, which a Python module cannot define.
+    def _install_srfi125(scope: Environment) -> None:
+        from .srfi125 import install as installer
+
+        installer(scope)
+
+    def _install_srfi132(scope: Environment) -> None:
+        from .srfi132 import install as installer
+
+        installer(scope)
+
+    def _install_srfi180(scope: Environment) -> None:
+        from .srfi180 import install as installer
+
+        installer(scope)
+
+    def _install_srfi28(scope: Environment) -> None:
+        from .srfi28 import install as installer
+
+        installer(scope)
+
+    def _install_srfi152(scope: Environment) -> None:
+        from .srfi152 import install as installer
+
+        installer(scope)
+
+    registry[("srfi", "28")] = Library(
+        ("srfi", "28"),
+        exports=frozenset(_SRFI28_EXPORTS),
+        builder=_core_backed_builder(env, (_install_srfi28,)),
+        note="Basic format strings (S18): ~a, ~s, ~%, ~~.",
+    )
+    registry[("srfi", "64")] = lisp_file_library(
+        env,
+        ("srfi", "64"),
+        Path(__file__).with_name("srfi64.scm"),
+        _SRFI64_EXPORTS,
+        note="A Scheme API for test suites (S16): assertion macros + a runner.",
+    )
+    registry[("srfi", "125")] = Library(
+        ("srfi", "125"),
+        exports=frozenset(_SRFI125_EXPORTS),
+        builder=_core_backed_builder(env, (_install_srfi125,)),
+        note="Hash tables (S14): the core's equal?-keyed tables, SRFI spellings.",
+    )
+    registry[("srfi", "132")] = Library(
+        ("srfi", "132"),
+        exports=frozenset(_SRFI132_EXPORTS),
+        builder=_core_backed_builder(env, (_install_srfi132,)),
+        note="Sort libraries (S15): Python Timsort over the caller's comparator.",
+    )
+    registry[("srfi", "152")] = Library(
+        ("srfi", "152"),
+        exports=frozenset(_SRFI152_EXPORTS),
+        builder=_core_backed_builder(env, (_install_srfi152,)),
+        note="String utilities (S18): split/join/contains/trim/affixes.",
+    )
+    registry[("srfi", "180")] = Library(
+        ("srfi", "180"),
+        exports=frozenset(_SRFI180_EXPORTS),
+        builder=_core_backed_builder(env, (_install_srfi180,)),
+        note="JSON (S17): json-read / json-write over the stdlib json module.",
+    )
 
 
 #: A library implemented in Lisp: a private scope whose parent is the owning
@@ -854,3 +920,44 @@ _SRFI160_F64_EXPORTS = (
     " reverse-list->f64vector f64vector->vector vector->f64vector"
     " make-f64vector-generator write-f64vector"
 ).split()
+
+#: The (srfi 125) surface (S14) — the ledger's twelve names. The core already
+#: binds ten of them (`make-hash-table`, `hash-table?`, `hash-table-ref`,
+#: `hash-table-ref/default`, `hash-table-set!`, `hash-table-delete!`,
+#: `hash-table-keys`, `hash-table-values`, `hash-table->alist`, and the two
+#: spellings below come from `shslisp/srfi125.py`); the exported bindings are
+#: the same objects the core has, not copies.
+_SRFI125_EXPORTS = (
+    "make-hash-table hash-table? hash-table-ref hash-table-ref/default"
+    " hash-table-set! hash-table-delete! hash-table-contains? hash-table-size"
+    " hash-table-keys hash-table-values hash-table->alist alist->hash-table"
+).split()
+
+#: The (srfi 132) surface (S15) — the sort half of the SRFI the ledger scoped.
+#: The mutation operators and the merge/median/selection families are not
+#: claimed (docs/srfi.md records the omission).
+_SRFI132_EXPORTS = (
+    "list-sorted? list-sort list-stable-sort"
+    " vector-sorted? vector-sort vector-stable-sort"
+).split()
+
+#: The (srfi 64) surface (S16). The assertion names are syntax (macros);
+#: `test-runner-current`/`test-runner-simple`/`test-begin`/`test-end` are
+#: procedures. Bound by `shslisp/srfi64.scm`.
+_SRFI64_EXPORTS = (
+    "test-begin test-end test-group test-assert test-equal test-eqv test-eq"
+    " test-error test-runner-current test-runner-simple"
+).split()
+
+#: The (srfi 28) surface (S18): the one procedure the ledger claims.
+_SRFI28_EXPORTS = ("format",)
+
+#: The (srfi 152) surface (S18) — the ledger's seven names. `string-trim` is
+#: both-ends here (the locked S18 test; see docs/srfi.md).
+_SRFI152_EXPORTS = (
+    "string-split string-join string-contains"
+    " string-trim string-trim-both string-prefix? string-suffix?"
+).split()
+
+#: The (srfi 180) surface (S17): the two primitives the ledger claims.
+_SRFI180_EXPORTS = ("json-read", "json-write")

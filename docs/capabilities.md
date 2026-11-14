@@ -332,6 +332,11 @@ shipped the same day: S10 `(srfi 19)` time/date, S11 `(srfi 160 base)` +
 generator prelude — ledger entries in [`SRFI_TASKS.md`](SRFI_TASKS.md).
 Source locations stay the next item on the IDE track.
 
+**The standard-library wave (landed 2026-11-14).** S14–S18: `(srfi 125)` hash
+tables, `(srfi 132)` sorting, `(srfi 64)` a Scheme test API, `(srfi 180)` JSON,
+and `(srfi 28)` + `(srfi 152)` formatting and strings — import-only in both
+profiles, with the audited surface in [`srfi.md`](srfi.md).
+
 > *(The original text, for the record: if exactly one Tier-3 item is taken
 > next, take generators / lazy sequences as a prelude library — the
 > most-asked-for "modern" feature, needing no interpreter change.)*

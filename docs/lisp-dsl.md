@@ -30,7 +30,10 @@ functional pipelines and typed domain code pleasant (`(srfi 1)`, `(srfi 26)`,
 Python bridge so a host project can publish its own functions as primitives.
 The trading layer landed as S10–S12: `(srfi 19)` time/date, `(srfi 158)`
 generators and accumulators, and `(srfi 160 base)`/`(srfi 160 f64)` numeric
-vectors — the pandas/numpy bridge.
+vectors — the pandas/numpy bridge. The standard-library wave (S14–S18) adds
+the opt-in tools a host script reaches for: `(srfi 125)` hash tables,
+`(srfi 132)` sorting, `(srfi 64)` a Scheme test API, `(srfi 180)` JSON, and
+`(srfi 28)` + `(srfi 152)` formatting and strings.
 The Python seam is a peer of the R7RS and SRFI layers, not an escape hatch. The
 Tetris game is the worked example, not the definition of the language.
 

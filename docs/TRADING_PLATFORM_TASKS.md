@@ -48,9 +48,19 @@ Every task below records **what motivated it**, **the exact gap observed**, and
 
 ## 2. Standard-Library SRFI Track (`S14`–`S18`)
 
-See [`SRFI_TASKS.md`](SRFI_TASKS.md) (`## Open`) for full scope, user value, and deviation specs:
-* **`S14` — `(srfi 125)` Hash Tables:** `O(1)` Python `dict`-backed tables replacing `O(N)` `assoc`/`assq` scans in correlation matrices and symbol state maps.
-* **`S15` — `(srfi 132)` Sorting:** Python Timsort-backed `list-sort` / `vector-sort`, replacing `O(N^2)` pure-Scheme sorting loops (e.g. `sort-agents-desc` in the swarm module).
-* **`S16` — `(srfi 64)` Testing:** Upstreamed unit-test runner (`test-begin`, `test-end`, `test-equal`, `test-assert`, `test-error`) generalizing the trading repo's test suite DSL.
-* **`S17` — `(srfi 180)` JSON:** `json-read` / `json-write` over stdlib `json`, eliminating manual JSON string formatting in CLI scripts.
-* **`S18` — `(srfi 28)` + `(srfi 152)` Formatting & Strings:** `format` and essential string splitting/joining/trimming (`string-split`, `string-join`, `string-contains`, `string-trim`).
+See [`SRFI_TASKS.md`](SRFI_TASKS.md) (`## Open`) for the full scope, user value, and deviation specs.
+
+| ID | Task | Status | Shipped as |
+|---|---|---|---|
+| `S14` | `(srfi 125)` hash tables — `O(1)` tables replacing `O(N)` `assoc`/`assq` scans | DONE | `shslisp/srfi125.py` |
+| `S15` | `(srfi 132)` sorting — Python Timsort behind the caller's comparator | DONE | `shslisp/srfi132.py` |
+| `S16` | `(srfi 64)` testing — assertion macros, groups, and the simple runner | DONE | `shslisp/srfi64.scm` |
+| `S17` | `(srfi 180)` JSON — `json-read` / `json-write` over the stdlib `json` | DONE | `shslisp/srfi180.py` |
+| `S18` | `(srfi 28)` `format` + `(srfi 152)` string utilities | DONE | `shslisp/srfi28.py`, `shslisp/srfi152.py` |
+
+Each library is import-only in **both** profiles — `(import (srfi 125))` opts
+in, and the primitives install into the library's own scope on first import.
+The DSL profile's feature list is pinned by `tests/test_profile.py`, so the
+wave deliberately does not extend it. The audited export lists live in
+`shslisp/library.py`; the locked surface test is
+`tests/test_s14_to_s18_srfis_tdd.py`.

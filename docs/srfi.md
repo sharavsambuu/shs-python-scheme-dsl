@@ -4,8 +4,11 @@
 > on top of the library system (A13): `(srfi 1)`, `(srfi 26)`, `(srfi 88)`,
 > `(srfi 89)`, `(srfi 197)`, and `(srfi 241)` — plus the trading layer landed
 > as S10–S12: `(srfi 19)` (time and date), `(srfi 158)` (generators and
-> accumulators), and `(srfi 160 base)` + `(srfi 160 f64)` (numeric vectors).
-> A library either meets its
+> accumulators), and `(srfi 160 base)` + `(srfi 160 f64)` (numeric vectors) —
+> plus the standard-library wave landed as S14–S18: `(srfi 125)` (hash
+> tables), `(srfi 132)` (sorting), `(srfi 64)` (a Scheme test API),
+> `(srfi 180)` (JSON), and `(srfi 28)` + `(srfi 152)` (formatting and
+> strings). A library either meets its
 > SRFI's semantics — audited name by name, with the tests to show it — or it
 > fails loudly as "not implemented yet". Nothing is aliased into pretending.
 > The plan and the per-name audit live in
@@ -29,7 +32,13 @@
 | `(srfi 158)` | supported | prelude: `shslisp/generators.scm` | `tests/test_generators.py` |
 | `(srfi 160 base)` | supported | core: `builtins.py` + `shslisp/srfi160.py` | `tests/test_srfi160.py` |
 | `(srfi 160 f64)` | supported | core: `builtins.py` + `shslisp/srfi160.py` | `tests/test_srfi160.py` |
-| `(srfi 204)` | withdrawn | — | importing it fails, naming SRFI 241 |
+| `(srfi 28)` | supported | core: `shslisp/srfi28.py` | `tests/test_s14_to_s18_srfis_tdd.py` |
+| `(srfi 64)` | supported | `shslisp/srfi64.scm` (pure Lisp: assertion macros + runner) | `tests/test_s14_to_s18_srfis_tdd.py` |
+| `(srfi 125)` | supported | core: `shslisp/srfi125.py` over the core's `HashTable` | `tests/test_s14_to_s18_srfis_tdd.py` |
+| `(srfi 132)` | supported | core: `shslisp/srfi132.py` (Python Timsort) | `tests/test_s14_to_s18_srfis_tdd.py` |
+| `(srfi 152)` | supported | core: `shslisp/srfi152.py` (seven names) | `tests/test_s14_to_s18_srfis_tdd.py` |
+| `(srfi 180)` | supported | core: `shslisp/srfi180.py` (stdlib `json`) | `tests/test_s14_to_s18_srfis_tdd.py` |
+| `(srfi 204)` | withdrawn | - | importing it fails, naming SRFI 241 |
 
 ## Layout and the "supported subset" rule
 
@@ -44,9 +53,13 @@
   instantiated *before* its exports are read (a `define-library`'s export
   list only exists after its definitions run), and self-imports hit the
   circular-instantiation guard.
-- **Core-backed libraries** (`(srfi 88)`) register the names of primitives
-  that already exist in the base environment; the library scopes them, it
-  does not duplicate them.
+- **Core-backed libraries** (`(srfi 88)` and the S10–S18 wave) install their
+  Python primitives into one private scope the first time an import needs
+  them — never into the core floor. A name the base environment already binds
+  with exactly the SRFI's meaning (`(srfi 88)`'s predicates, `(srfi 125)`'s ten
+  hash-table names) resolves to that *same binding object*; a name whose SRFI
+  spelling has a wider arity or a different meaning (`(srfi 152)`'s
+  `string-split`) is defined by the library, and the import is the consent.
 - **A declared but unimplemented library** fails `(import ...)` with
   "not implemented yet", and `(srfi 204)` fails naming SRFI 241 (204 is
   withdrawn; 241 is the target).
@@ -320,6 +333,51 @@ appears here with a reason.
   `c64`/`c128` — an exact `1` is not an `f64` element. The reader tags
   cover eleven types; `#u8(` stays the R7RS bytevector. `fold`'s `kons`
   receives the state first, exactly as SRFIs 43/133 spell it.
+- **`(srfi 125)`** re-exports ten core bindings and adds three SRFI spellings.
+  `make-hash-table`'s optional comparator is accepted and **ignored**: the one
+  storage is `equal?`-keyed, and SRFI 128 comparators are not scheduled, so
+  there is no second equivalence to honour (the SRFI's default comparator is
+  exactly `equal?`). `hash-table-ref`'s optional third argument is a thunk or
+  a value, the core's shape. `hash-table->alist` answers two-element
+  `(key value)` lists, and `alist->hash-table` accepts those *and* dotted
+  pairs.
+- **`(srfi 132)`** ships the six non-destructive sort/`sorted?` names. The
+  mutation operators (`list-sort!`, `vector-sort!`, ...) and the
+  merge/median/selection families are **not claimed** — importing looks for
+  the six exported names only. `list-sort` and `list-stable-sort` share one
+  stable implementation: stability is a stronger guarantee than SRFI 132
+  requires of `list-sort`, never a different answer.
+- **`(srfi 64)`**'s `test-error` optional error-type is a **predicate** over
+  the caught condition (this dialect's conditions are `ErrorObject`s, not
+  SRFI 64's type objects): `(test-error error-object? (car 1))`. The only
+  runner is the simple one, and `test-end` prints one summary line
+  (`;; name: P passed, F failed, T total`) and returns the runner vector.
+  The full SRFI 64 runner/specifier protocol is not claimed.
+- **`(srfi 152)` — `string-trim` trims BOTH ends here.** SRFI 152 gives that
+  name the left-only job and reserves both-ends for `string-trim-both`. This
+  dialect's core has always spelled the both-ends operation `string-trim`
+  (`shslisp/builtins.py`), and the locked S18 test pins that meaning
+  (`(string-trim "  hi  ")` ⇒ `"hi"`), so the library exports the established
+  meaning: `string-trim` and `string-trim-both` are the same both-ends
+  procedure, and the right-only spelling is not claimed. Making the name
+  left-only would silently change existing programs on import — a subset is
+  honest, a silent meaning change is not. A portable SRFI 152 program can see
+  this difference. The trim predicate may be a char predicate, a character,
+  or a string of characters to strip. `string-split`/`string-join` accept
+  SRFI 152's optional arguments and supersede the core's simpler spellings
+  inside an importing scope; `string-contains` (index or `#f`) is a different
+  name from the core's `string-contains?` predicate.
+- **`(srfi 28)`** adds `~%` and `~~` (SRFI 48's directives; SRFI 28 specifies
+  only `~a`/`~s`). Both are additive. A missing argument, an unknown
+  directive, or a leftover argument is a loud error.
+- **`(srfi 180)`** is the two procedures `json-read`/`json-write`, and both
+  speak **text**: `json-read` takes the JSON string and `json-write` answers
+  it. SRFI 180's port-oriented spellings (`json-read-file`, the optional port,
+  `json-lines-*`) are not claimed — `(write-string (json-write x) port)` is
+  the port path. A JSON object with duplicate keys keeps the last value
+  (unspecified in the SRFI), `'()` encodes as `[]` (write `'null` for JSON
+  null), a bare symbol encodes as its JSON string, and a dotted pair that is
+  not an object entry is refused loudly.
 
 ## The generator library: prelude, not an SRFI (S9)
 
@@ -375,6 +433,49 @@ own scopes on first import, never the core floor — while `(srfi 158)` rides
 the prelude in both profiles, as [the generator section](#the-generator-library-prelude-not-an-srfi-s9)
 records.
 
+## The standard-library wave: S14–S18
+
+Five libraries landed (2026-11-14; ledger entries S14–S18 in
+[`SRFI_TASKS.md`](SRFI_TASKS.md)) for the jobs a host script reaches for
+between strategies: a dictionary that is not a list scan, a sort that is not
+a Scheme merge loop, a test suite, JSON telemetry, and text assembly.
+
+- **`(srfi 125)` — hash tables (S14).** Core-backed on the existing
+  `equal?`-keyed `HashTable` (`shslisp/types.py`): `make-hash-table`,
+  `hash-table-ref`/`-ref/default`/`-set!`/`-delete!`, `hash-table-contains?`,
+  `hash-table-size`, the keys/values/`->alist` views, and `alist->hash-table`.
+  Every operation is `O(1)` on average — a list or a vector works as a key,
+  because `hash_key` canonicalises it. A missing key without a default is a
+  loud condition.
+- **`(srfi 132)` — sort libraries (S15).** Python Timsort behind the caller's
+  Scheme comparator: `list-sorted?`, `list-sort`, `list-stable-sort`,
+  `vector-sorted?`, `vector-sort`, `vector-stable-sort`, with the vector
+  variants' optional `[start end]` subrange. Both sorts are stable here.
+- **`(srfi 64)` — a Scheme API for test suites (S16).** `shslisp/srfi64.scm`:
+  `test-begin`/`test-end`/`test-group`, the `test-assert`/`-equal`/`-eqv`/`-eq`
+  assertion macros, `test-error`, and the simple runner
+  (`test-runner-current`, `test-runner-simple`). The assertions are **syntax**:
+  `(test-error (car 1))` must receive the expression unevaluated, and every
+  assertion catches a raising expression as a test *error* instead of letting
+  it escape.
+- **`(srfi 152)` — string utilities (S18).** Seven names:
+  `string-split`, `string-join`, `string-contains`, `string-trim`,
+  `string-trim-both`, `string-prefix?`, `string-suffix?` — with SRFI 152's
+  grammars (`infix`, `strict-infix`, `suffix`, `prefix`) and split `limit`.
+- **`(srfi 28)` — basic format strings (S18).** `format` with `~a` (display),
+  `~s` (write), `~%` (newline), `~~` (tilde); `#f` answers the string, `#t`
+  and a port write through `(current-output-port)`.
+- **`(srfi 180)` — JSON (S17).** `json-read`/`json-write` over the stdlib
+  `json`: objects are alists with string keys, arrays are vectors, `null` is
+  the symbol `null`, booleans and numbers are preserved, and malformed JSON
+  or an unencodable value is a loud error.
+
+**Neither profile pre-imports these.** The DSL profile's identifier list is
+part of the published surface (`tests/test_profile.py` pins it), and these
+libraries are the ones a script opts into: `(import (srfi 125))` in either
+profile, with the primitives installing into the library's own scope on first
+import. `(srfi 64)` is pure Lisp and scopes the same way.
+
 ## How to verify
 
 From a checkout of this project:
@@ -388,17 +489,19 @@ python -m pytest tests/test_srfi.py tests/test_generators.py tests/test_docs.py 
 
 # the trading-layer libraries' own suites (S10-S12)
 python -m pytest tests/test_srfi19.py tests/test_srfi160.py tests/test_generators.py -q
+
+# the standard-library wave's audited surface (S14-S18)
+python -m pytest tests/test_s14_to_s18_srfis_tdd.py -q
 ```
 
-Last recorded run (2026-11-05, a Windows checkout, after S10-S12 landed): the
+Last recorded run (2026-11-14, a Windows checkout, after S14–S18 landed): the
 extended SRFI gate — `tests/test_srfi.py`, `tests/test_generators.py`,
-`tests/test_srfi19.py`, `tests/test_srfi160.py`, plus the docs drift guard —
-is **224 passed**. The full suite has grown past 1,110 tests since the
-872-passed C3 recording; its ten failures there are pre-existing
-environment issues, not claim drift — nine file-path tests fail on Windows
-path handling (`include`, the file ports, `file-exists?`) and one timing-based
-linearity test flakes under load. If the count drifts, update this section in
-the same change.
+`tests/test_srfi19.py`, `tests/test_srfi160.py`,
+`tests/test_s14_to_s18_srfis_tdd.py`, plus the docs drift guard — is
+**271 passed**. The full suite is **1,204 passed** on Windows: the
+pre-R-04 path failures (raw `tmp_path` backslashes inside Scheme string
+literals) are gone. If the count drifts, update this section in the same
+change.
 
 ## The profiles
 
@@ -417,6 +520,13 @@ Host editions are orthogonal: no profile installs host bindings. The
 profile lint (`shslisp/profile.lint`) checks that every shipped `.scm` file
 loads under the default profile; `tests/test_profile.py` runs it and proves
 it goes red on a file that does not load.
+
+The S14–S18 libraries are deliberately **not** pre-imported in either
+profile. The DSL profile's identifier list is pinned by
+`tests/test_profile.py` and part of the published surface; the wave's
+libraries are the opt-in half of the layer — `(import (srfi 125))` where a
+script wants a dictionary. Their primitives install into the library's own
+scope on first import, exactly like `(srfi 19)`'s.
 
 The tables in `tests/test_srfi.py` (`MUST_IMPORT`, `MUST_BIND`, and the
 per-library fixtures) are the source of truth for this page's matrix: if a
