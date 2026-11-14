@@ -42,12 +42,23 @@ round-trip.
 | Control flow | multiple values, `dynamic-wind`, parameters (dynamic scope), promises, escape continuations, `case-lambda` | `tests/test_r7rs.py` |
 | Argument passing | optional, named (keywords), defaults, rest — the full SRFI 89 surface | `tests/test_srfi.py`, ch. [18](lisp_tutorial/18-srfi-89-optional-and-named-parameters.md) |
 | Modularity | `define-library`/`import` with `only`/`except`/`prefix`/`rename`, load-once file modules, profiles + `cond-expand` | `tests/test_library.py`, `tests/test_profile.py` |
-| Interop & tooling | declared Python seam, string ports, file I/O, `process-context`, REPL, feature detection | `tests/test_embed.py`, `tests/test_ports.py`, `tests/test_profile.py`, ch. [28](lisp_tutorial/28-embedding-in-python.md) |
+| Interop & tooling | declared Python seam, string ports, file I/O, `process-context`, REPL, feature detection, and a plugin CLI (`--plugin` / `SHS_PLUGINS`) that loads the same `install(env)` extensions the API takes | `tests/test_embed.py`, `tests/test_ports.py`, `tests/test_profile.py`, `tests/test_r01_plugin_cli_tdd.py`, ch. [28](lisp_tutorial/28-embedding-in-python.md) |
 
 The point of the table: the missing percentages do not live here. A reader
 coming from Python finds every daily-driver feature present, and finds two
 things Python does not have (hygienic macros, a condition system) already
 load-bearing in the shipped code.
+
+**The CLI is part of the seam.** A host's vocabulary is an extension — a
+callable `env -> env`, or any object with `install(env)` — and the same object
+can be handed to `make_env(extensions=[...])` *or* named on the command line:
+`--plugin MOD[:ATTR]` (repeatable; `ATTR` defaults to `install`) and
+`SHS_PLUGINS` (`os.pathsep`-separated, merged with the flags) load it for
+`run`, `-e` and the REPL alike. A spec that does not import, or an attribute
+that is not callable, stops the command with the offending spec in the message
+*before* any Lisp is read — so a typo can never produce a half-configured
+session. Chapter [28](lisp_tutorial/28-embedding-in-python.md) has the worked
+example.
 
 ## The gaps, in three tiers
 

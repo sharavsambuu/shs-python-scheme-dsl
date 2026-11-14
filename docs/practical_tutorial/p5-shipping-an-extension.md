@@ -69,6 +69,46 @@ Lisp — `tests/test_embed.py::test_extensions_run_after_the_prelude_so_they_can
 proves the order. That is the seam the Tetris edition uses: the game is an
 extension, nothing more.
 
+## Ship it to the command: `--plugin` and `SHS_PLUGINS`
+
+`make_env(extensions=[…])` is the *embedded* host's door. When the user runs the
+command, the same extension shape can be loaded by `shs` itself: a **plugin** is
+an importable module whose `install(env)` binds the vocabulary, and `--plugin`
+installs it before any Lisp is read.
+
+```python
+# clock_plugin.py — the extension from above, as a module
+from shslisp import install_primitives
+
+def install(env):
+    install_primitives(
+        env, [("host-double", lambda n: n * 2)], source=__name__
+    )
+```
+
+```sh
+shs --plugin clock_plugin -e "(host-double 21)"     # -> 42
+shs --plugin clock_plugin run policy.scm            # the script sees it too
+SHS_PLUGINS=clock_plugin shs -e "(host-double 21)"  # every invocation
+```
+
+- `--plugin MOD[:ATTR]` is repeatable; `ATTR` defaults to `install`, so a module
+  that names its installer differently is `--plugin clock_plugin:register`.
+- `SHS_PLUGINS` is `os.pathsep`-separated (`:` on Unix, `;` on Windows) and is
+  merged with the flags — one install per spec, in order. On PowerShell:
+  `$env:SHS_PLUGINS = "clock_plugin"`; in cmd: `set SHS_PLUGINS=clock_plugin`.
+- The same list reaches `run`, `-e`, and the REPL, so a REPL started with a
+  plugin has the vocabulary at the prompt — exactly as if the program had called
+  `make_env(extensions=[...])`.
+- Failure is early and loud: `shs: plugin 'SPEC': …` on stderr with exit `1`,
+  *before* any Lisp runs, so a typo in `SHS_PLUGINS` can never produce a
+  half-configured session.
+
+Which door to use: a host library imported by your Python program →
+`extensions=`; a command a person runs from a shell → `--plugin` / `SHS_PLUGINS`.
+The extension object is the same in both cases — that is what shipping a
+*vocabulary* rather than a convenience import means.
+
 ## The guest side: a script that knows its arguments
 
 The guest does not know or care whether it talks to builtins or host
@@ -130,11 +170,16 @@ args: 0
 4. Write a guest script that treats `*command-line-args*` as a shopping list
    and prints the count — run it with zero, one, and three arguments without
    changing the file.
+5. **Ship the extension to the command.** Move `clock_extension` into a module
+   with `install(env)`, run it with `--plugin`, then export `SHS_PLUGINS` and
+   run a script with no flags. What does the guest program know about the
+   difference? (Nothing — which is the point.)
 
 ## See also
 
 - [28 Embedding in Python](../lisp_tutorial/28-embedding-in-python.md) — the
-  full value-crossing table
+  full value-crossing table and the `--plugin` section
 - [P6 — Testing Lisp from the host](p6-testing-lisp-from-the-host.md) — the
   same seam, from the test's side
-- The seam itself: `shslisp/embed.py`; the contract: `tests/test_embed.py`
+- The seam itself: `shslisp/embed.py`; the CLI's plugin loader:
+  `shslisp/__main__.py`; the contract: `tests/test_embed.py`

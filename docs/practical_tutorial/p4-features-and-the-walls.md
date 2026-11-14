@@ -7,11 +7,13 @@ exists.
 itself in (`features`, `cond-expand`), answer what a procedure accepts
 (`procedure-arity`), and state exactly where this interpreter's ceilings are.
 
-There is no profiler in this interpreter — this page will not pretend there is
-one. What it has instead is a *known ceiling*: you can measure wall-clock time
-with `(scheme time)`, and the interpreter's own limits are small, named, and
-honest. For a DSL embedded in a host program, that is usually the right trade —
-the host has the profiler.
+This interpreter ships its own profilers, and this page uses them: measure
+wall-clock time with `(scheme time)`, count trampoline work with
+`measure_steps`, and find the procedures spending it with `measure_calls`. The
+interpreter's limits are also small, named, and honest — a known ceiling is
+easier to work under than a mysterious one, and a measured hotspot is easier to
+fix than a guessed one. The host keeps the profiler for everything *below* the
+seam.
 
 ## `features` and `cond-expand`: one script, many runtimes
 
@@ -108,8 +110,60 @@ that is a feature. The constants live in `shslisp/evaluator.py`
 The *answer* is a float that differs every run — which is exactly why no
 `Try it` block in this handbook prints one. Time real work with `timed`, read
 the order of magnitude, and do not trust a benchmark smaller than its own
-noise. For deeper questions, the truth is the host's profiler — see
-[P5](p5-shipping-an-extension.md).
+noise. For "which procedure is expensive?", the interpreter answers below; for
+everything underneath the seam (I/O, allocation, Python primitives), the host's
+profiler is still the tool — see [P5](p5-shipping-an-extension.md).
+
+## Profiling: steps and calls
+
+Two hooks in `shslisp/evaluator.py` answer the interpreter-level question —
+*where did the trampoline work go?* — without a wall clock in sight:
+
+| Hook | Answers |
+| --- | --- |
+| `measure_steps(thunk)` | `(result, steps)` — the trampoline steps the thunk spent |
+| `measure_calls(thunk)` | `(result, steps, counts)` — the same, plus applications per named closure and primitive |
+
+Both run the thunk under a **private** budget: your own evaluation is neither
+charged nor counted, and the usual `STEPS_BUDGET` guard still ends a runaway
+excerpt with a clean `LispBudgetError`. When profiling is off, the hook costs
+one `is not None` test on the hot path — measuring never changes what the
+program computes.
+
+Why steps rather than microseconds? A wall clock answers "how long on this
+machine, today"; a step is one trampoline transition — a literal, a tail jump,
+one special-form dispatch — so the count is reproducible and tells you *which
+procedure* is expensive. Use `timed` for the human-scale answer and these for
+the engineering one.
+
+```python
+from shslisp import make_env, run
+from shslisp.evaluator import measure_calls, measure_steps
+
+env = make_env(install_tetris=False)
+run("(define (leaf x) (+ x 1))", env)
+run("(define (branch n) (if (= n 0) 0 (+ (leaf n) (branch (- n 1)))))", env)
+
+result, steps, counts = measure_calls(lambda: run("(branch 5)", env))
+print(result, steps)                        # 20 109
+print(counts["branch"], counts["leaf"])      # 6 5
+print(sorted(counts.items(), key=lambda kv: -kv[1])[:3])
+# [('+', 10), ('branch', 6), ('=', 6)]
+```
+
+A tail call is one application, so six `branch` calls for `(branch 5)` is the
+recursion depth, not the number of Python frames. And the same thunk under the
+steps-only hook:
+
+```python
+result, steps = measure_steps(lambda: run("(branch 5)", env))
+print(result, steps)                        # 20 109
+```
+
+What the hooks do *not* do: time Python primitives, attribute memory, or sample
+a long run. Those remain the host's job (`cProfile`, `py-spy`, the host's own
+instrumentation) — the interpreter counts its own steps, and the host owns
+everything underneath.
 
 ## Try it
 
@@ -154,12 +208,19 @@ Arity as a debugging tool — the fixed case answers, the open case declines:
    with an accumulator and push past where the first version died.
 4. Explain why `(procedure-arity car)` answering `#f` is more honest than
    answering a number.
+5. Profile `(fold + 0 (iota 100000))` with `measure_calls`. Which name sits at
+   the top of `counts`, and is that what you expected for a fold over a list?
+   Then rewrite the same sum with a named recursive helper and profile again —
+   what moved, and what stayed?
 
 ## See also
 
 - [03 Evaluating](../lisp_tutorial/03-evaluating.md) — the trampoline that
   makes the walls necessary
+- [30 Testing and debugging](../lisp_tutorial/30-testing-and-debugging-srfi-64.md)
+  — the same profiler beside a test suite and a traceback
 - [P1 — When things go wrong](p1-when-things-go-wrong.md) — what the walls
   look like from a `guard`
-- The budgets: `shslisp/evaluator.py` (`DEPTH_LIMIT`, `STEPS_BUDGET`); the
-  profile's feature list: `shslisp/profile.py`
+- The budgets and the profilers: `shslisp/evaluator.py` (`DEPTH_LIMIT`,
+  `STEPS_BUDGET`, `measure_steps`, `measure_calls`); the profile's feature
+  list: `shslisp/profile.py`

@@ -78,6 +78,50 @@ Two things sail past `guard`, on purpose:
   is worth splitting the file until the error is local — which [P2](p2-programs-across-files.md)
   makes cheap.
 
+## The host's view: one line, or the whole stack
+
+The one-line message is the *program's* view — the `error:` line at the prompt,
+a script's stderr, the text a `guard` handler reads. A host that wants to know
+*how the interpreter got there* asks the error for its frames:
+
+```python
+from shslisp import make_env, run
+from shslisp.errors import LispError
+
+try:
+    run("(define (inner y) (car y))\n"
+        "(define (outer x) (+ 1 (inner x)))\n"
+        "(outer 42)", make_env())
+except LispError as exc:
+    print(str(exc))                # the one-line contract, unchanged
+    print(exc.format_traceback())  # innermost-first frames, then that line
+```
+
+```text
+<string>:1:19: car: expected a non-empty list
+Scheme traceback (innermost first):
+  at <string>:1:19
+  at <string>:2:19
+<string>:1:19: car: expected a non-empty list
+```
+
+Three properties make that safe to print into a log:
+
+- **`str(exc)` never changes.** The one-line `file:line:col: message` is what
+  every script, the REPL, and the suite's substring assertions have always
+  matched. The traceback is opt-in; a host that never calls it pays nothing.
+- **The frames are deduplicated, innermost first, and bounded.** At most
+  `TRACEBACK_FRAMES = 32` of them, so a deep recursion cannot pin memory in one
+  string, and the head of the stack is the part you read.
+- **A form the reader never saw contributes no frame.** Macro expansions and
+  forms built with `list` have no recorded span; an error with none formats as
+  its message alone. Each frame is a real `file:line:col`, not a guess.
+
+`exc.source` is the innermost span on its own when you want the location
+without the stack. And `read_all_located` / `evaluate_program` accept the
+`(form, location)` pairs that the located reader returns, so a host can read a
+file with spans and run it without unpacking anything.
+
 ## Try it
 
 Catch an error object and pull it apart — the exact pattern a payment flow
@@ -132,6 +176,10 @@ blocked: over-limit
 3. Build an error with three irritants and display only the second one.
 4. Explain, in one sentence each, why the step budget is not catchable and why
    `raise` is.
+5. **Ask for the frames.** Run the `format_traceback()` snippet above, then
+   break the rule in a way that nests one call deeper. Which line moved, and
+   why did the top frame move with it? Then delete the `print(...)` line and
+   confirm `str(exc)` still says everything the log needs.
 
 ## See also
 
@@ -139,4 +187,6 @@ blocked: over-limit
   from the inside
 - [22 Railway-oriented programming](../lisp_tutorial/22-railway-oriented.md) —
   the design pattern built on all of this
+- [30 Testing and debugging](../lisp_tutorial/30-testing-and-debugging-srfi-64.md)
+  — the traceback beside a Scheme test suite and the profiler
 - The error classes: `shslisp/errors.py`; the recoveries: `tests/test_repl.py`

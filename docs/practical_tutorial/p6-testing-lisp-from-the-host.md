@@ -91,6 +91,58 @@ so the log answers "what did we get?" without a re-run:
 Guard the whole run so one failed check cannot take the batch down mid-file —
 collect, then summarize.
 
+## The guest's own suite: `(srfi 64)`
+
+`checked` is the zero-dependency version of a suite. When the guest should
+behave like a real one — counts, groups, a caught error, a summary line —
+import `(srfi 64)`; it is not pre-imported, so the program says so:
+
+```scheme
+(import (srfi 64))
+
+(test-begin "pricing")
+
+(test-equal "multiplies" 42 (* 6 7))
+(test-equal "adds" 3 (+ 1 2))
+(test-error (car '()))              ;; must raise — the expression is not run eagerly
+
+(test-end "pricing")
+```
+
+```text
+;; begin pricing
+;; pricing: 3 passed, 0 failed, 3 total
+```
+
+Three properties are worth naming, because they are what a test API buys:
+
+- **A failing assertion does not stop the run.** The suite reports the failure
+  and continues, so one run tells you every broken check. `checked` keeps going
+  too, but it does not count.
+- **Assertions are syntax.** `(test-error (car '()))` hands the expression to
+  the assertion *unevaluated*; a procedure call would have raised before the
+  check could catch it. `test-assert` is protected the same way: an expression
+  that raises is reported as a test error, not a crashed suite.
+- **The runner is data.** `(test-runner-current)` answers a vector with pass,
+  fail and total, so the host can read a count instead of scraping text.
+
+What `(srfi 64)` does not do is talk to pytest — exit codes, capture and the
+build's red/green are still the host's job. The layering is the chapter's whole
+point: the guest suite proves the Lisp on its own terms, and `run_script` makes
+that suite part of the Python run:
+
+```python
+from shslisp.__main__ import run_script
+
+def test_guest_suite(tmp_path):
+    program = tmp_path / "suite.scm"
+    program.write_text(SUITE_SOURCE, encoding="utf-8")   # the program above
+    import io
+    buffer = io.StringIO()
+    run_script(str(program), out=buffer, script_args=[])
+    assert "3 passed, 0 failed, 3 total" in buffer.getvalue()
+```
+
 ## Which side, which test
 
 | Test on the host (`pytest`) when | Test on the guest (`checked`) when |
@@ -140,6 +192,10 @@ must answer for itself:
    body raises. You will need `guard` and a sentinel.
 4. Decide, for your own project, the rule for which tests live on which side —
    write it down in one sentence and follow it for a week.
+5. **Port `checked` to `(srfi 64)`.** Rewrite the factorial self-check as a
+   `test-begin`/`test-equal`/`test-end` suite, run it through `run_script`, and
+   assert the summary line. Then add one deliberately failing `test-equal` and
+   say what changed in the output — and what did *not* change in pytest.
 
 ## See also
 
@@ -147,5 +203,7 @@ must answer for itself:
   self-check's engine
 - [P5 — Shipping an extension](p5-shipping-an-extension.md) — the seam these
   tests guard
+- [30 Testing and debugging](../lisp_tutorial/30-testing-and-debugging-srfi-64.md)
+  — the SRFI 64 surface in full, with the traceback and profiler
 - The exemplars: `tests/test_tutorial.py`, `tests/test_exercises.py`,
   `tests/test_embed.py`

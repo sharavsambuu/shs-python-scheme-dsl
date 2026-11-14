@@ -22,7 +22,7 @@ review and test than a pile of Python callbacks, without giving up vectorized
 performance. It is also for the same developer six months later, trying to
 remember why a backtest looked better than live trading.
 
-Everything below rides on the libraries landed in S10–S13:
+Everything below rides on the libraries landed in S10–S18:
 
 - [`shslisp/srfi160.py`](../../shslisp/srfi160.py) — `(srfi 160 base)` +
   `(srfi 160 f64)`: unboxed `f64vector`s backed by `array.array`, the
@@ -38,6 +38,15 @@ Everything below rides on the libraries landed in S10–S13:
 - [`shslisp/embed.py`](../../shslisp/embed.py) — the host-facing seam:
   `make_env`, `install_primitives`, `load_lisp`. This is what your trading
   host imports.
+- [`shslisp/srfi125.py`](../../shslisp/srfi125.py),
+  [`shslisp/srfi132.py`](../../shslisp/srfi132.py),
+  [`shslisp/srfi180.py`](../../shslisp/srfi180.py),
+  [`shslisp/srfi28.py`](../../shslisp/srfi28.py),
+  [`shslisp/srfi152.py`](../../shslisp/srfi152.py), and
+  [`shslisp/srfi64.scm`](../../shslisp/srfi64.scm) — the standard-library wave
+  (S14–S18): hash tables, sorting, JSON, `format`, string utilities, and the
+  `(srfi 64)` test API. Import-only in both profiles; the worked uses are in
+  §5, §11, and §15.
 
 The snippets on this page are **one program in document order**: a later
 fence leans on earlier definitions (the rule macros of §5 are used in §10, and
@@ -194,6 +203,50 @@ def freeze_features(cols, expected_len):
             raise ValueError(f"{name}: {len(vec)} elements, expected {expected_len}")
     return cols
 ```
+
+**Package the seam as a plugin.** The host half of this page — the
+`make-close-vector` primitive and, below, the feature kernels — is exactly the
+shape `shs` can load itself. Put the installers in an importable module and
+name it with `--plugin`, or export `SHS_PLUGINS` so every invocation gets the
+same vocabulary:
+
+```python
+# quant_host_plugin.py — the host vocabulary, importable by the CLI
+import array
+
+from shslisp import install_primitives
+from shslisp.types import Srfi160Vector
+
+def make_close_vector(closes):
+    return Srfi160Vector("f64", array.array("d", closes))
+
+def install(env):
+    install_primitives(
+        env,
+        [("make-close-vector", make_close_vector)],
+        source=__name__,
+    )
+```
+
+```sh
+shs --plugin quant_host_plugin -e "(f64vector? (make-close-vector '(101.0 102.5)))"
+# -> #t
+shs --plugin quant_host_plugin run rules.scm      # the strategy script sees it
+SHS_PLUGINS=quant_host_plugin shs run rules.scm   # every invocation
+```
+
+`--plugin MOD[:ATTR]` is repeatable (`ATTR` defaults to `install`), and
+`SHS_PLUGINS` is `os.pathsep`-separated — `:` on Unix, `;` on Windows
+(`$env:SHS_PLUGINS = "quant_host_plugin"` in PowerShell,
+`set SHS_PLUGINS=quant_host_plugin` in cmd). A bad spec fails with the offending
+spec named, before any Lisp is read, so a mistyped kernel module can never
+produce a half-configured backtest.
+
+The rule of the page still holds: the plugin publishes **kernel entry points
+and feature constructors**, never a `decide`. The strategy file stays Scheme and
+is versioned like source; the plugin is the host's numeric vocabulary, loaded
+by whichever door the run uses (`extensions=[...]` when a Python program owns
+the run, `--plugin` / `SHS_PLUGINS` when a person runs `shs`).
 
 ## 4. The strategy contract
 
@@ -357,6 +410,85 @@ exact integer so the ledger does not carry a float share count:
   (inexact->exact (floor (/ notional price))))   ;; integer shares, deliberately floored
 (shares-for 750 227.48)            ;; => 3
 ```
+
+### The standard-library wave in the rule layer
+
+Four of the wave's libraries (S14–S18) pay for themselves in the rule layer
+rather than in the kernels: a dictionary that is not a list scan, a sort that
+is not a Scheme merge loop, JSON that is not hand-concatenated text, and a
+format string that is not a chain of `display`s. (The wave's other two —
+`(srfi 152)`'s string utilities and the `(srfi 64)` test API — show up with the
+rule files in §15.) Each is import-only — the profile's list is pinned — so a
+script that wants them says so.
+
+**`(srfi 125)` — multi-symbol state.** The book lives here: one table keyed by
+symbol, `O(1)` per lookup, `equal?`-keyed like every core table, and a missing
+symbol is loud unless you ask for a default. The `alist->hash-table` bridge is
+the one you reach for when the state arrives as configuration data:
+
+```scheme
+(import (srfi 125))
+;; per-symbol state as a dictionary, not an assoc scan on every bar
+(define sym-book (alist->hash-table '((SPY . 100) (QQQ . 50) (IWM . 200))))
+(hash-table-contains? sym-book 'QQQ)          ;; => #t
+(hash-table-ref sym-book 'SPY)                ;; => 100
+(hash-table-size sym-book)                    ;; => 3
+(hash-table-ref/default sym-book 'DIA 0)      ;; => 0
+```
+
+**`(srfi 132)` — cross-sectional ranking.** Sorting a universe by score is the
+daily cross-section job; Timsort behind your comparator is faster than any
+merge loop you will write in Scheme, and the comparator still decides ties.
+`list-sort` takes the comparator **first**, the SRFI 132 order (not the
+prelude's `sort-by`):
+
+```scheme
+(import (srfi 132))
+;; cross-sectional ranking: sort the scores, then read the symbol order
+(define scores '(("SPY" . 0.82) ("QQQ" . 0.91) ("IWM" . 0.64) ("DIA" . 0.77)))
+(define (score> a b) (> (cdr a) (cdr b)))
+(list-sort score> scores)                     ;; => (("QQQ" . 0.91) ("SPY" . 0.82) ("DIA" . 0.77) ("IWM" . 0.64))
+(map car (list-sort score> scores))           ;; => ("QQQ" "SPY" "DIA" "IWM")
+(vector->list (vector-sort < #(0.82 0.91 0.64 0.77)))   ;; => (0.64 0.77 0.82 0.91)
+(list-sorted? < '(1 2 3))                     ;; => #t
+```
+
+Both list sorts are stable here (a stronger guarantee than SRFI 132 requires of
+`list-sort`), so equal scores keep their input order — which is what makes a
+ranking reproducible. The vector sorts return a **fresh vector** and accept the
+optional `[start end]` subrange.
+
+**`(srfi 180)` — JSON for snapshots and telemetry.** The manifest, the trade
+log, the evaluation harness hand-off: all of them want JSON. Objects come back
+as alists with **string** keys (that is what JSON has), arrays as vectors,
+`null` as the symbol `null`, and malformed input is a loud error rather than a
+silent `null`:
+
+```scheme
+(import (srfi 180))
+;; one JSON line per snapshot / telemetry record — written and read back
+(define payload (json-write '((symbol . "SPY") (qty . 100))))
+(string-contains? payload "\"symbol\"")                        ;; => #t
+(cdr (assoc "qty" (json-read "{\"qty\": 100}")))               ;; => 100
+(cdr (assoc "book" (json-read "{\"book\": [1, 2, 3]}")))       ;; => #(1 2 3)
+(cdr (assoc "note" (json-read "{\"note\": null}")))            ;; => null
+```
+
+**`(srfi 28)` — a telemetry/trade-log line.** A log line assembled from six
+`display` calls is six chances to forget a separator; `format` is one call with
+`~a` (display), `~s` (write, so strings stay quoted), `~%` and `~~`:
+
+```scheme
+(import (srfi 28))
+;; one trade-log line, assembled once instead of six displays
+(format #f "~a qty=~a px=~s" 'SPY 100 412.5)   ;; => "SPY qty=100 px=412.5"
+(format #f "~a => ~a" 'signal "long")          ;; => "signal => long"
+```
+
+`format`'s first argument is the destination: `#f` answers the string (what the
+claims above show), `#t` writes through `(current-output-port)`, and a port
+writes there. That is the same parameter the host redirects for log capture, so
+a rule's log line lands wherever the run's output goes.
 
 ## 6. Typed decisions, Results, and risk gates
 
@@ -751,6 +883,68 @@ why `(f64vector-fold + ...)` with a primitive is fast, while the same fold with
 a Scheme lambda is ~3.5× slower — and why the budget becomes the wall just
 past a million elements for the simplest body.
 
+**Profiling a rule: `measure_calls`.** Wall-clock numbers tell you *that* a
+backtest is slow; `measure_calls` tells you *which procedure* is spending the
+steps. It lives in `shslisp/evaluator.py`, runs the thunk under a private
+budget (your own evaluation is neither charged nor disturbed), and counts
+applications per named closure and primitive:
+
+```python
+from shslisp import make_env, run
+from shslisp.evaluator import measure_calls
+
+env = make_env()
+run("""
+(import (srfi 160 f64))
+(define (decide closes i)
+  (if (< i 1) 'flat
+      (if (> (f64vector-ref closes i) (f64vector-ref closes (- i 1))) 'long 'flat)))
+""", env)
+run("(define closes (f64vector 100.0 101.0 100.5 102.0))", env)
+
+result, steps, counts = measure_calls(lambda: run("(decide closes 1)", env))
+print(result, steps)                       # long 24
+print(sorted(counts.items(), key=lambda kv: -kv[1])[:5])
+# [('f64vector-ref', 2), ('decide', 1), ('<', 1), ('-', 1), ('>', 1)]
+```
+
+A tail call is one application, so a recursive rule reports its recursion
+depth, not Python frames. Profile the *rule*, not the driver: a Pattern B loop
+is one root per bar by design, so measure a representative bar (or a short
+loop) and read the counts. `measure_steps` alone answers "how many steps did
+this excerpt spend?" when the counts are not the question — same private
+budget, one fewer return value.
+
+**Diagnosing a rule error: `format_traceback()`.** In a Pattern B loop the
+thing that raises is a closure the host cannot see into — the message says
+*what*, the frames say *where*:
+
+```python
+from shslisp.errors import LispError
+
+try:                                        # the same env and rule as above
+    run("(decide closes 9)", env)           # one bar past the vector
+except LispError as exc:
+    print(str(exc))                         # one line: what a log wants
+    print(exc.format_traceback())           # where, innermost first
+```
+
+```text
+<string>:5:14: f64vector-ref: index 9 out of range for 4 element(s)
+Scheme traceback (innermost first):
+  at <string>:5:14
+  at <string>:5:11
+  at <string>:5:7
+<string>:5:14: f64vector-ref: index 9 out of range for 4 element(s)
+```
+
+`exc.source` is the innermost span on its own; the frames are deduplicated,
+innermost first, and capped at `TRACEBACK_FRAMES = 32`. Log the traceback with
+the bar index and the snapshot id — "index out of range" without *which bar*
+and *which rule line* is a bug report you cannot action. A loader that reads
+with spans (`read_all_located`) gives every frame a real file name instead of
+`<string>`.
+
 ## 12. What a backtest must model
 
 This is the part that separates a research script from a backtest you can
@@ -856,6 +1050,42 @@ Pin the behaviour in tests, not in comments:
 - **Cost/fill sensitivity** — rerun with doubled fees and worse slippage; if
   the edge disappears, it was never there.
 
+**Rule unit tests in the rule language.** The bullets above are host-side
+tests. The *rules* can carry their own suite with `(srfi 64)`, so a strategy
+file proves its boundaries without a Python wrapper — and the host can still
+run it through `run_script` and assert the summary line:
+
+```scheme
+(import (srfi 64) (srfi 160 f64))
+
+(define (rule-cross-over? f s i)
+  (and (> i 0)
+       (<= (f64vector-ref f (- i 1)) (f64vector-ref s (- i 1)))
+       (>  (f64vector-ref f i)       (f64vector-ref s i))))
+
+(test-runner-current (test-runner-simple))     ;; a fresh runner, counts at zero
+(test-begin "cross-over")
+(test-equal "fires above the slow line" #t
+            (rule-cross-over? (f64vector 1.0 3.0) (f64vector 2.0 2.0) 1))
+(test-equal "no signal on bar zero" #f
+            (rule-cross-over? (f64vector 1.0 3.0) (f64vector 2.0 2.0) 0))
+(test-error (f64vector-ref (f64vector 1.0) 5)) ;; must raise
+(test-end "cross-over")
+(test-runner-current)
+;; => #(simple 3 0 3)
+```
+
+Three things to notice: `test-error` takes the expression **unevaluated**
+(assertions are macros, so a raising expression is caught instead of crashing
+the file), a failure does not stop the run (one run reports every broken
+boundary), and the runner is ordinary data — pass, fail, total in a vector — so
+a host can read a count instead of scraping text. The suite runs under the
+default profile because `(srfi 64)` is not pre-imported; the import is the
+program's consent.
+
+The *no-lookahead* property stays host-side, because proving it means mutating
+the feature vectors — that is the next sketch.
+
 A no-lookahead test sketch (host side):
 
 ```python
@@ -901,11 +1131,18 @@ The exact plumbing varies; the property is the point.
 - **Treating a green backtest as a live-ready strategy.** Paper trade,
   reconcile, monitor.
 
-## 17. What to build next (the S14 candidate)
+## 17. What to build next
 
-The seams above work today; these are the edges that would still hurt. The
-guiding rule is the same: **new numeric kernels are host code; new rules are
-Scheme; the core stays zero-dependency.**
+The seams above work today. The standard-library wave (S14–S18) has since
+closed the *language-level* half of the gap this section used to describe:
+`(srfi 125)` hash tables, `(srfi 132)` sorting, `(srfi 180)` JSON, `(srfi 28)`
+`format`, the `(srfi 152)` string utilities, and `(srfi 64)` test suites are
+importable, audited in [`srfi.md`](../srfi.md), and worked in §5, §11, and §15
+of this page.
+
+The guiding rule is unchanged: **new numeric kernels are host code; new rules
+are Scheme; the core stays zero-dependency.** What remains is the **host half**
+— the numeric kernels, the simulator, and the snapshot/manifest plumbing:
 
 - **A `(quant)` extension library, pure Scheme.** Order/decision variants,
   risk gates, session helpers, sizing policies, ledger-facing event shapes.
@@ -933,7 +1170,7 @@ Scheme; the core stays zero-dependency.**
 
 A candidate like this enters [`../SRFI_TASKS.md`](../SRFI_TASKS.md) only after
 it states its user value and passes the "meets its semantics or fails loudly"
-gate — the same bar S10–S13 cleared.
+gate — the same bar S10–S18 cleared.
 
 ## 18. How to verify
 
@@ -941,7 +1178,8 @@ From a checkout of this project:
 
 ```bash
 # the SRFI surface this page relies on
-python -m pytest tests/test_srfi160.py tests/test_srfi19.py tests/test_generators.py -q
+python -m pytest tests/test_srfi160.py tests/test_srfi19.py tests/test_generators.py \
+                 tests/test_s14_to_s18_srfis_tdd.py -q
 
 # the page's own harness: every Scheme snippet, in document order
 python -m pytest tests/test_quant.py -q
