@@ -31,17 +31,17 @@ def test_escape_outside_extent_does_not_reenter() -> None:
         lisp_run("(k 99)", env)
 
 
-def test_make_coroutine_generator_fails_loudly() -> None:
+def test_make_coroutine_generator_works_via_fiber() -> None:
     env = make_env()
-    # generators.scm:200 — bound but fails loudly by design (escape-only).
-    with pytest.raises(Exception) as excinfo:
+    assert (
         lisp_run(
-            "(import (srfi 158)) (make-coroutine-generator (lambda () 1))",
-            make_env(),
+            """
+            (import (srfi 158))
+            (define g (make-coroutine-generator
+                       (lambda (yield) (yield 1) (yield 2))))
+            (list (g) (g) (eof-object? (g)))
+            """,
+            env,
         )
-    assert "make-coroutine-generator" in str(excinfo.value)
-    # Silence here would be the bug: this must never answer a generator.
-    # The live env form hits the same binder.
-    with pytest.raises(Exception) as excinfo2:
-        lisp_run("(make-coroutine-generator (lambda () 1))", env)
-    assert "make-coroutine-generator" in str(excinfo2.value)
+        == [1, 2, True]
+    )

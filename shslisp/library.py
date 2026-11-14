@@ -668,6 +668,11 @@ def install(env: Environment) -> None:
     # import (see `_core_backed_builder`), so the strict r7rs profile leaves
     # them import-only — the docs' promise — while the default profile's
     # pre-import binds the same objects.
+    def _install_srfi18(scope: Environment) -> None:
+        from .srfi18 import install as installer
+
+        installer(scope)
+
     def _install_srfi19(scope: Environment) -> None:
         from .srfi19 import install as installer
 
@@ -678,6 +683,12 @@ def install(env: Environment) -> None:
 
         installer(scope)
 
+    registry[("srfi", "18")] = Library(
+        ("srfi", "18"),
+        exports=frozenset(_SRFI18_EXPORTS),
+        builder=_core_backed_builder(env, (_install_srfi18,)),
+        note="Multithreading / cooperative fibers (C-03): threads, mutexes, condvars.",
+    )
     registry[("srfi", "19")] = Library(
         ("srfi", "19"),
         exports=frozenset(_SRFI19_EXPORTS),
@@ -732,6 +743,11 @@ def install(env: Environment) -> None:
 
         installer(scope)
 
+    def _install_srfi226(scope: Environment) -> None:
+        from .srfi226 import install as installer
+
+        installer(scope)
+
     registry[("srfi", "28")] = Library(
         ("srfi", "28"),
         exports=frozenset(_SRFI28_EXPORTS),
@@ -768,6 +784,19 @@ def install(env: Environment) -> None:
         exports=frozenset(_SRFI180_EXPORTS),
         builder=_core_backed_builder(env, (_install_srfi180,)),
         note="JSON (S17): json-read / json-write over the stdlib json module.",
+    )
+    registry[("srfi", "190")] = lisp_file_library(
+        env,
+        ("srfi", "190"),
+        Path(__file__).with_name("srfi190.scm"),
+        _SRFI190_EXPORTS,
+        note="Coroutine generators (C-02): coroutine-generator, define-coroutine-generator, yield.",
+    )
+    registry[("srfi", "226")] = Library(
+        ("srfi", "226"),
+        exports=frozenset(_SRFI226_EXPORTS),
+        builder=_core_backed_builder(env, (_install_srfi226,)),
+        note="Control features (C-01): delimited prompts, barriers, and one-shot composable continuations.",
     )
 
 
@@ -826,6 +855,26 @@ _SRFI1_EXPORTS = (
 #: no TAI/thread clocks (the constants exist, the clocks refuse), no leap
 #: seconds, no monotonic<->UTC conversions, no zone names, no date-zone-name/
 #: date-dst? (the reference surface does not require them).
+_SRFI18_EXPORTS = (
+    "current-thread",
+    "thread?",
+    "make-thread",
+    "thread-name",
+    "thread-start!",
+    "thread-yield!",
+    "thread-sleep!",
+    "thread-terminate!",
+    "thread-join!",
+    "mutex?",
+    "make-mutex",
+    "mutex-lock!",
+    "mutex-unlock!",
+    "condition-variable?",
+    "make-condition-variable",
+    "condition-variable-signal!",
+    "condition-variable-broadcast!",
+)
+
 _SRFI19_EXPORTS = (
     "time-tai time-utc time-monotonic time-thread time-process time-duration"
     " current-time time-resolution"
@@ -961,3 +1010,16 @@ _SRFI152_EXPORTS = (
 
 #: The (srfi 180) surface (S17): the two primitives the ledger claims.
 _SRFI180_EXPORTS = ("json-read", "json-write")
+
+_SRFI190_EXPORTS = ("coroutine-generator", "define-coroutine-generator", "yield")
+
+_SRFI226_EXPORTS = (
+    "make-continuation-prompt-tag",
+    "continuation-prompt-tag?",
+    "default-continuation-prompt-tag",
+    "continuation-prompt-available?",
+    "call-with-continuation-prompt",
+    "abort-current-continuation",
+    "call-with-composable-continuation",
+    "call-with-continuation-barrier",
+)

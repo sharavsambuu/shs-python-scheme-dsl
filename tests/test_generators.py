@@ -276,13 +276,9 @@ def test_the_srfi_158_constructors(ev) -> None:
     ) == [1, 4, 9]
 
 
-def test_the_two_coroutine_constructors_fail_loudly(ev) -> None:
-    # They need re-entrant continuations, which this dialect deliberately
-    # does not have (docs/r7rs.md); the failure names the limitation.
-    with pytest.raises(LispError, match="re-entrant continuations"):
-        ev("(make-coroutine-generator (lambda (yield) (yield 1)))")
-    with pytest.raises(LispError, match="re-entrant continuations"):
-        ev("(make-for-each-generator (lambda (proc obj) obj) '())")
+def test_the_two_coroutine_constructors_yield_and_exhaust(ev) -> None:
+    assert ev("(generator->list (make-coroutine-generator (lambda (yield) (yield 1) (yield 2))))") == [1, 2]
+    assert ev("(generator->list (make-for-each-generator for-each '(10 20)))") == [10, 20]
 
 
 def test_gcons_star_and_gappend(ev) -> None:

@@ -192,16 +192,15 @@
                 (set! state (successor state))
                 v))))))
 
-;; --- the two constructors this dialect cannot honour ---------------------- ;;
-;; Both need a body that suspends mid-computation and resumes later —
-;; re-entrant continuations, which this interpreter deliberately does not
-;; have (docs/r7rs.md, Tier 1). They fail loudly instead of pretending.
+;; --- coroutine generators (SRFI 158, backed by cooperative fibers) ------- ;;
 
-(define (make-coroutine-generator . rest)
-  (error "make-coroutine-generator: not supported here — suspending a body needs re-entrant continuations, and this dialect's call/cc is escape-only (docs/r7rs.md); build a stateful closure generator instead"))
+(define (make-coroutine-generator proc)
+  (%make-coroutine-generator proc))
 
-(define (make-for-each-generator . rest)
-  (error "make-for-each-generator: not supported here — driving a for-each lazily needs re-entrant continuations, and this dialect's call/cc is escape-only (docs/r7rs.md)"))
+(define (make-for-each-generator for-each-fn obj)
+  (make-coroutine-generator
+   (lambda (yield)
+     (for-each-fn yield obj))))
 
 ;; ------------------------------------------------------------------------- ;;
 ;;  Combinators — all lazy, all stateful closures                             ;;

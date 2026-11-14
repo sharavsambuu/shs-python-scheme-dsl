@@ -395,6 +395,12 @@ def install_core(env: Environment, out: Optional[TextIO] = None) -> Environment:
     define("call/cc", _call_cc)
     define("call-with-current-continuation", _call_cc)
     define("call-with-escape-continuation", _call_cc)
+    define("%make-coroutine-generator", lambda proc: __import__(
+        "shslisp.srfi226", fromlist=["make_coroutine_generator"]
+    ).make_coroutine_generator(proc))
+    define("%coro-yield", lambda *args: __import__(
+        "shslisp.srfi226", fromlist=["coro_yield"]
+    ).coro_yield(*args))
 
     # -- control over the host --------------------------------------------- #
     define("apply", _apply)
