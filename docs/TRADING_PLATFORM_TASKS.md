@@ -16,8 +16,8 @@ Every task below records **what motivated it**, **the exact gap observed**, and
 | ID | Task | Priority | Status | Primary Files |
 |---|---|---|---|---|
 | `R-01` | Generic `--plugin <module[:attr]>` CLI flag & `SHS_PLUGINS` loader | P1 | DONE | `shslisp/__main__.py`, `shslisp/embed.py` |
-| `R-02` | Multi-frame Scheme call-stack trace on `LispError` | P1 | OPEN | `shslisp/evaluator.py`, `shslisp/errors.py` |
-| `R-03` | Per-procedure step hotspot profiler (`measure_calls`) & `_run` macro/lookup fast-path | P1 | OPEN | `shslisp/evaluator.py`, `shslisp/builtins.py` |
+| `R-02` | Multi-frame Scheme call-stack trace on `LispError` | P1 | DONE | `shslisp/evaluator.py`, `shslisp/errors.py` |
+| `R-03` | Per-procedure step hotspot profiler (`measure_calls`) & `_run` macro/lookup fast-path | P1 | DONE | `shslisp/evaluator.py`, `shslisp/builtins.py` |
 | `R-04` | Windows `tmp_path` backslash & CWD hygiene in `tests/` | P2 | DONE | `tests/test_ports.py`, `tests/test_library.py`, `tests/test_r7rs.py`, `tests/test_srfi.py` |
 
 ### `R-01` — Generic `--plugin` CLI & `SHS_PLUGINS`
@@ -28,12 +28,16 @@ Every task below records **what motivated it**, **the exact gap observed**, and
 ### `R-02` — Multi-Frame Scheme Call-Stack Trace on `LispError`
 * **Motivation & Origin:** Combinator-heavy Scheme code (`define-strategy`, `wrap-pure-stake`, `step-bets`, `step-swarm`) nests multiple closures before hitting a runtime `LispTypeError` or `LispBudgetError`. `_Budget.sources` in `shslisp/evaluator.py` already tracks the active `SourceLocation` stack, but `_attach_eval_source` currently keeps only the single innermost location (`budget.sources[-1]`).
 * **Target Design:** Capture a bounded call-frame snapshot (top $N$ frames / call sites) onto `LispError.traceback` when an error unwinds, and render a concise multi-line Scheme backtrace in `LispError.__str__()` (or `format_traceback()`) without breaking existing single-line substring assertions.
+* **Shipped:** `LispError.traceback` (class default `()`, class-level annotation) is filled by `_attach_eval_source` from the first — deepest — handler that sees the escaping error: unique non-`None` spans from `budget.sources`, innermost first, capped at `TRACEBACK_FRAMES = 32`. `LispError.format_traceback()` renders `Scheme traceback (innermost first):` + one `at file:line:col` line per frame + the single-line message; `str(exc)` and `exc.source` are unchanged, so every historical substring assertion still holds. `evaluate_program` also accepts the `(form, SourceLocation)` pairs `read_all_located` returns, so a host can read with spans and run the result directly. Pinned by `test_r02_callstack_traceback_tdd.py`.
 
 ### `R-03` — Step Hotspot Profiler & `_run` Fast-Path / Macro Cache
 * **Motivation & Origin:** After adding typed wire events and v2 sizing dispatch in `shs-scheme-trading-exps`, `test_portfolio_scales_chunk_for_the_step_budget` (1,200 bars × 4 slices) hit `LispBudgetError` (`5,000,000` steps) at `chunk_bars = 600` and `500`, forcing the trading host to shrink portfolio chunks (`2 * n_slices + 1`). Meanwhile, `measure_steps` only reports a single total integer, giving no visibility into *which* Scheme procedures spent the steps.
 * **Target Design:**
   1. Add a lightweight `measure_calls` / `profile_calls` hook alongside `measure_steps` that aggregates step & call counts per procedure name.
   2. Optimize `_run` hot paths in `shslisp/evaluator.py` (skip `_find_macro` when `head` resolves to a cached non-macro binding or literal, and cache `SyntaxRules` macro expansions per call-site form where safe) to cut per-bar step counts and Python wall-clock time.
+* **Shipped:**
+  1. `measure_calls(thunk) -> (result, steps, counts)` — same private-budget swap as `measure_steps` (caller's steps untouched, `STEPS_BUDGET` still armed), tallying applications per name for tail-called closures (`_run`), non-tail closures and primitives (`apply_procedure`, so `map`/`apply` calls are included). `_Budget.calls` is `None` for ordinary evaluation, so profiling costs one `is not None` test on the hot path.
+  2. `_run` fast paths, both semantics-preserving: the reader-span probe is inlined and skips atoms (no source-table hit for a literal), and the ~35-comparison special-form dispatch now runs only for heads in `_SPECIAL_FORMS` or `_DISPATCH_ONLY` — a plain application goes straight to evaluation, with `_find_macro` still probed first so a macro keeps shadowing `variant-match` / `%srfi241-quasiquote` exactly as before. Measured on a 200k-iteration tail loop and a 50k-iteration `syntax-rules` loop: ~17% and ~26% less wall-clock with **identical** step counts (170 steps for the ten-iteration macro loop), so no budget behaviour moved. Pinned by `test_r03_profiler_and_fastpath_tdd.py`.
 
 ### `R-04` — Windows Path & CWD Hygiene in `tests/`
 * **Motivation & Origin:** Running the full `shslisp` test suite on Windows showed 11 failures out of 1,186 tests: `test_ports.py`, `test_library.py`, and `test_r7rs.py` interpolate raw `tmp_path` strings containing `\` into Scheme string literals (turning `\t` or `\b` into control characters), and `test_srfi.py` assumes CWD is the `shs-python-scheme-dsl` root.

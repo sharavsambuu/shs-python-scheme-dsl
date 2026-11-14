@@ -32,6 +32,7 @@ from .errors import (
     LispRecursionError,
     LispSyntaxError,
     LispTypeError,
+    SourceLocation,
 )
 from .reader import (
     DOT,
@@ -113,7 +114,7 @@ MACROEXPAND_LIMIT = 1_000
 #: once per ``evaluate`` and threaded through ``_run`` so the per-step charge
 #: stays one attribute increment, not a thread-local lookup per trampoline step.
 class _Budget:
-    __slots__ = ("steps", "depth", "sources")
+    __slots__ = ("steps", "depth", "sources", "calls")
 
     def __init__(self) -> None:
         self.steps = 0
@@ -122,6 +123,16 @@ class _Budget:
         #: `evaluate` pushes one cell per nested call; the trampoline updates
         #: the cell whenever a tail transition lands on a known form.
         self.sources: list = []
+        #: `name -> applications` while a profiler is running (R-03), else
+        #: ``None``. One ``is not None`` test on the hot path keeps ordinary
+        #: evaluation free of dictionary work.
+        self.calls: Optional[dict] = None
+
+
+#: How many frames :meth:`shslisp.errors.LispError.format_traceback` keeps.
+#: A Lisp program can nest a thousand calls deep; the useful part of a stack is
+#: its head, and an unbounded tuple would let one error pin memory.
+TRACEBACK_FRAMES = 32
 
 
 _local = threading.local()
@@ -186,6 +197,9 @@ IMPORT = intern("import")
 DEFINE_LIBRARY = intern("define-library")
 SYNTAX_ERROR = intern("syntax-error")
 UNDERSCORE = intern("_")
+#: The hidden special form a SRFI 241 clause body's ``quasiquote`` rewrites
+#: into; the matcher that produces it lives in the SRFI 241 section below.
+_SRFI241_QQ = intern("%srfi241-quasiquote")
 
 _SPECIAL_FORMS = frozenset(
     {
@@ -196,6 +210,16 @@ _SPECIAL_FORMS = frozenset(
         COND_EXPAND, INCLUDE, INCLUDE_CI, IMPORT, DEFINE_LIBRARY, SYNTAX_ERROR,
     }
 )
+
+#: Heads the trampoline dispatches but that are deliberately **not** special
+#: forms: a user macro of the same name must win, so the macro probe runs
+#: before the dispatch for them (``variant-match`` is the project matcher,
+#: ``%srfi241-quasiquote`` the SRFI 241 body expander). Keeping them out of
+#: ``_SPECIAL_FORMS`` preserves that precedence *and* keeps
+#: ``syntax._core_syntax()`` from freezing hygiene on names a program may
+#: shadow; this set only tells the ``_run`` dispatch which extra heads it owns
+#: (R-03).
+_DISPATCH_ONLY = frozenset({VARIANT_MATCH, _SRFI241_QQ})
 
 
 # --------------------------------------------------------------------------- #
@@ -239,19 +263,51 @@ def _form_source(expr: Any):
 
 
 def _attach_eval_source(exc: "LispError", budget: _Budget) -> None:
-    """Attach the INNERMOST known span to *exc* (never overwrite one).
+    """Attach the innermost span, and the frame stack, to *exc* (R-02).
 
     `budget.sources` is innermost-last: the current frame's cell is updated by
     the trampoline on every tail transition, and nested `evaluate` calls push
     their own cells. On the way out, the first non-``None`` cell from the end
-    is the form that actually failed.
+    is the form that actually failed — that becomes ``exc.source``, the
+    single-line ``file:line:col`` prefix `str(exc)` has always rendered.
+
+    The same walk fills ``exc.traceback`` (innermost first) when it is still
+    empty, so the *first* — deepest — handler to see the error captures the
+    fullest stack. Cells are deduplicated and bounded by
+    :data:`TRACEBACK_FRAMES`; a span already attached by a caller is never
+    replaced.
     """
-    if getattr(exc, "source", None) is not None:
+    if getattr(exc, "source", None) is None:
+        for loc in reversed(budget.sources):
+            if loc is not None:
+                exc.source = loc
+                break
+    if not getattr(exc, "traceback", ()):
+        frames: list = []
+        seen: set = set()
+        for loc in reversed(budget.sources):
+            if loc is None or loc in seen:
+                continue
+            seen.add(loc)
+            frames.append(loc)
+            if len(frames) >= TRACEBACK_FRAMES:
+                break
+        if frames:
+            exc.traceback = tuple(frames)
+
+
+def _note_call(budget: Optional[_Budget], name: str) -> None:
+    """Count one application of *name* when a profiler owns *budget* (R-03).
+
+    ``budget.calls`` is ``None`` for ordinary evaluation, so this is one
+    attribute read and a branch; the actual tally only happens inside
+    :func:`measure_calls`.
+    """
+    if budget is None:
         return
-    for loc in reversed(budget.sources):
-        if loc is not None:
-            exc.source = loc
-            return
+    counts = budget.calls
+    if counts is not None:
+        counts[name] = counts.get(name, 0) + 1
 
 
 def measure_steps(thunk: Any) -> tuple[Any, int]:
@@ -275,6 +331,39 @@ def measure_steps(thunk: Any) -> tuple[Any, int]:
         budget.depth = 0
         _local.budget = previous
     return result, steps
+
+
+def measure_calls(thunk: Any) -> tuple[Any, int, dict[str, int]]:
+    """Profile zero-argument *thunk*; return ``(result, steps, call_counts)``.
+
+    The companion to :func:`measure_steps` (R-03). Same private-budget swap, so
+    the caller's own evaluation is neither charged nor counted, and the same
+    :data:`STEPS_BUDGET` guard still ends a runaway thunk with a clean
+    :class:`~shslisp.errors.LispBudgetError`.
+
+    *call_counts* maps a procedure name to how many times it was **applied**:
+    named closures (``define (f ...)``) on both the tail and non-tail paths, and
+    primitives (``+``, ``car``, ``map``). A tail call is one application, so a
+    loop that recurses eleven times reports eleven — the number a profiler
+    wants, not the number of Python frames.
+
+    The tally is read-only observation: nothing about evaluation changes when
+    the profiler is off, and an anonymous ``(lambda ...)`` is tallied under the
+    binding-time name it carries (``lambda``), not silently dropped.
+    """
+    previous = getattr(_local, "budget", None)
+    budget = _Budget()
+    budget.depth = 1
+    budget.calls = {}
+    _local.budget = budget
+    try:
+        result = thunk()
+        steps = budget.steps
+        counts = budget.calls
+    finally:
+        budget.depth = 0
+        _local.budget = previous
+    return result, steps, counts
 
 
 def evaluate(expr: Any, env: Environment) -> Any:
@@ -345,7 +434,16 @@ def _charge(budget: _Budget) -> None:
 def _run(expr: Any, env: Environment, budget: _Budget) -> Any:
     """The trampoline: evaluate *expr*, looping in tail position."""
     while True:
-        loc = _form_source(expr)
+        # R-03 fast path: only a compound form can carry a reader span, so the
+        # probe is inlined here (one call fewer per trampoline step) and an
+        # atom skips the source table completely. `_form_source` keeps the same
+        # contract for the nested-`evaluate` path.
+        if isinstance(expr, list):
+            loc = syntax_source(expr) if expr else None
+        elif isinstance(expr, Pair):
+            loc = syntax_source(expr)
+        else:
+            loc = None
         if loc is not None and budget.sources:
             budget.sources[-1] = loc
         _charge(budget)
@@ -382,7 +480,14 @@ def _run(expr: Any, env: Environment, budget: _Budget) -> Any:
                     expr = _expand_macro(macro, expr[1:])
                 continue
 
-        if isinstance(head, Symbol):
+        # R-03 fast path: a symbolic head that is neither a special form nor one
+        # of the trampoline's own dispatcher heads can only be an application,
+        # so the ~35 identity comparisons below are skipped. The macro probe
+        # above already ran, and it stays first so a macro still shadows a
+        # dispatch-only name exactly as it did before.
+        if isinstance(head, Symbol) and (
+            head in _SPECIAL_FORMS or head in _DISPATCH_ONLY
+        ):
             if head is QUOTE:
                 _check_arity("quote", expr, 1)
                 return expr[1]
@@ -516,6 +621,7 @@ def _run(expr: Any, env: Environment, budget: _Budget) -> Any:
         if isinstance(proc, (Macro, SyntaxRules)):
             raise LispTypeError("a macro is not a value; it can only be applied")
         if isinstance(proc, Closure):
+            _note_call(budget, proc.name)
             env = _bind(proc, args)
             expr = _body_form(proc.body)
             continue
@@ -523,9 +629,22 @@ def _run(expr: Any, env: Environment, budget: _Budget) -> Any:
 
 
 def evaluate_program(forms: List[Any], env: Environment) -> Any:
-    """Evaluate a sequence of forms; return the last value (``NIL`` if none)."""
+    """Evaluate a sequence of forms; return the last value (``NIL`` if none).
+
+    *forms* may be plain reader forms (``read_all``) or ``(form, location)``
+    pairs (``read_all_located``). The located shape is evaluated as its form —
+    "read this text with spans" and "run these forms" are the same walk, so a
+    host never has to unpack the pairs itself. The spans are already recorded
+    by the reader (R-02), so the second half needs no further handling here.
+    """
     result: Any = NIL
     for form in forms:
+        if (
+            isinstance(form, tuple)
+            and len(form) == 2
+            and isinstance(form[1], SourceLocation)
+        ):
+            form = form[0]
         result = evaluate(form, env)
     return result
 
@@ -533,6 +652,7 @@ def evaluate_program(forms: List[Any], env: Environment) -> Any:
 def apply_procedure(proc: Any, args: List[Any]) -> Any:
     """Apply *proc* to already-evaluated *args* (the non-tail path)."""
     if isinstance(proc, Primitive):
+        _note_call(getattr(_local, "budget", None), proc.name)
         try:
             return proc.fn(*args)
         except LispError:
@@ -540,6 +660,7 @@ def apply_procedure(proc: Any, args: List[Any]) -> Any:
         except (TypeError, ValueError, IndexError, KeyError, ZeroDivisionError, OverflowError, ArithmeticError) as exc:
             raise LispTypeError(f"{proc.name}: {exc}") from exc
     if isinstance(proc, Closure):
+        _note_call(getattr(_local, "budget", None), proc.name)
         return _apply_closure(proc, args)
     raise LispTypeError(f"not a procedure: {type(proc).__name__}")
 
@@ -1359,8 +1480,6 @@ _SRFI241_UNQUOTE_SPLICING = intern("unquote-splicing")
 _SRFI241_ELLIPSIS = intern("...")
 _SRFI241_GUARD = intern("guard")
 _SRFI241_ARROW = intern("->")
-#: The hidden special form the clause body's ``quasiquote`` rewrites into.
-_SRFI241_QQ = intern("%srfi241-quasiquote")
 
 
 def _srfi241_match(expr: list, env: Environment) -> Any:

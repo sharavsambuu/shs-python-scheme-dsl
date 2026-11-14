@@ -33,6 +33,12 @@ class LispError(Exception):
 
     source: SourceLocation | None = None
 
+    #: The Scheme call frames the error unwound through, **innermost first**
+    #: (R-02). The evaluator fills this when the error escapes a trampoline;
+    #: :meth:`format_traceback` renders it. An empty tuple means "no frames
+    #: were recorded" — a reader error, a host error, or an error built by hand.
+    traceback: tuple[SourceLocation, ...] = ()
+
     def __init__(self, message: str = "", source: SourceLocation | None = None) -> None:
         super().__init__(message)
         self.source = source
@@ -46,6 +52,11 @@ class LispError(Exception):
         error is raised deep in the trampoline), so the prefix is computed at
         render time. A message that already carries the prefix is untouched —
         the text a caller matched before stays a substring.
+
+        **This stays one line.** ``str(exc)`` is the program-facing contract
+        (REPL ``error:`` lines, `shs run` output, every substring assertion in
+        the suite); the call stack is a separate, opt-in rendering — see
+        :meth:`format_traceback`.
         """
         message = super().__str__()
         source = self.source
@@ -54,6 +65,22 @@ class LispError(Exception):
             if not message.startswith(prefix):
                 return prefix + message
         return message
+
+    def format_traceback(self) -> str:
+        """A multi-line Scheme traceback: innermost frame first, then the message.
+
+        ``str(exc)`` keeps the single-line contract; a REPL or a host calls
+        this when it wants the frames. An error with no recorded frames is just
+        the message, and a one-frame error is one ``at`` line plus the message,
+        so the rendering never looks broken for the simple cases.
+        """
+        frames = self.traceback
+        if not frames:
+            return str(self)
+        lines = ["Scheme traceback (innermost first):"]
+        lines.extend(f"  at {loc}" for loc in frames)
+        lines.append(str(self))
+        return "\n".join(lines)
 
 
 class LispSyntaxError(LispError):

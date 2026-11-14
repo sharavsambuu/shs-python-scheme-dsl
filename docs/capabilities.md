@@ -194,9 +194,11 @@ hatch the question assumes is not a workaround; it is the design.
    `install_primitives` registration (chapter
    [28](lisp_tutorial/28-embedding-in-python.md)) — a feature for safety,
    but work per capability.
-4. **Tooling depth.** The error messages are honest and the REPL exists, but
-   there is no debugger or profiler; source locations are the known next
-   step (the recommendation below).
+4. **Tooling depth.** Error messages are honest, source spans exist
+   (`exc.source`), a failing program can render a bounded multi-frame
+   `format_traceback()`, and `measure_steps` / `measure_calls` profile
+   trampoline work and per-procedure hot spots. What is still missing is an
+   interactive debugger and a formatter (H10).
 5. **An ecosystem of one.** The SRFI layer covers the useful core; you will
    be writing libraries, not downloading them.
 6. **Trust model — no sandbox (H1).** Lisp is trusted code with the host's

@@ -479,6 +479,45 @@ Everything else follows the report: `error` raises a condition `guard` can
 catch, a missing name is a loud `LispNameError` (never a silent `#f`), a
 syntax problem is a `LispSyntaxError` naming the form.
 
+### Source spans and call traces
+
+Every compound datum the reader builds carries its `SourceLocation`
+(`file`, `line`, `col`), so a runtime error answers two questions:
+
+* **Where did it fail?** `exc.source` is the innermost known span, and
+  `str(exc)` stays **one line** — `file:line:col: message` — which is what the
+  REPL, `shs run`, and every test matcher already rely on.
+* **How did we get there?** `exc.traceback` is a bounded tuple of the frames
+  the error unwound through, innermost first, and `exc.format_traceback()`
+  renders them above the message:
+
+```python
+try:
+    run(source, env)
+except LispError as exc:
+    print(exc.format_traceback())   # frames, then the single-line message
+```
+
+The evaluator captures the stack at the deepest handler that sees the error
+(the fullest stack it will ever have), deduplicates repeated spans, and keeps
+at most `TRACEBACK_FRAMES` of them. Small excerpts — two closures away — read
+as two `at` lines; a reader or host error with no frames is just its message.
+
+### Profiling: steps and calls
+
+`shslisp/evaluator.py` exposes two interpreter-level profilers, both of which
+run a thunk under a private budget so the embedding program's own evaluation is
+neither charged nor disturbed:
+
+| Hook | Answers |
+| --- | --- |
+| `measure_steps(thunk)` | `(result, steps)` — how much trampoline work the thunk spent |
+| `measure_calls(thunk)` | `(result, steps, counts)` — the same, plus applications per named closure and primitive |
+
+A tail call is one application, so a recursion that runs eleven times reports
+eleven — the number a hotspot hunt wants, not the number of Python frames. The
+usual `STEPS_BUDGET` guard still applies inside both hooks.
+
 ## Deviations from R7RS-small (the ones that matter)
 
 The full table lives in [`r7rs.md`](r7rs.md); the short version:
