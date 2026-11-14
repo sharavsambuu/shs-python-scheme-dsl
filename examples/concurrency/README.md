@@ -25,6 +25,7 @@ python examples/concurrency/03-channels/channels.py                             
 | 06 | `06-core-saturation` | Mandelbrot rendered by every core at once | `multiprocessing` pool + progress | **all cores** |
 | 07 | `07-actors` | actors: mailboxes, typed messages, request/reply | threads, one env per actor | threads |
 | 08 | `08-supervision` | supervision: let it crash, restart, give up | 07 + try/except as the crash signal | threads |
+| 09 | `09-srfi-coroutines-and-fibers` | `yield` generators, delimited prompts, cooperative threads + mutex/cv | `(srfi 190)`, `(srfi 226)`, `(srfi 18)` (`CooperativeFiber`) | 1 (baton) |
 
 ## How to read the set
 
@@ -39,11 +40,14 @@ the design rule above *is* the actor model's first two rules.
 
 ## The two walls (stated once, honored everywhere)
 
-1. **Re-entrant continuations do not exist** (`call/cc` is escape-only,
-   docs/r7rs.md) — so no continuation-based coroutines. Closures + `set!`
-   are state enough, which is the same route modern runtimes took anyway.
-2. **No shared-memory threads over one env** — actors and nurseries are the
-   substitute, and message-passing is the honest style regardless.
+1. **R7RS `call/cc` is escape-only**, while suspendable control flow uses
+   `shslisp`'s baton-scheduled `CooperativeFiber` runtime via `(srfi 226)`
+   (delimited prompts & one-shot composable continuations), `(srfi 158)`/`(srfi 190)`
+   (`make-coroutine-generator`, `yield`), and `(srfi 18)` (cooperative threads,
+   mutexes, and condition variables) — see `09-srfi-coroutines-and-fibers`.
+2. **No shared-memory OS threads over one env** — `(srfi 18)` fibers are
+   baton-scheduled (one fiber runs at a time); for true parallel OS threads or
+   processes, actors and nurseries (`03`–`08`) give each worker its own `make_env()`.
 
 Everything here is buildable without touching the interpreter: the examples
 differ only in the primitives their hosts install and the macros their

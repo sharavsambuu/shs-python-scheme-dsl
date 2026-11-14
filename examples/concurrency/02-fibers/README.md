@@ -14,10 +14,11 @@ exactly where it parked.
 
 ## Why this shape (and not `call/cc`)
 
-This dialect's `call/cc` is escape-only (docs/r7rs.md), so the classic
-continuation-based coroutine is out. The generator protocol is the same
-route modern runtimes took for coroutines anyway — and it is honest about
-what a fiber is: a parked computation plus a scheduler that resumes it.
+This dialect's R7RS `call/cc` is escape-only (`docs/r7rs.md`), so this
+example shows how to build a lightweight cooperative scheduler from closures
+and `set!`. For `shslisp` v0.3.0+'s built-in baton-scheduled fibers, delimited
+prompts, and `yield` coroutines (`(srfi 226)`, `(srfi 190)`, `(srfi 18)`), see
+`09-srfi-coroutines-and-fibers`.
 
 ## What to notice
 
